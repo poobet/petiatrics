@@ -1,0 +1,33 @@
+{
+  "name": "petiatrics",
+  "private": true,
+  "packageManager": "npm@11.8.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "storybook": "npm --prefix packages/ui run storybook -- --ci",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "test:contracts": "turbo run test:contracts",
+    "db:migrate": "turbo run db:migrate --filter=@petiatrics/database",
+    "db:generate": "turbo run db:generate --filter=@petiatrics/database",
+    "db:seed": "turbo run db:seed --filter=@petiatrics/database",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\" --ignore-path .gitignore"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "^5.8.2",
+    "@types/node": "^20.17.14",
+    "prettier": "^3.4.2",
+    "eslint": "^9.21.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}

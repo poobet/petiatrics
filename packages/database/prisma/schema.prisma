@@ -1,0 +1,281 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum SubscriptionTier {
+  FREE
+  STANDARD
+  PREMIUM
+}
+
+enum ClinicStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum Role {
+  SUPER_ADMIN
+  CLINIC_OWNER
+  VET
+  ASSISTANT
+  CASHIER
+  STAFF
+}
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  INACTIVE
+  LOCKED
+}
+
+enum Locale {
+  TH
+  EN
+}
+
+enum AppointmentStatus {
+  REQUESTED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  VOIDED
+}
+
+enum StockMovementReason {
+  DISPENSE
+  REPLENISH
+  MANUAL_ADJUSTMENT
+}
+
+enum StockMovementRefType {
+  VISIT_RECORD
+  REPLENISHMENT
+  MANUAL
+}
+
+enum InvoiceLineItemType {
+  SERVICE
+  PRODUCT
+}
+
+// ─── Clinic (Tenant Root) ────────────────────────────────────────────────────
+
+model Clinic {
+  id               String           @id @default(uuid())
+  name             String
+  taxId            String           @unique
+  address          Json             @default("{}")
+  subscriptionTier SubscriptionTier @default(FREE)
+  status           ClinicStatus     @default(ACTIVE)
+  // JSONB settings: max_login_attempts, lockout_duration_minutes,
+  //                 password_min_length, password_require_uppercase, password_require_number
+  settings         Json             @default("{\"max_login_attempts\":5,\"lockout_duration_minutes\":15,\"password_min_length\":8,\"password_require_uppercase\":true,\"password_require_number\":true}")
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  users          User[]
+  branches       Branch[]
+  appointments   Appointment[]
+  products       Product[]
+  stockMovements StockMovement[]
+  invoices       Invoice[]
+
+  @@map("clinics")
+}
+
+// ─── Branch ──────────────────────────────────────────────────────────────────
+
+model Branch {
+  id        String   @id @default(uuid())
+  clinicId  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clinic      Clinic       @relation(fields: [clinicId], references: [id])
+  userBranches UserBranch[]
+
+  @@index([clinicId])
+  @@map("branches")
+}
+
+// ─── UserBranch (Join Table) ──────────────────────────────────────────────────
+
+model UserBranch {
+  userId   String
+  branchId String
+
+  user   User   @relation(fields: [userId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@id([userId, branchId])
+  @@map("user_branches")
+}
+
+// ─── User ────────────────────────────────────────────────────────────────────
+
+model User {
+  id                  String     @id @default(uuid())
+  clinicId            String?
+  email               String     @unique
+  passwordHash        String
+  role                Role
+  status              UserStatus @default(INVITED)
+  invitedBy           String?
+  failedLoginAttempts Int        @default(0)
+  lockedUntil         DateTime?
+  preferredLocale     Locale     @default(TH)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  clinic       Clinic?       @relation(fields: [clinicId], references: [id])
+  userBranches UserBranch[]
+  appointments Appointment[] @relation("VetAppointments")
+
+  @@index([clinicId])
+  @@index([email])
+  @@map("users")
+}
+
+// ─── Appointment ─────────────────────────────────────────────────────────────
+
+model Appointment {
+  id                 String            @id @default(uuid())
+  clinicId           String
+  patientId          String            // ObjectId ref to MongoDB PetProfile._id
+  ownerUserId        String
+  vetUserId          String?
+  requestedAt        DateTime          @default(now())
+  scheduledAt        DateTime
+  durationMinutes    Int
+  reason             String
+  status             AppointmentStatus @default(REQUESTED)
+  cancellationReason String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  clinic Clinic @relation(fields: [clinicId], references: [id])
+  vet    User?  @relation("VetAppointments", fields: [vetUserId], references: [id])
+
+  @@index([clinicId])
+  @@index([clinicId, vetUserId, scheduledAt])
+  @@index([clinicId, ownerUserId])
+  @@index([clinicId, status])
+  @@index([clinicId, scheduledAt])
+  @@map("appointments")
+}
+
+// ─── Product (Inventory Item) ────────────────────────────────────────────────
+
+model Product {
+  id               String   @id @default(uuid())
+  clinicId         String
+  name             String
+  sku              String
+  category         String
+  unit             String
+  quantity         Decimal  @default(0) @db.Decimal(10, 3)
+  reorderThreshold Decimal  @default(0) @db.Decimal(10, 3)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  clinic         Clinic          @relation(fields: [clinicId], references: [id])
+  stockMovements StockMovement[]
+
+  @@unique([clinicId, sku])
+  @@index([clinicId])
+  @@index([clinicId, name])
+  @@index([clinicId, category])
+  @@index([clinicId, isActive])
+  @@map("products")
+}
+
+// ─── StockMovement (Immutable Ledger) ────────────────────────────────────────
+
+model StockMovement {
+  id             String               @id @default(uuid())
+  clinicId       String
+  productId      String
+  delta          Decimal              @db.Decimal(10, 3)
+  quantityBefore Decimal              @db.Decimal(10, 3)
+  quantityAfter  Decimal              @db.Decimal(10, 3)
+  reason         StockMovementReason
+  referenceType  StockMovementRefType
+  referenceId    String
+  actorId        String
+  createdAt      DateTime             @default(now())
+
+  clinic  Clinic  @relation(fields: [clinicId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([clinicId])
+  @@index([clinicId, productId])
+  @@map("stock_movements")
+}
+
+// ─── Invoice ─────────────────────────────────────────────────────────────────
+
+model Invoice {
+  id            String        @id @default(uuid())
+  clinicId      String
+  visitId       String        // MongoDB VisitRecord._id
+  patientId     String        // MongoDB PetProfile._id
+  ownerUserId   String
+  subtotalMinor Int
+  taxRateBps    Int           @default(0) // basis points, e.g. 700 = 7%
+  taxTotalMinor Int
+  totalMinor    Int
+  status        InvoiceStatus @default(DRAFT)
+  issuedAt      DateTime?
+  paidAt        DateTime?
+  voidedAt      DateTime?
+  voidReason    String?
+  voidActorId   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  clinic    Clinic            @relation(fields: [clinicId], references: [id])
+  lineItems InvoiceLineItem[]
+
+  @@index([clinicId])
+  @@index([clinicId, ownerUserId])
+  @@index([visitId])
+  @@index([clinicId, status])
+  @@index([clinicId, status, createdAt])
+  @@map("invoices")
+}
+
+// ─── InvoiceLineItem ─────────────────────────────────────────────────────────
+
+model InvoiceLineItem {
+  id                String              @id @default(uuid())
+  invoiceId         String
+  itemType          InvoiceLineItemType
+  description       String
+  quantity          Decimal             @db.Decimal(10, 3)
+  unitPriceMinor    Int
+  subtotalMinor     Int
+  sourceReferenceId String?
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_line_items")
+}

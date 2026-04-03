@@ -1,0 +1,952 @@
+openapi: 3.1.0
+info:
+  title: Petiatrics API
+  version: 1.0.0
+  description: >-
+    Phase 0 API contract for the Petiatrics multi-tenant clinic platform.
+servers:
+  - url: http://localhost:3001/api/v1
+    description: Local development
+tags:
+  - name: Auth
+  - name: Admin
+  - name: Patients
+  - name: Visits
+  - name: Appointments
+  - name: Inventory
+  - name: Billing
+  - name: Owner
+  - name: Audit
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate a user and create a server session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Authenticated
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeUserContext'
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Invalidate the current session.
+      responses:
+        '200':
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeMessage'
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get the current authenticated user context.
+      responses:
+        '200':
+          description: Current user context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeUserContext'
+  /admin/clinics:
+    post:
+      tags: [Admin]
+      summary: Create a new clinic tenant.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClinicRequest'
+      responses:
+        '201':
+          description: Clinic created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeClinic'
+  /admin/clinics/{clinicId}/status:
+    patch:
+      tags: [Admin]
+      summary: Suspend or reactivate a clinic.
+      parameters:
+        - $ref: '#/components/parameters/ClinicId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [active, suspended]
+      responses:
+        '200':
+          description: Clinic status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeClinic'
+  /clinic/staff/invite:
+    post:
+      tags: [Admin]
+      summary: Invite a clinic staff member.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email:
+                  type: string
+                  format: email
+                role:
+                  $ref: '#/components/schemas/ClinicRole'
+      responses:
+        '201':
+          description: Invitation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeMessage'
+  /patients:
+    post:
+      tags: [Patients]
+      summary: Create a pet profile and linked owner account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePatientRequest'
+      responses:
+        '201':
+          description: Patient created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopePatient'
+    get:
+      tags: [Patients]
+      summary: List clinic patients.
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Patient list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopePatientList'
+  /patients/{patientId}:
+    get:
+      tags: [Patients]
+      summary: Get patient details and visit history.
+      parameters:
+        - $ref: '#/components/parameters/PatientId'
+      responses:
+        '200':
+          description: Patient detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopePatientDetail'
+  /patients/{patientId}/visits:
+    post:
+      tags: [Visits]
+      summary: Create a visit record draft.
+      parameters:
+        - $ref: '#/components/parameters/PatientId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVisitRequest'
+      responses:
+        '201':
+          description: Visit draft created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeVisitRecord'
+  /patients/{patientId}/visits/{visitId}:
+    patch:
+      tags: [Visits]
+      summary: Update a visit record.
+      parameters:
+        - $ref: '#/components/parameters/PatientId'
+        - $ref: '#/components/parameters/VisitId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateVisitRequest'
+      responses:
+        '200':
+          description: Visit updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeVisitRecord'
+  /patients/{patientId}/visits/{visitId}/finalize:
+    post:
+      tags: [Visits]
+      summary: Finalize a visit record and make it billing-eligible.
+      parameters:
+        - $ref: '#/components/parameters/PatientId'
+        - $ref: '#/components/parameters/VisitId'
+      responses:
+        '200':
+          description: Visit finalized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeVisitRecord'
+  /appointments:
+    post:
+      tags: [Appointments]
+      summary: Request or create an appointment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAppointmentRequest'
+      responses:
+        '201':
+          description: Appointment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeAppointment'
+    get:
+      tags: [Appointments]
+      summary: List appointments.
+      parameters:
+        - in: query
+          name: from
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: to
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Appointment list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeAppointmentList'
+  /appointments/{appointmentId}/status:
+    patch:
+      tags: [Appointments]
+      summary: Update appointment status.
+      parameters:
+        - $ref: '#/components/parameters/AppointmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/AppointmentStatus'
+      responses:
+        '200':
+          description: Appointment updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeAppointment'
+  /inventory/products:
+    post:
+      tags: [Inventory]
+      summary: Create an inventory product.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+      responses:
+        '201':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeProduct'
+    get:
+      tags: [Inventory]
+      summary: List inventory products.
+      responses:
+        '200':
+          description: Product list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeProductList'
+  /inventory/stock/replenish:
+    post:
+      tags: [Inventory]
+      summary: Record a stock replenishment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [productId, quantity, unitCost]
+              properties:
+                productId:
+                  type: string
+                  format: uuid
+                quantity:
+                  type: number
+                unitCost:
+                  type: integer
+      responses:
+        '201':
+          description: Stock replenishment recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeMessage'
+  /billing/invoices:
+    post:
+      tags: [Billing]
+      summary: Create an invoice draft from a finalized visit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [visitId]
+              properties:
+                visitId:
+                  type: string
+      responses:
+        '201':
+          description: Invoice draft created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeInvoice'
+    get:
+      tags: [Billing]
+      summary: List invoices.
+      responses:
+        '200':
+          description: Invoice list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeInvoiceList'
+  /billing/invoices/{invoiceId}/issue:
+    patch:
+      tags: [Billing]
+      summary: Issue an invoice.
+      parameters:
+        - $ref: '#/components/parameters/InvoiceId'
+      responses:
+        '200':
+          description: Invoice issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeInvoice'
+  /billing/invoices/{invoiceId}/pay:
+    patch:
+      tags: [Billing]
+      summary: Mark an invoice as paid.
+      parameters:
+        - $ref: '#/components/parameters/InvoiceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [paymentMethod]
+              properties:
+                paymentMethod:
+                  type: string
+                  enum: [cash, card]
+      responses:
+        '200':
+          description: Invoice paid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeInvoice'
+  /owner/pets:
+    get:
+      tags: [Owner]
+      summary: List the current owner's pets.
+      responses:
+        '200':
+          description: Owner pets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopePatientList'
+  /owner/appointments:
+    get:
+      tags: [Owner]
+      summary: List the current owner's appointments.
+      responses:
+        '200':
+          description: Owner appointments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeAppointmentList'
+  /owner/invoices:
+    get:
+      tags: [Owner]
+      summary: List the current owner's invoices.
+      responses:
+        '200':
+          description: Owner invoices
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeInvoiceList'
+  /audit/logs:
+    get:
+      tags: [Audit]
+      summary: Query audit log entries.
+      parameters:
+        - in: query
+          name: entityType
+          schema:
+            type: string
+        - in: query
+          name: actorId
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Audit log list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeAuditLogList'
+components:
+  parameters:
+    ClinicId:
+      in: path
+      name: clinicId
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PatientId:
+      in: path
+      name: patientId
+      required: true
+      schema:
+        type: string
+    VisitId:
+      in: path
+      name: visitId
+      required: true
+      schema:
+        type: string
+    AppointmentId:
+      in: path
+      name: appointmentId
+      required: true
+      schema:
+        type: string
+        format: uuid
+    InvoiceId:
+      in: path
+      name: invoiceId
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    EnvelopeMessage:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+        meta:
+          type: object
+        error:
+          type: ['null', object]
+    EnvelopeUserContext:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/UserContext'
+        meta:
+          type: object
+        error:
+          type: ['null', object]
+    EnvelopeClinic:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Clinic'
+        meta:
+          type: object
+        error:
+          type: ['null', object]
+    EnvelopePatient:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Patient'
+        meta:
+          type: object
+        error:
+          type: ['null', object]
+    EnvelopePatientDetail:
+      type: object
+      properties:
+        data:
+          allOf:
+            - $ref: '#/components/schemas/Patient'
+            - type: object
+              properties:
+                visits:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/VisitRecord'
+        meta:
+          type: object
+        error:
+          type: ['null', object]
+    EnvelopePatientList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Patient'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+        error:
+          type: ['null', object]
+    EnvelopeVisitRecord:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/VisitRecord'
+        meta:
+          type: object
+        error:
+          type: ['null', object]
+    EnvelopeAppointment:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Appointment'
+        meta:
+          type: object
+        error:
+          type: ['null', object]
+    EnvelopeAppointmentList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Appointment'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+        error:
+          type: ['null', object]
+    EnvelopeProduct:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Product'
+        meta:
+          type: object
+        error:
+          type: ['null', object]
+    EnvelopeProductList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+        error:
+          type: ['null', object]
+    EnvelopeInvoice:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Invoice'
+        meta:
+          type: object
+        error:
+          type: ['null', object]
+    EnvelopeInvoiceList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Invoice'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+        error:
+          type: ['null', object]
+    EnvelopeAuditLogList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLog'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+        error:
+          type: ['null', object]
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+    CreateClinicRequest:
+      type: object
+      required: [name, taxId, address, subscriptionTier, managerEmail]
+      properties:
+        name:
+          type: string
+        taxId:
+          type: string
+        address:
+          type: string
+        subscriptionTier:
+          type: string
+          enum: [free, standard, premium]
+        managerEmail:
+          type: string
+          format: email
+    CreatePatientRequest:
+      type: object
+      required: [petName, species, owner]
+      properties:
+        petName:
+          type: string
+        species:
+          type: string
+        breed:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        weightKg:
+          type: number
+        owner:
+          type: object
+          required: [name, email, phone]
+          properties:
+            name:
+              type: string
+            email:
+              type: string
+              format: email
+            phone:
+              type: string
+    CreateVisitRequest:
+      type: object
+      required: [soap]
+      properties:
+        soap:
+          $ref: '#/components/schemas/SOAP'
+        prescriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Prescription'
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+    UpdateVisitRequest:
+      type: object
+      properties:
+        soap:
+          $ref: '#/components/schemas/SOAP'
+        prescriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Prescription'
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+        amendmentReason:
+          type: string
+    CreateAppointmentRequest:
+      type: object
+      required: [patientId, scheduledAt, durationMinutes, reason]
+      properties:
+        patientId:
+          type: string
+        vetUserId:
+          type: string
+          format: uuid
+        scheduledAt:
+          type: string
+          format: date-time
+        durationMinutes:
+          type: integer
+        reason:
+          type: string
+    CreateProductRequest:
+      type: object
+      required: [name, sku, unit, quantity, reorderThreshold]
+      properties:
+        name:
+          type: string
+        sku:
+          type: string
+        category:
+          type: string
+        unit:
+          type: string
+        quantity:
+          type: number
+        reorderThreshold:
+          type: number
+    UserContext:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        clinicId:
+          type: string
+          format: uuid
+          nullable: true
+        role:
+          oneOf:
+            - $ref: '#/components/schemas/ClinicRole'
+            - type: string
+              enum: [platform_admin, pet_owner]
+        preferredLocale:
+          type: string
+          enum: [th, en]
+    Clinic:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        taxId:
+          type: string
+        subscriptionTier:
+          type: string
+          enum: [free, standard, premium]
+        status:
+          type: string
+          enum: [active, suspended, archived]
+    Patient:
+      type: object
+      properties:
+        id:
+          type: string
+        ownerUserId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        species:
+          type: string
+        breed:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+          nullable: true
+    VisitRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        patientId:
+          type: string
+        vetId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [draft, finalized, amended]
+        soap:
+          $ref: '#/components/schemas/SOAP'
+        prescriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Prescription'
+    SOAP:
+      type: object
+      properties:
+        subjective:
+          type: string
+        objective:
+          type: string
+        assessment:
+          type: string
+        plan:
+          type: string
+    Prescription:
+      type: object
+      properties:
+        drug:
+          type: string
+        dosage:
+          type: string
+        frequency:
+          type: string
+        duration:
+          type: string
+        productId:
+          type: string
+          format: uuid
+          nullable: true
+        inventoryLinked:
+          type: boolean
+    Attachment:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [lab_result, imaging, file]
+        url:
+          type: string
+          format: uri
+    Appointment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        patientId:
+          type: string
+        scheduledAt:
+          type: string
+          format: date-time
+        durationMinutes:
+          type: integer
+        reason:
+          type: string
+        status:
+          $ref: '#/components/schemas/AppointmentStatus'
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        sku:
+          type: string
+        category:
+          type: string
+        unit:
+          type: string
+        quantity:
+          type: number
+        reorderThreshold:
+          type: number
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        visitId:
+          type: string
+        status:
+          type: string
+          enum: [draft, issued, paid, voided]
+        subtotalMinor:
+          type: integer
+        taxTotalMinor:
+          type: integer
+        totalMinor:
+          type: integer
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+        entityType:
+          type: string
+        entityId:
+          type: string
+        operation:
+          type: string
+        actorId:
+          type: string
+          format: uuid
+        actorRole:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    ClinicRole:
+      type: string
+      enum: [clinic_manager, veterinarian, receptionist, cashier]
+    AppointmentStatus:
+      type: string
+      enum: [requested, confirmed, in_progress, completed, cancelled]

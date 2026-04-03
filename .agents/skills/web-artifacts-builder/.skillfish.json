@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "name": "web-artifacts-builder",
+  "owner": "anthropics",
+  "repo": "skills",
+  "path": "skills/web-artifacts-builder",
+  "branch": "main",
+  "sha": "9ecbeae7c17caa478c5b753ba1bd258688075b5f",
+  "source": "manual"
+}

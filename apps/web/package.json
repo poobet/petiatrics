@@ -1,0 +1,40 @@
+{
+  "name": "@petiatrics/web",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev --port 3000",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:contracts": "node scripts/validate-contracts.mjs"
+  },
+  "dependencies": {
+    "@petiatrics/config": "*",
+    "@petiatrics/types": "*",
+    "@petiatrics/ui": "*",
+    "lucide-react": "^0.474.0",
+    "next": "^15.2.0",
+    "next-intl": "^3.26.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sonner": "^2.0.1",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.51.0",
+    "@tailwindcss/postcss": "^4.0.6",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
+    "@types/node": "^20.17.14",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^26.0.0",
+    "tailwindcss": "^4.0.6",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.6"
+  }
+}

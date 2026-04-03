@@ -1,0 +1,409 @@
+/**
+ * Petiatrics Seed Script
+ * Run: npm run db:seed (from packages/database)
+ * Requires: DATABASE_URL and MONGO_URI env variables
+ */
+
+import { PrismaClient } from '@prisma/client';
+import mongoose from 'mongoose';
+import * as bcrypt from 'bcrypt';
+import { PetProfileSchema } from '../mongo/pet-profile.schema';
+import { VisitRecordSchema } from '../mongo/visit-record.schema';
+import { VaccinationRecordSchema } from '../mongo/vaccination-record.schema';
+
+const prisma = new PrismaClient();
+
+// Mongoose model registrations (safe to re-register during seeding)
+const PetProfile =
+  mongoose.models['PetProfile'] ?? mongoose.model('PetProfile', PetProfileSchema);
+const VisitRecord =
+  mongoose.models['VisitRecord'] ?? mongoose.model('VisitRecord', VisitRecordSchema);
+const VaccinationRecord =
+  mongoose.models['VaccinationRecord'] ??
+  mongoose.model('VaccinationRecord', VaccinationRecordSchema);
+
+async function hashPassword(plain: string): Promise<string> {
+  return bcrypt.hash(plain, 10);
+}
+
+async function main() {
+  const MONGO_URI = process.env.MONGO_URI ?? 'mongodb://localhost:27017/petiatrics';
+  await mongoose.connect(MONGO_URI);
+  console.log('✓ MongoDB connected');
+
+  // ── 1. Super Admin (no clinicId) ──────────────────────────────────────────
+  const platformAdmin = await prisma.user.upsert({
+    where: { email: 'admin@petiatrics.io' },
+    update: {},
+    create: {
+      email: 'admin@petiatrics.io',
+      passwordHash: await hashPassword('Admin@1234'),
+      role: 'SUPER_ADMIN',
+      status: 'ACTIVE',
+    },
+  });
+  console.log('✓ Super admin:', platformAdmin.email);
+
+  // ── 2. Demo Clinic ────────────────────────────────────────────────────────
+  const clinic = await prisma.clinic.upsert({
+    where: { taxId: '0105567890123' },
+    update: {},
+    create: {
+      name: 'Happy Paws Veterinary Clinic',
+      taxId: '0105567890123',
+      address: { street: '123 Sukhumvit Rd', city: 'Bangkok', postalCode: '10110' },
+      subscriptionTier: 'STANDARD',
+      status: 'ACTIVE',
+      settings: {
+        max_login_attempts: 5,
+        lockout_duration_minutes: 15,
+        password_min_length: 8,
+        password_require_uppercase: true,
+        password_require_number: true,
+      },
+    },
+  });
+  console.log('✓ Clinic:', clinic.name, '(', clinic.id, ')');
+
+  // ── 3. Branches ──────────────────────────────────────────────────────────
+  const branchMain = await prisma.branch.upsert({
+    where: { id: 'branch-happypaws-main-00000001' },
+    update: {},
+    create: {
+      id: 'branch-happypaws-main-00000001',
+      clinicId: clinic.id,
+      name: 'Main Branch',
+    },
+  });
+  const branchNorth = await prisma.branch.upsert({
+    where: { id: 'branch-happypaws-north-0000001' },
+    update: {},
+    create: {
+      id: 'branch-happypaws-north-0000001',
+      clinicId: clinic.id,
+      name: 'North Branch',
+    },
+  });
+  console.log('✓ Branch:', branchMain.name, '(', branchMain.id, ')');
+  console.log('✓ Branch:', branchNorth.name, '(', branchNorth.id, ')');
+
+  // ── 4. Staff Users ────────────────────────────────────────────────────────
+  const staffSeed = [
+    { email: 'owner@happypaws.io', role: 'CLINIC_OWNER' as const },
+    { email: 'vet@happypaws.io', role: 'VET' as const },
+    { email: 'assistant@happypaws.io', role: 'ASSISTANT' as const },
+    { email: 'cashier@happypaws.io', role: 'CASHIER' as const },
+    { email: 'staff@happypaws.io', role: 'STAFF' as const },
+  ];
+
+  const staffUsers: Record<string, string> = {};
+  for (const s of staffSeed) {
+    const u = await prisma.user.upsert({
+      where: { email: s.email },
+      update: {},
+      create: {
+        email: s.email,
+        passwordHash: await hashPassword('Password@1'),
+        role: s.role,
+        status: 'ACTIVE',
+        clinicId: clinic.id,
+      },
+    });
+    staffUsers[s.role] = u.id;
+    console.log('✓ User:', s.email, '→', s.role);
+  }
+
+  // ── 5. UserBranch assignments ─────────────────────────────────────────────
+  // CLINIC_OWNER and VET get both branches (multi-branch users)
+  // ASSISTANT, CASHIER, STAFF get main branch only (single-branch users)
+  const multiBranchRoles = ['CLINIC_OWNER', 'VET'] as const;
+  const singleBranchRoles = ['ASSISTANT', 'CASHIER', 'STAFF'] as const;
+
+  for (const role of multiBranchRoles) {
+    const uid = staffUsers[role];
+    if (!uid) continue;
+    await prisma.userBranch.upsert({
+      where: { userId_branchId: { userId: uid, branchId: branchMain.id } },
+      update: {},
+      create: { userId: uid, branchId: branchMain.id },
+    });
+    await prisma.userBranch.upsert({
+      where: { userId_branchId: { userId: uid, branchId: branchNorth.id } },
+      update: {},
+      create: { userId: uid, branchId: branchNorth.id },
+    });
+    console.log('✓ UserBranch:', role, '→ both branches');
+  }
+
+  for (const role of singleBranchRoles) {
+    const uid = staffUsers[role];
+    if (!uid) continue;
+    await prisma.userBranch.upsert({
+      where: { userId_branchId: { userId: uid, branchId: branchMain.id } },
+      update: {},
+      create: { userId: uid, branchId: branchMain.id },
+    });
+    console.log('✓ UserBranch:', role, '→ main branch only');
+  }
+
+  const ownerUser = await prisma.user.findUnique({ where: { email: 'owner@happypaws.io' } });
+
+  // ── 4. Pet Profiles (MongoDB) ─────────────────────────────────────────────
+  const existingPets = await PetProfile.find({ clinicId: clinic.id }).lean();
+  let petIds: string[] = existingPets.map((p: any) => p._id.toString());
+
+  if (existingPets.length === 0 && ownerUser) {
+    const petSeed = [
+      { name: 'Mochi', species: 'dog', breed: 'Shih Tzu', dateOfBirth: new Date('2020-03-15'), weightKg: 5.2 },
+      { name: 'Luna', species: 'cat', breed: 'Domestic Shorthair', dateOfBirth: new Date('2019-07-22'), weightKg: 3.8 },
+    ];
+    for (const p of petSeed) {
+      const pet = await PetProfile.create({
+        clinicId: clinic.id,
+        ownerUserId: ownerUser.id,
+        ...p,
+      });
+      petIds.push(pet._id.toString());
+      console.log('✓ Pet profile:', p.name);
+    }
+  }
+
+  // ── 5. Visit Records (MongoDB) ────────────────────────────────────────────
+  const vetId = staffUsers['VET'];
+  if (petIds.length > 0 && vetId) {
+    const existingVisits = await VisitRecord.find({ clinicId: clinic.id }).lean();
+    if (existingVisits.length === 0) {
+      const visitData = [
+        {
+          clinicId: clinic.id,
+          patientId: petIds[0],
+          vetId,
+          visitDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+          soap: {
+            subjective: 'Owner reports lethargy and reduced appetite for 2 days.',
+            objective: 'Temperature 38.9°C, heart rate 110 bpm. Mild dehydration noted.',
+            assessment: 'Mild gastroenteritis. No systemic involvement.',
+            plan: 'Supportive care. Bland diet x5 days. Recheck if not improving.',
+          },
+          prescriptions: [
+            {
+              drug: 'Metronidazole 125mg',
+              dosage: '1 tablet',
+              frequency: 'Twice daily',
+              duration: '5 days',
+              productId: null,
+              inventoryLinked: false,
+            },
+          ],
+          attachments: [],
+          status: 'finalized',
+          finalizedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+        },
+        {
+          clinicId: clinic.id,
+          patientId: petIds.length > 1 ? petIds[1] : petIds[0],
+          vetId,
+          visitDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+          soap: {
+            subjective: 'Annual wellness check.',
+            objective: 'BCS 5/9. Teeth tartar grade 1. All lymph nodes normal.',
+            assessment: 'Healthy adult cat. Dental prophylaxis recommended.',
+            plan: 'Rabies booster administered. Schedule dental cleaning in 3 months.',
+          },
+          prescriptions: [],
+          attachments: [],
+          status: 'finalized',
+          finalizedAt: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000),
+        },
+      ];
+      for (const v of visitData) {
+        await VisitRecord.create(v);
+        console.log('✓ Visit record created');
+      }
+    }
+  }
+
+  // ── 6. Vaccination Records (MongoDB) ─────────────────────────────────────
+  if (petIds.length > 0 && vetId) {
+    const existingVax = await VaccinationRecord.find({ clinicId: clinic.id }).lean();
+    if (existingVax.length === 0) {
+      const vaccinations = [
+        {
+          clinicId: clinic.id,
+          patientId: petIds[0],
+          vetId,
+          vaccineName: 'Rabies',
+          administeredAt: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000),
+          nextDueAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+          batchNumber: 'RBV-2024-001',
+        },
+        {
+          clinicId: clinic.id,
+          patientId: petIds[0],
+          vetId,
+          vaccineName: 'DHPPiL',
+          administeredAt: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000),
+          nextDueAt: new Date(Date.now() + 185 * 24 * 60 * 60 * 1000),
+          batchNumber: 'DHV-2024-032',
+        },
+      ];
+      for (const v of vaccinations) {
+        await VaccinationRecord.create(v);
+        console.log('✓ Vaccination record:', v.vaccineName);
+      }
+    }
+  }
+
+  // ── 7. Inventory Products ─────────────────────────────────────────────────
+  const productSeed = [
+    { sku: 'MED-001', name: 'Metronidazole 125mg (50 tabs)', category: 'Medication', unit: 'box', quantity: 15, reorderThreshold: 5 },
+    { sku: 'MED-002', name: 'Amoxicillin 250mg (30 caps)', category: 'Medication', unit: 'box', quantity: 3, reorderThreshold: 5 },
+    { sku: 'VAX-001', name: 'Rabies Vaccine', category: 'Vaccine', unit: 'vial', quantity: 20, reorderThreshold: 8 },
+    { sku: 'VAX-002', name: 'DHPPiL Combo Vaccine', category: 'Vaccine', unit: 'vial', quantity: 2, reorderThreshold: 5 },
+    { sku: 'SUP-001', name: 'Surgical Gloves (100 pcs)', category: 'Supplies', unit: 'box', quantity: 12, reorderThreshold: 3 },
+  ];
+
+  const productIds: string[] = [];
+  for (const p of productSeed) {
+    const product = await prisma.product.upsert({
+      where: { clinicId_sku: { clinicId: clinic.id, sku: p.sku } },
+      update: {},
+      create: {
+        clinicId: clinic.id,
+        name: p.name,
+        sku: p.sku,
+        category: p.category,
+        unit: p.unit,
+        quantity: p.quantity,
+        reorderThreshold: p.reorderThreshold,
+      },
+    });
+    productIds.push(product.id);
+    console.log('✓ Product:', p.name);
+  }
+
+  // ── 8. Sample Invoices ────────────────────────────────────────────────────
+  if (ownerUser) {
+    const existingInvoices = await prisma.invoice.findMany({ where: { clinicId: clinic.id } });
+    if (existingInvoices.length === 0) {
+      const subtotal = 80000; // 800 THB
+      const taxRateBps = 700;
+      const taxTotal = Math.round(subtotal * taxRateBps / 10_000);
+      const total = subtotal + taxTotal;
+
+      const invoice = await prisma.invoice.create({
+        data: {
+          clinicId: clinic.id,
+          visitId: 'seed-visit-001',
+          patientId: petIds[0] ?? 'seed-patient-001',
+          ownerUserId: ownerUser.id,
+          subtotalMinor: subtotal,
+          taxRateBps,
+          taxTotalMinor: taxTotal,
+          totalMinor: total,
+          status: 'PAID',
+          issuedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+          paidAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+          lineItems: {
+            create: [
+              {
+                itemType: 'SERVICE',
+                description: 'Consultation Fee',
+                quantity: 1,
+                unitPriceMinor: 50000,
+                subtotalMinor: 50000,
+              },
+              {
+                itemType: 'PRODUCT',
+                description: 'Metronidazole 125mg (50 tabs)',
+                quantity: 1,
+                unitPriceMinor: 30000,
+                subtotalMinor: 30000,
+                sourceReferenceId: productIds[0],
+              },
+            ],
+          },
+        },
+      });
+      console.log('✓ Invoice:', invoice.id, '→ PAID ฿', (total / 100).toFixed(2));
+
+      // Draft invoice
+      await prisma.invoice.create({
+        data: {
+          clinicId: clinic.id,
+          visitId: 'seed-visit-002',
+          patientId: petIds.length > 1 ? petIds[1] : (petIds[0] ?? 'seed-patient-001'),
+          ownerUserId: ownerUser.id,
+          subtotalMinor: 120000,
+          taxRateBps,
+          taxTotalMinor: Math.round(120000 * taxRateBps / 10_000),
+          totalMinor: 120000 + Math.round(120000 * taxRateBps / 10_000),
+          status: 'DRAFT',
+          lineItems: {
+            create: [
+              {
+                itemType: 'SERVICE',
+                description: 'Annual Wellness Examination',
+                quantity: 1,
+                unitPriceMinor: 80000,
+                subtotalMinor: 80000,
+              },
+              {
+                itemType: 'PRODUCT',
+                description: 'Rabies Vaccine',
+                quantity: 1,
+                unitPriceMinor: 40000,
+                subtotalMinor: 40000,
+                sourceReferenceId: productIds[2],
+              },
+            ],
+          },
+        },
+      });
+      console.log('✓ Invoice: DRAFT created');
+    }
+  }
+
+  // ── 9. Sample Appointments ────────────────────────────────────────────────
+  if (ownerUser && petIds.length > 0) {
+    const existingAppts = await prisma.appointment.findMany({ where: { clinicId: clinic.id } });
+    if (existingAppts.length === 0) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(10, 0, 0, 0);
+
+      await prisma.appointment.create({
+        data: {
+          clinicId: clinic.id,
+          patientId: petIds[0],
+          ownerUserId: ownerUser.id,
+          vetUserId: vetId,
+          scheduledAt: tomorrow,
+          durationMinutes: 30,
+          reason: 'Follow-up check after gastroenteritis treatment',
+          status: 'CONFIRMED',
+        },
+      });
+      console.log('✓ Appointment: CONFIRMED for tomorrow');
+    }
+  }
+
+  console.log('\n🎉 Seed complete!\n');
+  console.log('Login credentials (002 roles):');
+  console.log('  Super Admin (SUPER_ADMIN):    admin@petiatrics.io / Admin@1234  → /admin');
+  console.log('  Clinic Owner (CLINIC_OWNER):  owner@happypaws.io / Password@1   → /clinic [2 branches]');
+  console.log('  Vet (VET):                    vet@happypaws.io / Password@1      → /clinic [2 branches]');
+  console.log('  Assistant (ASSISTANT):        assistant@happypaws.io / Password@1 → /clinic [1 branch]');
+  console.log('  Cashier (CASHIER):            cashier@happypaws.io / Password@1  → /clinic [1 branch]');
+  console.log('  Staff (STAFF):                staff@happypaws.io / Password@1    → /clinic [1 branch]');
+}
+
+main()
+  .catch((err) => {
+    console.error('Seed failed:', err);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+    await mongoose.disconnect();
+  });

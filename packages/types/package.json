@@ -1,0 +1,14 @@
+{
+  "name": "@petiatrics/types",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "lint": "tsc --noEmit",
+    "build": "tsc --build"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  }
+}

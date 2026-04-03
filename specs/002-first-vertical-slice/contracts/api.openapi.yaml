@@ -1,0 +1,244 @@
+openapi: 3.1.0
+info:
+  title: Petiatrics First Vertical Slice API
+  version: 0.1.0
+  description: |
+    Contract for the first vertical slice covering session-based authentication,
+    role-based routing support, and branch-context verification.
+servers:
+  - url: http://localhost:3001/api/v1
+tags:
+  - name: Auth
+  - name: Inventory
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate a user and create a Redis-backed session
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Session created and user profile returned
+          headers:
+            Set-Cookie:
+              description: HttpOnly session cookie
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthProfileEnvelope'
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Invalid credentials or inactive account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Destroy the current session and clear the cookie
+      operationId: logout
+      responses:
+        '204':
+          description: Session destroyed
+        '401':
+          description: No active session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Return the current authenticated user profile from session context
+      operationId: me
+      responses:
+        '200':
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthProfileEnvelope'
+        '401':
+          description: Session missing or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /inventory/test:
+    get:
+      tags: [Inventory]
+      summary: Verify clinic and branch context from the session and branch header
+      operationId: inventoryTest
+      parameters:
+        - name: x-active-branch
+          in: header
+          required: true
+          description: Branch selected in the web application context
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Branch context validated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BranchVerificationEnvelope'
+        '401':
+          description: Session missing or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Missing or unauthorized branch header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+components:
+  schemas:
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 1
+
+    BranchSummary:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+    Role:
+      type: string
+      enum:
+        - SUPER_ADMIN
+        - CLINIC_OWNER
+        - VET
+        - ASSISTANT
+        - CASHIER
+        - STAFF
+
+    AuthProfile:
+      type: object
+      additionalProperties: false
+      required: [id, email, role, branches]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/Role'
+        clinicName:
+          type: string
+          nullable: true
+        branches:
+          type: array
+          items:
+            $ref: '#/components/schemas/BranchSummary'
+
+    BranchVerification:
+      type: object
+      additionalProperties: false
+      required: [message, clinicId, activeBranchId]
+      properties:
+        message:
+          type: string
+          example: Branch context verified
+        clinicId:
+          type: string
+          format: uuid
+        activeBranchId:
+          type: string
+          format: uuid
+
+    ApiMeta:
+      type: object
+      additionalProperties: true
+
+    ApiError:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          nullable: true
+
+    AuthProfileEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, meta, error]
+      properties:
+        data:
+          $ref: '#/components/schemas/AuthProfile'
+        meta:
+          nullable: true
+          oneOf:
+            - $ref: '#/components/schemas/ApiMeta'
+            - type: 'null'
+        error:
+          type: 'null'
+
+    BranchVerificationEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, meta, error]
+      properties:
+        data:
+          $ref: '#/components/schemas/BranchVerification'
+        meta:
+          nullable: true
+          oneOf:
+            - $ref: '#/components/schemas/ApiMeta'
+            - type: 'null'
+        error:
+          type: 'null'
+
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, meta, error]
+      properties:
+        data:
+          type: 'null'
+        meta:
+          type: 'null'
+        error:
+          $ref: '#/components/schemas/ApiError'

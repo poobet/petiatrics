@@ -1,0 +1,35 @@
+import { Module } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
+import { AuthService } from './services/auth.service';
+import { ClinicService } from './services/clinic.service';
+import { UserService } from './services/user.service';
+import { AuthController } from './controllers/auth.controller';
+import { AdminController } from './controllers/admin.controller';
+import { StaffController } from './controllers/staff.controller';
+import { SessionModule } from '../../common/session/session.module';
+
+/**
+ * IdentityModule — US1: Staff Identity & Access Management
+ *
+ * Handles: user authentication (login/logout), session management,
+ * RBAC, user CRUD for clinic admins, account lockout, password management.
+ */
+@Module({
+  imports: [SessionModule],
+  controllers: [AuthController, AdminController, StaffController],
+  providers: [
+    // Provide a bare PrismaClient for identity operations (unscoped — admins need cross-clinic access)
+    {
+      provide: PrismaClient,
+      useFactory: () => {
+        const prisma = new PrismaClient();
+        return prisma;
+      },
+    },
+    AuthService,
+    ClinicService,
+    UserService,
+  ],
+  exports: [AuthService, UserService],
+})
+export class IdentityModule {}
