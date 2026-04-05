@@ -36,12 +36,18 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
     const raw = await this.redis.get(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as UserContext;
-    // Backfill fields added in 002 migration so old sessions degrade gracefully
+    // Backfill fields added in later migrations so old sessions degrade gracefully
     if (!Array.isArray(parsed.authorizedBranches)) {
       parsed.authorizedBranches = [];
     }
     if (parsed.clinicName === undefined) {
       parsed.clinicName = null;
+    }
+    if (parsed.clinicSlug === undefined) {
+      parsed.clinicSlug = null;
+    }
+    if (parsed.mustChangePassword === undefined) {
+      parsed.mustChangePassword = false;
     }
     return parsed;
   }

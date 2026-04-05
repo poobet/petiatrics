@@ -40,17 +40,24 @@ export interface UserContext {
   userId: string;
   clinicId: string | null;
   clinicName: string | null;
+  clinicSlug: string | null;
   role: Role;
-  email: string;
+  email?: string | null;
+  username?: string | null;
+  mustChangePassword?: boolean;
   preferredLocale: Locale;
   authorizedBranches: BranchSummary[];
 }
 
 export interface AuthProfile {
   id: string;
-  email: string;
+  name?: string;
+  email?: string | null;
+  username?: string | null;
+  mustChangePassword?: boolean;
   role: Role;
   clinicName: string | null;
+  clinicSlug?: string | null;
   branches: BranchSummary[];
   preferredLocale: Locale;
 }

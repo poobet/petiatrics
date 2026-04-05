@@ -10,6 +10,8 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AuthService, LoginDto } from '../services/auth.service';
+import { ClinicService } from '../services/clinic.service';
+import { RegisterRequestDto } from '../dto/register-request.dto';
 import { Public } from '../../../common/decorators/public.decorator';
 import { CurrentUser } from '../../../common/decorators/tenant.decorator';
 import type { UserContext, AuthProfile } from '@petiatrics/types';
@@ -17,12 +19,26 @@ import { SESSION_COOKIE } from '../../../common/session/session.guard';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly clinics: ClinicService,
+  ) {}
+
+  /**
+   * POST /api/v1/auth/register-request
+   * Public endpoint — clinic self-registration. Creates PENDING clinic + owner.
+   */
+  @Public()
+  @Post('register-request')
+  @HttpCode(HttpStatus.CREATED)
+  registerRequest(@Body() dto: RegisterRequestDto) {
+    return this.clinics.registerRequest(dto);
+  }
 
   /**
    * POST /api/v1/auth/login
-   * Validates credentials, creates session, sets HttpOnly cookie.
-   * Returns AuthProfile (id, email, role, clinicName, branches[]).
+   * Validates credentials (email or username@clinicSlug), creates session,
+   * sets HttpOnly cookie. Returns AuthProfile.
    */
   @Public()
   @Post('login')
@@ -35,7 +51,6 @@ export class AuthController {
     const ipAddress = req.ip;
     const { sessionId, profile } = await this.auth.login(dto, ipAddress);
 
-    // Set HttpOnly session cookie — strict to prevent CSRF
     res.cookie(SESSION_COOKIE, sessionId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -73,10 +88,26 @@ export class AuthController {
     return {
       id: user.userId,
       email: user.email,
+      username: user.username,
+      mustChangePassword: user.mustChangePassword,
       role: user.role,
       clinicName: user.clinicName ?? null,
+      clinicSlug: user.clinicSlug ?? null,
       branches: user.authorizedBranches ?? [],
       preferredLocale: user.preferredLocale,
     };
+  }
+
+  /**
+   * POST /api/v1/auth/change-password
+   * US6: Force-change password (mustChangePassword=true) or voluntary change.
+   */
+  @Post('change-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async changePassword(
+    @CurrentUser() user: UserContext,
+    @Body() body: { currentPassword?: string; newPassword: string },
+  ): Promise<void> {
+    await this.auth.changePassword(user.userId, body.currentPassword, body.newPassword);
   }
 }

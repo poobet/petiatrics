@@ -17,11 +17,11 @@
 
 **Purpose**: Schema migration, shared types, and seed updates that all subsequent phases depend on.
 
-- [ ] T001 Extend `ClinicStatus` enum with `PENDING` and `REJECTED`, extend `UserStatus` enum with `PENDING`, add `slug String @unique` and `phone String?` to `Clinic` model, add `name String`, `username String? @unique`, `mustChangePassword Boolean @default(false)` to `User` model, make `email String? @unique` (nullable) in `packages/database/prisma/schema.prisma`
-- [ ] T002 Generate Prisma migration with backfill SQL: slug backfill from existing clinic names (slugify + unique suffix), name backfill for existing users (default empty then NOT NULL), email DROP NOT NULL — run `npx prisma migrate dev --name 003-clinic-onboarding-auth` then `npx prisma generate` in `packages/database/prisma/`
-- [ ] T003 [P] Add `PENDING` and `REJECTED` to `ClinicStatus` enum and `PENDING` to `UserStatus` enum in `packages/types/src/enums.ts`
-- [ ] T004 [P] Make `email` optional (`email?: string | null`), add `username?: string | null` and `mustChangePassword?: boolean` to `UserContext` and `AuthProfile` interfaces in `packages/types/src/api.ts`
-- [ ] T005 Update seed to set `slug` on seeded clinic, `name` and `username` on seeded staff user, add a `PENDING` clinic+owner for testing in `packages/database/src/seed.ts`
+- [X] T001 Extend `ClinicStatus` enum with `PENDING` and `REJECTED`, extend `UserStatus` enum with `PENDING`, add `slug String @unique` and `phone String?` to `Clinic` model, add `name String`, `username String? @unique`, `mustChangePassword Boolean @default(false)` to `User` model, make `email String? @unique` (nullable) in `packages/database/prisma/schema.prisma`
+- [X] T002 Generate Prisma migration with backfill SQL: slug backfill from existing clinic names (slugify + unique suffix), name backfill for existing users (default empty then NOT NULL), email DROP NOT NULL — run `npx prisma migrate dev --name 003-clinic-onboarding-auth` then `npx prisma generate` in `packages/database/prisma/`
+- [X] T003 [P] Add `PENDING` and `REJECTED` to `ClinicStatus` enum and `PENDING` to `UserStatus` enum in `packages/types/src/enums.ts`
+- [X] T004 [P] Make `email` optional (`email?: string | null`), add `username?: string | null` and `mustChangePassword?: boolean` to `UserContext` and `AuthProfile` interfaces in `packages/types/src/api.ts`
+- [X] T005 Update seed to set `slug` on seeded clinic, `name` and `username` on seeded staff user, add a `PENDING` clinic+owner for testing in `packages/database/src/seed.ts`
 
 **Checkpoint**: Schema migrated, Prisma client regenerated, shared types updated. All packages compile. Foundation ready — user story implementation can now begin.
 
@@ -33,11 +33,11 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T006 Add slug generation helper function (lowercase, replace non-alphanumeric with hyphens, strip leading/trailing, cap at 50 chars, numeric suffix retry up to 9, then nanoid(4) fallback) to `apps/api/src/modules/identity/services/clinic.service.ts`
-- [ ] T007 Replace `LoginDto.email` with `LoginDto.identifier` and implement identifier resolution logic (split on `@`, lookup clinic by slug, branch to username vs email path) in `apps/api/src/modules/identity/services/auth.service.ts`
-- [ ] T008 Add `PENDING` user status check in login flow — throw 401 for PENDING/INACTIVE/LOCKED users in `apps/api/src/modules/identity/services/auth.service.ts`
-- [ ] T009 Include `mustChangePassword`, `username`, and nullable `email` in session context written to Redis in `apps/api/src/modules/identity/services/auth.service.ts`
-- [ ] T010 [P] Add `mustChangePassword: false` to the session backfill block for pre-migration sessions in `apps/api/src/common/session/session.service.ts`
+- [X] T006 Add slug generation helper function (lowercase, replace non-alphanumeric with hyphens, strip leading/trailing, cap at 50 chars, numeric suffix retry up to 9, then nanoid(4) fallback) to `apps/api/src/modules/identity/services/clinic.service.ts`
+- [X] T007 Replace `LoginDto.email` with `LoginDto.identifier` and implement identifier resolution logic (split on `@`, lookup clinic by slug, branch to username vs email path) in `apps/api/src/modules/identity/services/auth.service.ts`
+- [X] T008 Add `PENDING` user status check in login flow — throw 401 for PENDING/INACTIVE/LOCKED users in `apps/api/src/modules/identity/services/auth.service.ts`
+- [X] T009 Include `mustChangePassword`, `username`, and nullable `email` in session context written to Redis in `apps/api/src/modules/identity/services/auth.service.ts`
+- [X] T010 [P] Add `mustChangePassword: false` to the session backfill block for pre-migration sessions in `apps/api/src/common/session/session.service.ts`
 
 **Checkpoint**: Auth service resolves both email and username paths. Slug generation is available. Session includes mustChangePassword. All foundational services ready.
 
@@ -51,13 +51,13 @@
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Add `registerRequest(dto: RegisterRequestDto)` method to `ClinicService` — create clinic with `status=PENDING`, auto-generate slug, create owner user with `status=PENDING`, hash password, wrap in `$transaction`, emit audit event in `apps/api/src/modules/identity/services/clinic.service.ts`
-- [ ] T012 [US1] Create `RegisterRequestDto` with class-validator decorators (clinicName, taxId, address, ownerName, ownerEmail, password, phone) in `apps/api/src/modules/identity/dto/register-request.dto.ts`
-- [ ] T013 [US1] Add `@Public() @Throttle({ default: { ttl: 900000, limit: 5 } }) @Post('register-request')` endpoint calling `clinicService.registerRequest()` in `apps/api/src/modules/identity/controllers/auth.controller.ts`
-- [ ] T014 [US1] Update `LoginDto` from `email` field to `identifier` field with class-validator decorators in `apps/api/src/modules/identity/controllers/auth.controller.ts`
-- [ ] T015 [P] [US1] Add `/register` to `PUBLIC_PATHS` array in `apps/web/middleware.ts`
-- [ ] T016 [P] [US1] Add i18n keys for registration page (`auth.register.title`, `auth.register.clinicName`, `auth.register.taxId`, `auth.register.address.*`, `auth.register.ownerName`, `auth.register.ownerEmail`, `auth.register.password`, `auth.register.phone`, `auth.register.submit`, `auth.register.pending`) in `apps/web/messages/en.json` and `apps/web/messages/th.json`
-- [ ] T017 [US1] Create public clinic registration page with form fields (clinicName, taxId, address, ownerName, ownerEmail, password, confirmPassword, phone), inline validation, submit to `POST /auth/register-request`, success state showing "pending review" in `apps/web/app/(auth)/register/page.tsx`
+- [X] T011 [US1] Add `registerRequest(dto: RegisterRequestDto)` method to `ClinicService` — create clinic with `status=PENDING`, auto-generate slug, create owner user with `status=PENDING`, hash password, wrap in `$transaction`, emit audit event in `apps/api/src/modules/identity/services/clinic.service.ts`
+- [X] T012 [US1] Create `RegisterRequestDto` with class-validator decorators (clinicName, taxId, address, ownerName, ownerEmail, password, phone) in `apps/api/src/modules/identity/dto/register-request.dto.ts`
+- [X] T013 [US1] Add `@Public() @Throttle({ default: { ttl: 900000, limit: 5 } }) @Post('register-request')` endpoint calling `clinicService.registerRequest()` in `apps/api/src/modules/identity/controllers/auth.controller.ts`
+- [X] T014 [US1] Update `LoginDto` from `email` field to `identifier` field with class-validator decorators in `apps/api/src/modules/identity/controllers/auth.controller.ts`
+- [X] T015 [P] [US1] Add `/register` to `PUBLIC_PATHS` array in `apps/web/middleware.ts`
+- [X] T016 [P] [US1] Add i18n keys for registration page (`auth.register.title`, `auth.register.clinicName`, `auth.register.taxId`, `auth.register.address.*`, `auth.register.ownerName`, `auth.register.ownerEmail`, `auth.register.password`, `auth.register.phone`, `auth.register.submit`, `auth.register.pending`) in `apps/web/messages/en.json` and `apps/web/messages/th.json`
+- [X] T017 [US1] Create public clinic registration page with form fields (clinicName, taxId, address, ownerName, ownerEmail, password, confirmPassword, phone), inline validation, submit to `POST /auth/register-request`, success state showing "pending review" in `apps/web/app/(auth)/register/page.tsx`
 
 **Checkpoint**: User Story 1 complete. A guest can register a clinic and see feedback. No login is possible for pending accounts.
 
@@ -71,12 +71,12 @@
 
 ### Implementation for User Story 2
 
-- [ ] T018 [US2] Add `approve(clinicId: string, note?: string)` method to `ClinicService` — update clinic status to ACTIVE, owner status to ACTIVE in `$transaction`, emit audit in `apps/api/src/modules/identity/services/clinic.service.ts`
-- [ ] T019 [US2] Add `reject(clinicId: string, reason?: string)` method to `ClinicService` — update clinic status to REJECTED, owner status to INACTIVE in `$transaction`, emit audit in `apps/api/src/modules/identity/services/clinic.service.ts`
-- [ ] T020 [US2] Add `@Patch(':id/approve')` and `@Patch(':id/reject')` endpoints in `apps/api/src/modules/identity/controllers/admin.controller.ts`
-- [ ] T021 [US2] Update `@Get()` clinics list to include `slug`, `owner.name`, `owner.email`, `owner.status` in response in `apps/api/src/modules/identity/controllers/admin.controller.ts`
-- [ ] T022 [P] [US2] Add i18n keys for admin clinic list (`admin.clinics.pendingBadge`, `admin.clinics.approve`, `admin.clinics.reject`, `admin.clinics.rejectReason`, `admin.clinics.approveSuccess`, `admin.clinics.rejectSuccess`, `admin.clinics.rejectedBadge`) in `apps/web/messages/en.json` and `apps/web/messages/th.json`
-- [ ] T023 [US2] Update admin clinics page to show PENDING clinics distinctly, add Approve button calling `PATCH /admin/clinics/:id/approve`, add Reject button with reason dialog calling `PATCH /admin/clinics/:id/reject`, show success/error feedback in `apps/web/app/(admin)/admin/clinics/page.tsx`
+- [X] T018 [US2] Add `approve(clinicId: string, note?: string)` method to `ClinicService` — update clinic status to ACTIVE, owner status to ACTIVE in `$transaction`, emit audit in `apps/api/src/modules/identity/services/clinic.service.ts`
+- [X] T019 [US2] Add `reject(clinicId: string, reason?: string)` method to `ClinicService` — update clinic status to REJECTED, owner status to INACTIVE in `$transaction`, emit audit in `apps/api/src/modules/identity/services/clinic.service.ts`
+- [X] T020 [US2] Add `@Patch(':id/approve')` and `@Patch(':id/reject')` endpoints in `apps/api/src/modules/identity/controllers/admin.controller.ts`
+- [X] T021 [US2] Update `@Get()` clinics list to include `slug`, `owner.name`, `owner.email`, `owner.status` in response in `apps/api/src/modules/identity/controllers/admin.controller.ts`
+- [X] T022 [P] [US2] Add i18n keys for admin clinic list (`admin.clinics.pendingBadge`, `admin.clinics.approve`, `admin.clinics.reject`, `admin.clinics.rejectReason`, `admin.clinics.approveSuccess`, `admin.clinics.rejectSuccess`, `admin.clinics.rejectedBadge`) in `apps/web/messages/en.json` and `apps/web/messages/th.json`
+- [X] T023 [US2] Update admin clinics page to show PENDING clinics distinctly, add Approve button calling `PATCH /admin/clinics/:id/approve`, add Reject button with reason dialog calling `PATCH /admin/clinics/:id/reject`, show success/error feedback in `apps/web/app/(admin)/admin/clinics/page.tsx`
 
 **Checkpoint**: User Story 2 complete. Admin can approve/reject pending clinics from the clinic list page.
 
@@ -92,8 +92,8 @@
 
 ### Implementation for User Story 3
 
-- [ ] T024 [US3] Expose `slug` field in the clinic context returned by `GET /auth/me` so the frontend can display it in the staff creation form — update `AuthProfile` construction in `apps/api/src/modules/identity/services/auth.service.ts`
-- [ ] T025 [US3] Add slug immutability guard — ensure no update path on `ClinicService` modifies the slug field in `apps/api/src/modules/identity/services/clinic.service.ts`
+- [X] T024 [US3] Expose `slug` field in the clinic context returned by `GET /auth/me` so the frontend can display it in the staff creation form — update `AuthProfile` construction in `apps/api/src/modules/identity/services/auth.service.ts`
+- [X] T025 [US3] Add slug immutability guard — ensure no update path on `ClinicService` modifies the slug field in `apps/api/src/modules/identity/services/clinic.service.ts`
 
 **Checkpoint**: User Story 3 complete. Slugs are auto-generated, unique, immutable, and visible in relevant API responses.
 
@@ -107,12 +107,12 @@
 
 ### Implementation for User Story 4
 
-- [ ] T026 [US4] Add `createStaff(clinicId: string, dto: CreateStaffDto)` method to `UserService` — validate usernamePrefix format, build full username (`prefix@slug`), hash temporaryPassword, create user with `mustChangePassword=true`, assign branches in `$transaction`, emit audit in `apps/api/src/modules/identity/services/user.service.ts`
-- [ ] T027 [P] [US4] Create `CreateStaffDto` with class-validator decorators (name, usernamePrefix, role, temporaryPassword, phone, branchIds) in `apps/api/src/modules/identity/dto/create-staff.dto.ts`
-- [ ] T028 [US4] Replace `@Post('invite')` with `@Post()` using `CreateStaffDto` calling `userService.createStaff()`, catch Prisma P2002 and return 409 in `apps/api/src/modules/identity/controllers/staff.controller.ts`
-- [ ] T029 [US4] Update `@Get()` staff list to return `id`, `username`, `name`, `role`, `status` (replacing email with username) in `apps/api/src/modules/identity/controllers/staff.controller.ts`
-- [ ] T030 [P] [US4] Add i18n keys for staff creation (`clinic.staff.usernamePrefix`, `clinic.staff.usernameSuffix`, `clinic.staff.name`, `clinic.staff.temporaryPassword`, `clinic.staff.branchSelect`, `clinic.staff.createSuccess`, `clinic.staff.duplicateUsername`) in `apps/web/messages/en.json` and `apps/web/messages/th.json`
-- [ ] T031 [US4] Replace invite email dialog with usernamePrefix text field + read-only `@<clinicSlug>` suffix display, add name field, add temporaryPassword field, add branch multi-select, submit to `POST /clinic/staff`, show generated full username in success toast in `apps/web/app/(clinic)/clinic/staff/staff-client.tsx`
+- [X] T026 [US4] Add `createStaff(clinicId: string, dto: CreateStaffDto)` method to `UserService` — validate usernamePrefix format, build full username (`prefix@slug`), hash temporaryPassword, create user with `mustChangePassword=true`, assign branches in `$transaction`, emit audit in `apps/api/src/modules/identity/services/user.service.ts`
+- [X] T027 [P] [US4] Create `CreateStaffDto` with class-validator decorators (name, usernamePrefix, role, temporaryPassword, phone, branchIds) in `apps/api/src/modules/identity/dto/create-staff.dto.ts`
+- [X] T028 [US4] Replace `@Post('invite')` with `@Post()` using `CreateStaffDto` calling `userService.createStaff()`, catch Prisma P2002 and return 409 in `apps/api/src/modules/identity/controllers/staff.controller.ts`
+- [X] T029 [US4] Update `@Get()` staff list to return `id`, `username`, `name`, `role`, `status` (replacing email with username) in `apps/api/src/modules/identity/controllers/staff.controller.ts`
+- [X] T030 [P] [US4] Add i18n keys for staff creation (`clinic.staff.usernamePrefix`, `clinic.staff.usernameSuffix`, `clinic.staff.name`, `clinic.staff.temporaryPassword`, `clinic.staff.branchSelect`, `clinic.staff.createSuccess`, `clinic.staff.duplicateUsername`) in `apps/web/messages/en.json` and `apps/web/messages/th.json`
+- [X] T031 [US4] Replace invite email dialog with usernamePrefix text field + read-only `@<clinicSlug>` suffix display, add name field, add temporaryPassword field, add branch multi-select, submit to `POST /clinic/staff`, show generated full username in success toast in `apps/web/app/(clinic)/clinic/staff/staff-client.tsx`
 
 **Checkpoint**: User Story 4 complete. Owner can create staff with username-based accounts. Staff list shows username and name.
 
@@ -128,8 +128,8 @@
 
 ### Implementation for User Story 5
 
-- [ ] T032 [P] [US5] Add i18n keys for login page update (`login.identifierLabel`, `login.identifierHint`, `login.identifierPlaceholder`) in `apps/web/messages/en.json` and `apps/web/messages/th.json`
-- [ ] T033 [US5] Change email input to text input with label "Email or Staff Username", update `autoComplete` to `"username"`, change form post from `{ email, password }` to `{ identifier, password }`, add helper text explaining `username@clinic-slug` format in `apps/web/app/(auth)/login/page.tsx`
+- [X] T032 [P] [US5] Add i18n keys for login page update (`login.identifierLabel`, `login.identifierHint`, `login.identifierPlaceholder`) in `apps/web/messages/en.json` and `apps/web/messages/th.json`
+- [X] T033 [US5] Change email input to text input with label "Email or Staff Username", update `autoComplete` to `"username"`, change form post from `{ email, password }` to `{ identifier, password }`, add helper text explaining `username@clinic-slug` format in `apps/web/app/(auth)/login/page.tsx`
 
 **Checkpoint**: User Story 5 complete. Both email and username login paths work from a single login form.
 
@@ -143,11 +143,11 @@
 
 ### Implementation for User Story 6
 
-- [ ] T034 [US6] Add `changePassword(userId: string, newPassword: string)` method to `AuthService` — update password hash, set `mustChangePassword=false`, invalidate all sessions for this user, emit audit in `apps/api/src/modules/identity/services/auth.service.ts`
-- [ ] T035 [US6] Add `@Post('change-password')` endpoint (authenticated, any clinic role) calling `authService.changePassword()` in `apps/api/src/modules/identity/controllers/auth.controller.ts`
-- [ ] T036 [P] [US6] Add i18n keys for change-password page (`clinic.changePassword.title`, `clinic.changePassword.newPassword`, `clinic.changePassword.confirmPassword`, `clinic.changePassword.submit`, `clinic.changePassword.success`) in `apps/web/messages/en.json` and `apps/web/messages/th.json`
-- [ ] T037 [US6] Add `mustChangePassword` check in clinic layout RSC — if `mustChangePassword === true` AND pathname is NOT `/clinic/change-password`, redirect to `/clinic/change-password` in `apps/web/app/(clinic)/layout.tsx`
-- [ ] T038 [US6] Create forced password change page with newPassword + confirmPassword fields, submit to `POST /auth/change-password`, on success redirect to `/clinic/dashboard` in `apps/web/app/(clinic)/clinic/change-password/page.tsx`
+- [X] T034 [US6] Add `changePassword(userId: string, newPassword: string)` method to `AuthService` — update password hash, set `mustChangePassword=false`, invalidate all sessions for this user, emit audit in `apps/api/src/modules/identity/services/auth.service.ts`
+- [X] T035 [US6] Add `@Post('change-password')` endpoint (authenticated, any clinic role) calling `authService.changePassword()` in `apps/api/src/modules/identity/controllers/auth.controller.ts`
+- [X] T036 [P] [US6] Add i18n keys for change-password page (`clinic.changePassword.title`, `clinic.changePassword.newPassword`, `clinic.changePassword.confirmPassword`, `clinic.changePassword.submit`, `clinic.changePassword.success`) in `apps/web/messages/en.json` and `apps/web/messages/th.json`
+- [X] T037 [US6] Add `mustChangePassword` check in clinic layout RSC — if `mustChangePassword === true` AND pathname is NOT `/clinic/change-password`, redirect to `/clinic/change-password` in `apps/web/app/(clinic)/layout.tsx`
+- [X] T038 [US6] Create forced password change page with newPassword + confirmPassword fields, submit to `POST /auth/change-password`, on success redirect to `/clinic/dashboard` in `apps/web/app/(clinic)/clinic/change-password/page.tsx`
 
 **Checkpoint**: User Story 6 complete. Portal separation enforced. Forced password change works end-to-end.
 
@@ -157,9 +157,9 @@
 
 **Purpose**: Backwards compatibility checks, audit verification, compile-time cleanup.
 
-- [ ] T039 [P] Audit all existing TypeScript consumers of `UserContext.email` and `AuthProfile.email` — fix any non-null assertions that now fail due to nullable email across `apps/api/` and `apps/web/`
-- [ ] T040 [P] Verify existing INVITED-status users with email addresses can still log in via the email path — manual smoke test or seed verification in `packages/database/src/seed.ts`
-- [ ] T041 [P] Run `turbo build` from repo root and fix any remaining compile errors across all packages
+- [X] T039 [P] Audit all existing TypeScript consumers of `UserContext.email` and `AuthProfile.email` — fix any non-null assertions that now fail due to nullable email across `apps/api/` and `apps/web/`
+- [X] T040 [P] Verify existing INVITED-status users with email addresses can still log in via the email path — manual smoke test or seed verification in `packages/database/src/seed.ts`
+- [X] T041 [P] Run `turbo build` from repo root and fix any remaining compile errors across all packages
 - [ ] T042 Run quickstart.md validation — follow all steps in `specs/003-clinic-onboarding-staff/quickstart.md` and confirm expected outputs
 
 ---

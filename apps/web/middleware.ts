@@ -15,7 +15,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * verification is performed server-side within each route group layout.
  */
 
-const PUBLIC_PATHS = ['/login', '/favicon.ico', '/_next', '/api'];
+const PUBLIC_PATHS = ['/login', '/register', '/favicon.ico', '/_next', '/api'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

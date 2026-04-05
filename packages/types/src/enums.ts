@@ -11,6 +11,8 @@ export enum ClinicStatus {
   ACTIVE = 'ACTIVE',
   SUSPENDED = 'SUSPENDED',
   ARCHIVED = 'ARCHIVED',
+  PENDING = 'PENDING',
+  REJECTED = 'REJECTED',
 }
 
 export enum Role {
@@ -27,6 +29,7 @@ export enum UserStatus {
   ACTIVE = 'ACTIVE',
   INACTIVE = 'INACTIVE',
   LOCKED = 'LOCKED',
+  PENDING = 'PENDING',
 }
 
 export enum Locale {

@@ -114,7 +114,8 @@ export function AppShell({ children, user }: AppShellProps) {
     window.location.href = '/login';
   }
 
-  const initials = user.email.slice(0, 2).toUpperCase();
+  const displayName = user.name || user.username || user.email || '';
+  const initials = displayName.slice(0, 2).toUpperCase();
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -267,14 +268,14 @@ export function AppShell({ children, user }: AppShellProps) {
                     </AvatarFallback>
                   </Avatar>
                   <div className="text-left hidden sm:block">
-                    <p className="text-sm font-medium text-gray-900 leading-none">{user.email.split('@')[0]}</p>
+                    <p className="text-sm font-medium text-gray-900 leading-none">{displayName.includes('@') ? displayName.split('@')[0] : displayName}</p>
                     <p className="text-xs text-gray-500 capitalize mt-0.5">{user.role.replace(/_/g, ' ').toLowerCase()}</p>
                   </div>
                   <ChevronDown className="w-4 h-4 text-gray-500" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={4} className="w-56">
-                <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
+                <DropdownMenuLabel>{user.email ?? user.username ?? user.name}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/clinic/settings">{t('settings')}</Link>

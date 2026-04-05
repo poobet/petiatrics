@@ -10,8 +10,17 @@ import { SessionService } from '../../../common/session/session.service';
 import { Role, Locale, UserStatus } from '@petiatrics/types';
 import type { UserContext, AuthProfile } from '@petiatrics/types';
 
+const BCRYPT_ROUNDS = 12;
+
+function assertPasswordPolicy(password: string): void {
+  if (password.length < 8) throw new ConflictException('Password must be at least 8 characters.');
+  if (!/[A-Z]/.test(password)) throw new ConflictException('Password must contain at least one uppercase letter.');
+  if (!/[0-9]/.test(password)) throw new ConflictException('Password must contain at least one digit.');
+}
+
 export interface LoginDto {
-  email: string;
+  /** Email address OR username@clinicSlug */
+  identifier: string;
   password: string;
 }
 
@@ -30,21 +39,42 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto, ipAddress?: string): Promise<LoginResult> {
-    const { email, password } = dto;
+    const { identifier, password } = dto;
+    const identifierNorm = identifier.toLowerCase().trim();
 
-    // Lookup user with clinic and branches in a single query (avoids N+1)
-    const user = await this.prisma.user.findFirst({
-      where: { email: email.toLowerCase().trim() },
-      include: {
-        clinic: { select: { id: true, name: true, status: true, settings: true } },
-        userBranches: {
-          include: { branch: { select: { id: true, name: true } } },
-        },
+    const includeShape = {
+      clinic: { select: { id: true, name: true, slug: true, status: true, settings: true } },
+      userBranches: {
+        include: { branch: { select: { id: true, name: true } } },
       },
+    } as const;
+
+    // Dual identifier resolution: try email first, then username@clinicSlug
+    let user = await this.prisma.user.findFirst({
+      where: { email: identifierNorm },
+      include: includeShape,
     });
+
+    if (!user && identifierNorm.includes('@')) {
+      const atIndex = identifierNorm.lastIndexOf('@');
+      const usernamepart = identifierNorm.slice(0, atIndex);
+      const clinicSlug = identifierNorm.slice(atIndex + 1);
+      const clinic = await this.prisma.clinic.findUnique({ where: { slug: clinicSlug } });
+      if (clinic) {
+        user = await this.prisma.user.findFirst({
+          where: { username: usernamepart, clinicId: clinic.id },
+          include: includeShape,
+        });
+      }
+    }
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials.');
+    }
+
+    // PENDING accounts cannot log in
+    if (user.status === ('PENDING' as any)) {
+      throw new UnauthorizedException('Account pending approval. Please wait for administrator confirmation.');
     }
 
     // Account lockout check
@@ -57,7 +87,7 @@ export class AuthService {
       // Lockout expired — reset
       await this.prisma.user.update({
         where: { id: user.id },
-        data: { status: UserStatus.ACTIVE, failedLoginAttempts: 0, lockedUntil: null },
+        data: { status: UserStatus.ACTIVE as any, failedLoginAttempts: 0, lockedUntil: null },
       });
     }
 
@@ -94,8 +124,11 @@ export class AuthService {
       userId: user.id,
       clinicId: user.clinicId ?? null,
       clinicName: user.clinic?.name ?? null,
+      clinicSlug: user.clinic?.slug ?? null,
       role: user.role as unknown as Role,
       email: user.email,
+      username: user.username,
+      mustChangePassword: user.mustChangePassword,
       preferredLocale: (user.preferredLocale as unknown as Locale) ?? Locale.TH,
       authorizedBranches,
     };
@@ -106,9 +139,13 @@ export class AuthService {
 
     const profile: AuthProfile = {
       id: user.id,
+      name: user.name ?? undefined,
       email: user.email,
+      username: user.username,
+      mustChangePassword: user.mustChangePassword,
       role: user.role as unknown as Role,
       clinicName: user.clinic?.name ?? null,
+      clinicSlug: user.clinic?.slug ?? null,
       branches: authorizedBranches,
       preferredLocale: (user.preferredLocale as unknown as Locale) ?? Locale.TH,
     };
@@ -118,6 +155,32 @@ export class AuthService {
 
   async logout(sessionId: string): Promise<void> {
     await this.sessions.deleteSession(sessionId);
+  }
+
+  /**
+   * US6: Force-change password for mustChangePassword users, or voluntary
+   * password change for active staff members.
+   */
+  async changePassword(
+    userId: string,
+    currentPassword: string | undefined,
+    newPassword: string,
+  ): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('User not found.');
+
+    if (!user.mustChangePassword) {
+      if (!currentPassword) throw new UnauthorizedException('Current password is required.');
+      const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!valid) throw new UnauthorizedException('Current password is incorrect.');
+    }
+
+    assertPasswordPolicy(newPassword);
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash, mustChangePassword: false, status: 'ACTIVE' as any },
+    });
   }
 
   private async handleFailedLogin(user: { id: string; failedLoginAttempts: number; clinic?: { settings: unknown } | null }): Promise<void> {
@@ -133,7 +196,7 @@ export class AuthService {
         where: { id: user.id },
         data: {
           failedLoginAttempts: newAttempts,
-          status: UserStatus.LOCKED,
+          status: UserStatus.LOCKED as any,
           lockedUntil,
         },
       });

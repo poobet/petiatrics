@@ -36,10 +36,13 @@ import {
 } from '@petiatrics/ui';
 import { MoreHorizontal, Plus, Loader2 } from 'lucide-react';
 import { apiClient } from '../../../../lib/api-client';
+import { useSessionStore } from '../../../../lib/session-store';
 
 interface StaffUser {
   id: string;
-  email: string;
+  name: string;
+  username: string | null;
+  email: string | null;
   role: string;
   status: string;
 }
@@ -47,13 +50,16 @@ interface StaffUser {
 export default function StaffPageClient() {
   const t = useTranslations('staff');
   const tCommon = useTranslations('common');
+  const clinicSlug = useSessionStore((s) => s.user?.clinicSlug ?? '');
 
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('VET');
-  const [inviting, setInviting] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [usernamePrefix, setUsernamePrefix] = useState('');
+  const [name, setName] = useState('');
+  const [temporaryPassword, setTemporaryPassword] = useState('');
+  const [role, setRole] = useState('VET');
+  const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
@@ -63,19 +69,23 @@ export default function StaffPageClient() {
       .finally(() => setLoading(false));
   }, []);
 
-  async function handleInvite() {
-    setInviting(true);
+  async function handleCreate() {
+    setCreating(true);
     try {
-      const newUser = await apiClient.post<StaffUser>('/clinic/staff/invite', {
-        email: inviteEmail,
-        role: inviteRole,
+      const newUser = await apiClient.post<StaffUser>('/clinic/staff', {
+        usernamePrefix,
+        name,
+        temporaryPassword,
+        role,
       });
       setStaff((prev) => [...prev, newUser]);
-      setInviteOpen(false);
-      setInviteEmail('');
-      setInviteRole('VET');
+      setCreateOpen(false);
+      setUsernamePrefix('');
+      setName('');
+      setTemporaryPassword('');
+      setRole('VET');
     } finally {
-      setInviting(false);
+      setCreating(false);
     }
   }
 
@@ -107,11 +117,13 @@ export default function StaffPageClient() {
     return 'outline';
   }
 
+  const canCreate = usernamePrefix.trim().length >= 2 && name.trim() && temporaryPassword.length >= 8;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
-        <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button size="sm">
               <Plus className="w-4 h-4 mr-2" />
@@ -124,17 +136,45 @@ export default function StaffPageClient() {
             </DialogHeader>
             <div className="space-y-4 mt-2">
               <div className="space-y-1.5">
-                <Label>{t('email')}</Label>
+                <Label>{t('name')}</Label>
                 <Input
-                  type="email"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder="vet@clinic.com"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Dr. Smith"
                 />
               </div>
               <div className="space-y-1.5">
+                <Label>{t('usernamePrefix')}</Label>
+                <div className="flex items-center gap-1">
+                  <Input
+                    value={usernamePrefix}
+                    onChange={(e) => setUsernamePrefix(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+                    placeholder="drsmith"
+                    className="flex-1"
+                  />
+                  {clinicSlug && (
+                    <span className="text-sm text-gray-500 whitespace-nowrap">@{clinicSlug}</span>
+                  )}
+                </div>
+                {usernamePrefix && clinicSlug && (
+                  <p className="text-xs text-gray-400">
+                    {t('usernamePreview')}: <span className="font-mono text-gray-600">{usernamePrefix}@{clinicSlug}</span>
+                  </p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t('temporaryPassword')}</Label>
+                <Input
+                  type="password"
+                  value={temporaryPassword}
+                  onChange={(e) => setTemporaryPassword(e.target.value)}
+                  placeholder="••••••••"
+                />
+                <p className="text-xs text-gray-400">{t('temporaryPasswordHint')}</p>
+              </div>
+              <div className="space-y-1.5">
                 <Label>{t('role')}</Label>
-                <Select value={inviteRole} onValueChange={setInviteRole}>
+                <Select value={role} onValueChange={setRole}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -148,10 +188,10 @@ export default function StaffPageClient() {
               </div>
               <Button
                 className="w-full"
-                disabled={inviting || !inviteEmail}
-                onClick={handleInvite}
+                disabled={creating || !canCreate}
+                onClick={handleCreate}
               >
-                {inviting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {creating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 {t('new')}
               </Button>
             </div>
@@ -163,7 +203,8 @@ export default function StaffPageClient() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{t('email')}</TableHead>
+              <TableHead>{t('name')}</TableHead>
+              <TableHead>{t('username')}</TableHead>
               <TableHead>{t('role')}</TableHead>
               <TableHead>{t('status')}</TableHead>
               <TableHead className="text-right">{tCommon('actions')}</TableHead>
@@ -172,21 +213,22 @@ export default function StaffPageClient() {
           <TableBody>
             {loading && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-8">
+                <TableCell colSpan={5} className="text-center py-8">
                   <Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" />
                 </TableCell>
               </TableRow>
             )}
             {!loading && staff.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-gray-400 py-8">
+                <TableCell colSpan={5} className="text-center text-gray-400 py-8">
                   {t('noStaff')}
                 </TableCell>
               </TableRow>
             )}
             {staff.map((user) => (
               <TableRow key={user.id}>
-                <TableCell>{user.email}</TableCell>
+                <TableCell className="font-medium">{user.name}</TableCell>
+                <TableCell className="font-mono text-sm text-gray-600">{user.username ?? user.email ?? '-'}</TableCell>
                 <TableCell>{roleLabel(user.role)}</TableCell>
                 <TableCell>
                   <Badge variant={statusVariant(user.status) as any}>{user.status}</Badge>
@@ -216,3 +258,4 @@ export default function StaffPageClient() {
     </div>
   );
 }
+

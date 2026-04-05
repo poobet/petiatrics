@@ -37,6 +37,7 @@ async function main() {
     update: {},
     create: {
       email: 'admin@petiatrics.io',
+      name: 'Platform Admin',
       passwordHash: await hashPassword('Admin@1234'),
       role: 'SUPER_ADMIN',
       status: 'ACTIVE',
@@ -51,6 +52,7 @@ async function main() {
     create: {
       name: 'Happy Paws Veterinary Clinic',
       taxId: '0105567890123',
+      slug: 'happy-paws',
       address: { street: '123 Sukhumvit Rd', city: 'Bangkok', postalCode: '10110' },
       subscriptionTier: 'STANDARD',
       status: 'ACTIVE',
@@ -89,11 +91,11 @@ async function main() {
 
   // ── 4. Staff Users ────────────────────────────────────────────────────────
   const staffSeed = [
-    { email: 'owner@happypaws.io', role: 'CLINIC_OWNER' as const },
-    { email: 'vet@happypaws.io', role: 'VET' as const },
-    { email: 'assistant@happypaws.io', role: 'ASSISTANT' as const },
-    { email: 'cashier@happypaws.io', role: 'CASHIER' as const },
-    { email: 'staff@happypaws.io', role: 'STAFF' as const },
+    { email: 'owner@happypaws.io', name: 'Happy Paws Owner', username: 'owner@happy-paws', role: 'CLINIC_OWNER' as const },
+    { email: 'vet@happypaws.io', name: 'Dr. Veterinarian', username: 'vet@happy-paws', role: 'VET' as const },
+    { email: 'assistant@happypaws.io', name: 'Clinic Assistant', username: 'assistant@happy-paws', role: 'ASSISTANT' as const },
+    { email: 'cashier@happypaws.io', name: 'Clinic Cashier', username: 'cashier@happy-paws', role: 'CASHIER' as const },
+    { email: 'staff@happypaws.io', name: 'Clinic Staff', username: 'staff@happy-paws', role: 'STAFF' as const },
   ];
 
   const staffUsers: Record<string, string> = {};
@@ -103,6 +105,8 @@ async function main() {
       update: {},
       create: {
         email: s.email,
+        name: s.name,
+        username: s.username,
         passwordHash: await hashPassword('Password@1'),
         role: s.role,
         status: 'ACTIVE',
@@ -387,6 +391,40 @@ async function main() {
       console.log('✓ Appointment: CONFIRMED for tomorrow');
     }
   }
+
+  // ── 10. PENDING Clinic (for approve/reject testing) ───────────────────────
+  const pendingClinic = await prisma.clinic.upsert({
+    where: { taxId: '0105000000001' },
+    update: {},
+    create: {
+      name: 'New Paws Clinic',
+      taxId: '0105000000001',
+      slug: 'new-paws',
+      address: { street: '456 Rama IV Rd', city: 'Bangkok', postalCode: '10200' },
+      subscriptionTier: 'FREE',
+      status: 'PENDING',
+      settings: {
+        max_login_attempts: 5,
+        lockout_duration_minutes: 15,
+        password_min_length: 8,
+        password_require_uppercase: true,
+        password_require_number: true,
+      },
+    },
+  });
+  await prisma.user.upsert({
+    where: { email: 'owner@newpaws.io' },
+    update: {},
+    create: {
+      email: 'owner@newpaws.io',
+      name: 'New Paws Owner',
+      passwordHash: await hashPassword('Password@1'),
+      role: 'CLINIC_OWNER',
+      status: 'PENDING',
+      clinicId: pendingClinic.id,
+    },
+  });
+  console.log('✓ Pending clinic:', pendingClinic.name, '(', pendingClinic.id, ')');
 
   console.log('\n🎉 Seed complete!\n');
   console.log('Login credentials (002 roles):');

@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import type { Metadata } from 'next';
 import { AppShell } from '../../components/layout/app-shell';
 import { StoreHydrator } from '../../components/layout/store-hydrator';
@@ -15,6 +15,7 @@ export const metadata: Metadata = {
  * Performs authoritative server-side role check via GET /auth/me.
  * All authenticated users (including SUPER_ADMIN) can access clinic pages.
  * Hydrates the Zustand store via StoreHydrator for client components.
+ * Redirects to change-password if mustChangePassword flag is set.
  */
 export default async function ClinicLayout({
   children,
@@ -38,6 +39,15 @@ export default async function ClinicLayout({
     redirect('/login');
   }
 
+  // Force password change before accessing any other clinic page
+  if (user.mustChangePassword) {
+    const headerStore = await headers();
+    const pathname = headerStore.get('x-pathname') ?? headerStore.get('x-invoke-path') ?? '';
+    if (!pathname.startsWith('/clinic/change-password')) {
+      redirect('/clinic/change-password');
+    }
+  }
+
   return (
     <>
       <StoreHydrator profile={user} />
@@ -45,4 +55,5 @@ export default async function ClinicLayout({
     </>
   );
 }
+
 

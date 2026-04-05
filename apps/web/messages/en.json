@@ -41,14 +41,46 @@
     "login": "Log In",
     "logout": "Log Out",
     "email": "Email Address",
+    "identifierLabel": "Email or Username",
+    "identifierHint": "Use your email address or username@clinic-id",
+    "identifierPlaceholder": "email@example.com or username@clinic",
     "password": "Password",
     "forgotPassword": "Forgot password?",
     "loginButton": "Log In",
     "loginTitle": "Welcome to Petiatrics",
     "loginSubtitle": "Sign in to your clinic account",
-    "invalidCredentials": "Invalid email or password.",
+    "invalidCredentials": "Invalid credentials.",
     "accountLocked": "Your account has been locked due to too many failed attempts. Please contact your administrator.",
-    "sessionExpired": "Your session has expired. Please log in again."
+    "sessionExpired": "Your session has expired. Please log in again.",
+    "register": {
+      "title": "Register Your Clinic",
+      "subtitle": "Submit your clinic for review — we'll activate it within 1–2 business days",
+      "clinicName": "Clinic Name",
+      "taxId": "Tax ID",
+      "phone": "Phone Number",
+      "ownerName": "Your Full Name",
+      "ownerEmail": "Your Email Address",
+      "ownerPassword": "Password",
+      "submit": "Submit Registration",
+      "submitting": "Submitting…",
+      "successTitle": "Registration Submitted!",
+      "successMessage": "Thank you! Your clinic registration is pending review. We will contact you once it has been approved.",
+      "loginLink": "Back to Login",
+      "alreadyHaveAccount": "Already have an account?"
+    },
+    "changePassword": {
+      "title": "Change Password",
+      "subtitle": "You must set a new password before continuing",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm New Password",
+      "submit": "Change Password",
+      "mismatch": "Passwords do not match",
+      "successMessage": "Password changed successfully.",
+      "mustChangeNotice": "You must change your temporary password before using the system.",
+      "error": "Failed to change password. Please try again.",
+      "saving": "Saving…"
+    }
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -256,8 +288,15 @@
     "new": "Add Staff Member",
     "name": "Full Name",
     "email": "Email",
+    "username": "Username",
+    "usernamePrefix": "Username Prefix",
+    "usernameSuffix": "@{slug}",
+    "usernamePreview": "Login username: {username}",
+    "temporaryPassword": "Temporary Password",
+    "temporaryPasswordHint": "Staff must change this on first login",
     "role": "Role",
     "status": "Status",
+    "branches": "Branch Access",
     "noStaff": "No staff members found.",
     "roles": {
       "platform_admin": "Platform Admin",
@@ -325,5 +364,20 @@
   "locale": {
     "th": "ภาษาไทย",
     "en": "English"
+  },
+  "admin": {
+    "clinics": {
+      "pending": "Pending Approval",
+      "approve": "Approve",
+      "reject": "Reject",
+      "approveTitle": "Approve Clinic",
+      "approveConfirm": "Approve this clinic registration? The owner will be able to log in immediately.",
+      "rejectTitle": "Reject Registration",
+      "rejectReason": "Reason for Rejection",
+      "rejectConfirm": "Reject this clinic registration? This action cannot be undone.",
+      "owner": "Owner",
+      "taxId": "Tax ID",
+      "submittedAt": "Submitted"
+    }
   }
 }

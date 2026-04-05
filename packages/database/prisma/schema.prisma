@@ -19,6 +19,8 @@ enum ClinicStatus {
   ACTIVE
   SUSPENDED
   ARCHIVED
+  PENDING
+  REJECTED
 }
 
 enum Role {
@@ -35,6 +37,7 @@ enum UserStatus {
   ACTIVE
   INACTIVE
   LOCKED
+  PENDING
 }
 
 enum Locale {
@@ -79,10 +82,12 @@ enum InvoiceLineItemType {
 model Clinic {
   id               String           @id @default(uuid())
   name             String
+  slug             String           @unique
+  phone            String?
   taxId            String           @unique
   address          Json             @default("{}")
   subscriptionTier SubscriptionTier @default(FREE)
-  status           ClinicStatus     @default(ACTIVE)
+  status           ClinicStatus     @default(PENDING)
   // JSONB settings: max_login_attempts, lockout_duration_minutes,
   //                 password_min_length, password_require_uppercase, password_require_number
   settings         Json             @default("{\"max_login_attempts\":5,\"lockout_duration_minutes\":15,\"password_min_length\":8,\"password_require_uppercase\":true,\"password_require_number\":true}")
@@ -133,10 +138,13 @@ model UserBranch {
 model User {
   id                  String     @id @default(uuid())
   clinicId            String?
-  email               String     @unique
+  name                String     @default("")
+  email               String?    @unique
+  username            String?    @unique
   passwordHash        String
   role                Role
-  status              UserStatus @default(INVITED)
+  status              UserStatus @default(PENDING)
+  mustChangePassword  Boolean    @default(false)
   invitedBy           String?
   failedLoginAttempts Int        @default(0)
   lockedUntil         DateTime?
@@ -150,6 +158,7 @@ model User {
 
   @@index([clinicId])
   @@index([email])
+  @@index([username])
   @@map("users")
 }
 
