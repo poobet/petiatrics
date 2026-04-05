@@ -2,14 +2,29 @@ import { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import {
+  Activity,
   Calendar,
+  TrendingUp,
+  Users,
+  Clock,
+  ArrowUpRight,
+  DollarSign,
   PawPrint,
-  CreditCard,
-  AlertTriangle,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@petiatrics/ui';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@petiatrics/ui';
 import { Badge } from '@petiatrics/ui/badge';
-import { DashboardUserBanner } from './_components/dashboard-user-banner';
+import { Avatar, AvatarFallback, AvatarImage } from '@petiatrics/ui/avatar';
+import { Button } from '@petiatrics/ui/button';
+import { RevenueChart } from './_components/revenue-chart';
+import { AppointmentTypesChart } from './_components/appointment-types-chart';
+import type { RevenueDataPoint } from './_components/revenue-chart';
+import type { AppointmentTypeDataPoint } from './_components/appointment-types-chart';
 
 export const metadata: Metadata = { title: 'Dashboard | Petiatrics' };
 
@@ -23,12 +38,21 @@ interface Appointment {
   vetUserId?: string;
 }
 
-async function getTodayAppointments(): Promise<Appointment[]> {
-  try {
-    const cookieStore = await cookies();
-    const sid = cookieStore.get('petiatrics_sid')?.value;
-    if (!sid) return [];
+interface Patient {
+  _id: string;
+  name: string;
+  species: string;
+  breed: string;
+  photoUrl?: string;
+}
 
+async function getSessionCookie(): Promise<string | null> {
+  const cookieStore = await cookies();
+  return cookieStore.get('petiatrics_sid')?.value ?? null;
+}
+
+async function getTodayAppointments(sid: string): Promise<Appointment[]> {
+  try {
     const today = new Date().toISOString().slice(0, 10);
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
     const res = await fetch(`${apiUrl}/api/v1/appointments?date=${today}`, {
@@ -43,12 +67,23 @@ async function getTodayAppointments(): Promise<Appointment[]> {
   }
 }
 
-async function getLowStockCount(): Promise<number> {
+async function getRecentPatients(sid: string): Promise<Patient[]> {
   try {
-    const cookieStore = await cookies();
-    const sid = cookieStore.get('petiatrics_sid')?.value;
-    if (!sid) return 0;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+    const res = await fetch(`${apiUrl}/api/v1/clinical/patients`, {
+      headers: { Cookie: `petiatrics_sid=${sid}` },
+      cache: 'no-store',
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (Array.isArray(json) ? json : (json.data ?? [])).slice(0, 4);
+  } catch {
+    return [];
+  }
+}
 
+async function getLowStockCount(sid: string): Promise<number> {
+  try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
     const res = await fetch(`${apiUrl}/api/v1/inventory/products/low-stock`, {
       headers: { Cookie: `petiatrics_sid=${sid}` },
@@ -62,156 +97,334 @@ async function getLowStockCount(): Promise<number> {
   }
 }
 
-const STATUS_COLORS: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  REQUESTED: 'secondary',
-  CONFIRMED: 'default',
-  IN_PROGRESS: 'default',
-  COMPLETED: 'outline',
-  CANCELLED: 'destructive',
+async function getTodayRevenue(sid: string): Promise<number> {
+  try {
+    const today = new Date();
+    const from = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const to = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+    const res = await fetch(
+      `${apiUrl}/api/v1/billing/reports?from=${from.toISOString()}&to=${to.toISOString()}`,
+      { headers: { Cookie: `petiatrics_sid=${sid}` }, cache: 'no-store' },
+    );
+    if (!res.ok) return 0;
+    const json = await res.json();
+    return Math.round((json.revenueMinor ?? 0) / 100);
+  } catch {
+    return 0;
+  }
+}
+
+async function getMonthlyRevenue(sid: string): Promise<RevenueDataPoint[]> {
+  const now = new Date();
+  const monthRanges = Array.from({ length: 6 }, (_, i) => {
+    const offset = 5 - i;
+    const from = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+    const to = new Date(now.getFullYear(), now.getMonth() - offset + 1, 0, 23, 59, 59);
+    const month = from.toLocaleString('en-US', { month: 'short' });
+    return { from, to, month };
+  });
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+  return Promise.all(
+    monthRanges.map(async ({ from, to, month }) => {
+      try {
+        const res = await fetch(
+          `${apiUrl}/api/v1/billing/reports?from=${from.toISOString()}&to=${to.toISOString()}`,
+          { headers: { Cookie: `petiatrics_sid=${sid}` }, cache: 'no-store' },
+        );
+        if (!res.ok) return { month, revenue: 0 };
+        const json = await res.json();
+        return { month, revenue: Math.round((json.revenueMinor ?? 0) / 100) };
+      } catch {
+        return { month, revenue: 0 };
+      }
+    }),
+  );
+}
+
+const APPOINTMENT_STATUS_STYLES: Record<
+  string,
+  { iconBg: string; iconColor: string; badge: 'default' | 'secondary' | 'destructive' | 'outline' }
+> = {
+  REQUESTED: { iconBg: 'bg-gray-100', iconColor: 'text-gray-600', badge: 'outline' },
+  CONFIRMED: { iconBg: 'bg-blue-100', iconColor: 'text-blue-600', badge: 'default' },
+  IN_PROGRESS: { iconBg: 'bg-orange-100', iconColor: 'text-orange-600', badge: 'default' },
+  COMPLETED: { iconBg: 'bg-green-100', iconColor: 'text-green-600', badge: 'secondary' },
+  CANCELLED: { iconBg: 'bg-red-100', iconColor: 'text-red-400', badge: 'destructive' },
+};
+
+const STATUS_CHART_COLORS: Record<string, string> = {
+  REQUESTED: '#9ca3af',
+  CONFIRMED: '#3b82f6',
+  IN_PROGRESS: '#f97316',
+  COMPLETED: '#8b5cf6',
+  CANCELLED: '#ef4444',
 };
 
 export default async function ClinicDashboardPage() {
-  const [todayAppointments, lowStockCount] = await Promise.all([
-    getTodayAppointments(),
-    getLowStockCount(),
-  ]);
-  const nonCancelled = todayAppointments.filter((a) => a.status !== 'CANCELLED');
+  const sid = await getSessionCookie();
+  if (!sid) return null;
 
-  const kpis = [
-    {
-      label: "Today's Appointments",
-      value: nonCancelled.length,
-      href: '/appointments',
-      icon: Calendar,
-      color: 'text-blue-600',
-      bg: 'bg-blue-50',
-    },
-    {
-      label: 'Recent Patients',
-      value: 0,
-      href: '/patients',
-      icon: PawPrint,
-      color: 'text-green-600',
-      bg: 'bg-green-50',
-    },
-    {
-      label: 'Pending Invoices',
-      value: 0,
-      href: '/billing',
-      icon: CreditCard,
-      color: 'text-purple-600',
-      bg: 'bg-purple-50',
-    },
-    {
-      label: 'Low Stock Alerts',
-      value: lowStockCount,
-      href: '/inventory',
-      icon: AlertTriangle,
-      color: 'text-amber-600',
-      bg: 'bg-amber-50',
-    },
-  ];
+  const [todayAppointments, recentPatients, lowStockCount, todayRevenue, monthlyRevenue] =
+    await Promise.all([
+      getTodayAppointments(sid),
+      getRecentPatients(sid),
+      getLowStockCount(sid),
+      getTodayRevenue(sid),
+      getMonthlyRevenue(sid),
+    ]);
+
+  const nonCancelled = todayAppointments.filter((a) => a.status !== 'CANCELLED');
+  const inProgress = todayAppointments.filter((a) => a.status === 'IN_PROGRESS');
+  const upcomingAppointments = nonCancelled.slice(0, 5);
+
+  const statusDist: AppointmentTypeDataPoint[] = Object.entries(
+    todayAppointments.reduce<Record<string, number>>((acc, apt) => {
+      acc[apt.status] = (acc[apt.status] ?? 0) + 1;
+      return acc;
+    }, {}),
+  )
+    .map(([status, value]) => ({
+      name: status.replace(/_/g, ' '),
+      value,
+      color: STATUS_CHART_COLORS[status] ?? '#9ca3af',
+    }))
+    .filter((d) => d.value > 0);
+
+  const todayStr = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 
   return (
-    <div className="space-y-6">
-      <DashboardUserBanner />
-      <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+    <div className="space-y-8">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-semibold text-gray-900">Dashboard</h1>
+        <p className="text-gray-600 mt-1">Welcome back! Here&#39;s what&#39;s happening today.</p>
+      </div>
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.map((kpi) => {
-          const Icon = kpi.icon;
-          return (
-            <Link key={kpi.href} href={kpi.href} className="group">
-              <Card className="hover:shadow-md transition-shadow">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-500">
-                    {kpi.label}
-                  </CardTitle>
-                  <div className={`p-2 rounded-lg ${kpi.bg}`}>
-                    <Icon className={`w-4 h-4 ${kpi.color}`} />
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Today&#39;s Appointments</p>
+                <p className="text-3xl font-semibold text-gray-900 mt-2">{nonCancelled.length}</p>
+                <div className="flex items-center gap-1 mt-2">
+                  <ArrowUpRight className="w-4 h-4 text-green-600" />
+                  <span className="text-sm text-green-600 font-medium">vs yesterday</span>
+                </div>
+              </div>
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <Calendar className="w-6 h-6 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Patients in Clinic</p>
+                <p className="text-3xl font-semibold text-gray-900 mt-2">{inProgress.length}</p>
+                <div className="flex items-center gap-1 mt-2">
+                  <Activity className="w-4 h-4 text-blue-600" />
+                  <span className="text-sm text-gray-600 font-medium">In progress</span>
+                </div>
+              </div>
+              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                <PawPrint className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Today&#39;s Revenue</p>
+                <p className="text-3xl font-semibold text-gray-900 mt-2">
+                  &#3647;{todayRevenue.toLocaleString()}
+                </p>
+                <div className="flex items-center gap-1 mt-2">
+                  <ArrowUpRight className="w-4 h-4 text-green-600" />
+                  <span className="text-sm text-green-600 font-medium">Collected today</span>
+                </div>
+              </div>
+              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                <DollarSign className="w-6 h-6 text-orange-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Low Stock Alerts</p>
+                <p className="text-3xl font-semibold text-gray-900 mt-2">{lowStockCount}</p>
+                <div className="flex items-center gap-1 mt-2">
+                  <TrendingUp className="w-4 h-4 text-green-600" />
+                  <span className="text-sm text-gray-600 font-medium">Items to reorder</span>
+                </div>
+              </div>
+              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                <Users className="w-6 h-6 text-purple-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Two-column: Appointments + Recent Patients */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Today's Appointments */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Today&#39;s Appointments</CardTitle>
+                <CardDescription>{todayStr}</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/clinic/appointments">View all</Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {upcomingAppointments.length === 0 ? (
+              <p className="text-center text-gray-400 py-8">
+                No appointments scheduled for today.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {upcomingAppointments.map((apt) => {
+                  const styles =
+                    APPOINTMENT_STATUS_STYLES[apt.status] ??
+                    APPOINTMENT_STATUS_STYLES.REQUESTED;
+                  return (
+                    <div
+                      key={apt.id}
+                      className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                    >
+                      <div className="shrink-0">
+                        <div
+                          className={`w-12 h-12 rounded-lg flex items-center justify-center ${styles.iconBg}`}
+                        >
+                          <Clock className={`w-6 h-6 ${styles.iconColor}`} />
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-gray-900 truncate">{apt.reason}</p>
+                          <Badge variant={styles.badge} className="text-xs shrink-0">
+                            {apt.status.replace(/_/g, ' ')}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          {apt.durationMinutes} min
+                          {apt.vetUserId ? ` · Vet: ${apt.vetUserId.slice(0, 8)}…` : ''}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-medium text-gray-900">
+                          {new Date(apt.scheduledAt).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent Patients */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Patients</CardTitle>
+            <CardDescription>Latest check-ins</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {recentPatients.length === 0 ? (
+              <p className="text-center text-gray-400 py-8">No patients found.</p>
+            ) : (
+              <div className="space-y-4">
+                {recentPatients.map((pet) => (
+                  <div key={pet._id} className="flex items-center gap-3">
+                    <Avatar className="w-12 h-12 rounded-xl">
+                      {pet.photoUrl && <AvatarImage src={pet.photoUrl} alt={pet.name} />}
+                      <AvatarFallback>{pet.name[0]}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900">{pet.name}</p>
+                      <p className="text-sm text-gray-600">{pet.breed}</p>
+                    </div>
+                    <Badge
+                      variant="secondary"
+                      className="bg-blue-100 text-blue-700 hover:bg-blue-100"
+                    >
+                      {pet.species}
+                    </Badge>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-gray-900">{kpi.value}</p>
-                </CardContent>
-              </Card>
-            </Link>
-          );
-        })}
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <RevenueChart data={monthlyRevenue} />
+        <AppointmentTypesChart data={statusDist} />
       </div>
 
       {/* Quick Actions */}
-      <div>
-        <h2 className="text-lg font-semibold text-gray-800 mb-3">Quick Actions</h2>
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href="/clinic/appointments/new"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-          >
-            <Calendar className="w-4 h-4" />
-            New Appointment
-          </Link>
-          <Link
-            href="/clinic/patients"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
-          >
-            <PawPrint className="w-4 h-4" />
-            View Patients
-          </Link>
-          <Link
-            href="/clinic/billing"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
-          >
-            <CreditCard className="w-4 h-4" />
-            Billing
-          </Link>
-        </div>
-      </div>
-
-      {/* Today's appointments list */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-gray-800">Today's Appointments</h2>
-          <Link href="/clinic/appointments" className="text-sm text-primary hover:underline">
-            View all →
-          </Link>
-        </div>
-        {nonCancelled.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-gray-400">
-              No appointments scheduled for today.
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-2">
-            {nonCancelled.map((appt) => (
-              <Card key={appt.id} className="hover:shadow-sm transition-shadow">
-                <CardContent className="py-3 px-4 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm tabular-nums text-muted-foreground w-14">
-                      {new Date(appt.scheduledAt).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </span>
-                    <div>
-                      <p className="font-medium text-sm">{appt.reason}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {appt.durationMinutes} min
-                        {appt.vetUserId ? ` · Vet: ${appt.vetUserId.slice(0, 8)}…` : ''}
-                      </p>
-                    </div>
-                  </div>
-                  <Badge variant={STATUS_COLORS[appt.status] ?? 'secondary'}>
-                    {appt.status.replace('_', ' ')}
-                  </Badge>
-                </CardContent>
-              </Card>
-            ))}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Button variant="outline" className="h-auto py-4 flex-col gap-2" asChild>
+              <Link href="/clinic/appointments/new">
+                <Calendar className="w-5 h-5" />
+                <span>New Appointment</span>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-auto py-4 flex-col gap-2" asChild>
+              <Link href="/clinic/patients">
+                <PawPrint className="w-5 h-5" />
+                <span>Add Patient</span>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-auto py-4 flex-col gap-2" asChild>
+              <Link href="/clients">
+                <Users className="w-5 h-5" />
+                <span>Add Client</span>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-auto py-4 flex-col gap-2" asChild>
+              <Link href="/clinic/billing">
+                <DollarSign className="w-5 h-5" />
+                <span>Create Invoice</span>
+              </Link>
+            </Button>
           </div>
-        )}
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

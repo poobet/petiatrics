@@ -61,7 +61,8 @@
     "staff": "พนักงาน",
     "audit": "บันทึกการตรวจสอบ",
     "settings": "การตั้งค่า",
-    "mobileApp": "แอปมือถือ"
+    "mobileApp": "แอปเจ้าของสัตว์",
+    "mobileAppSubtitle": "มุมมองมือถือ"
   },
   "dashboard": {
     "title": "แดชบอร์ด",

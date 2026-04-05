@@ -61,7 +61,8 @@
     "staff": "Staff",
     "audit": "Audit Log",
     "settings": "Settings",
-    "mobileApp": "Mobile App"
+    "mobileApp": "Mobile App",
+    "mobileAppSubtitle": "Owner mobile view"
   },
   "dashboard": {
     "title": "Dashboard",
