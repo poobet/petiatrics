@@ -91,6 +91,7 @@
     "inventory": "Inventory",
     "billing": "Billing",
     "staff": "Staff",
+    "businessPartners": "Business Partners",
     "audit": "Audit Log",
     "settings": "Settings",
     "mobileApp": "Mobile App",
@@ -364,6 +365,47 @@
   "locale": {
     "th": "ภาษาไทย",
     "en": "English"
+  },
+  "businessPartners": {
+    "title": "Business Partners",
+    "new": "Add Business Partner",
+    "edit": "Edit Business Partner",
+    "name": "Name",
+    "type": "Type",
+    "linkedUser": "Linked User",
+    "noPartners": "No business partners found.",
+    "showInactive": "Show Inactive",
+    "types": {
+      "CUSTOMER": "Customer",
+      "STAFF": "Staff",
+      "VET": "Veterinarian",
+      "SUPPLIER": "Supplier",
+      "OTHER": "Other"
+    },
+    "vet": {
+      "licenseNumber": "Veterinary License No.",
+      "whtRate": "WHT Rate (%)"
+    },
+    "supplier": {
+      "taxId": "Tax ID",
+      "creditTermDays": "Credit Term (days)"
+    },
+    "linkUser": "Link to User Account",
+    "linkUserHint": "Optionally link this business partner to a staff user account",
+    "deactivate": "Deactivate",
+    "confirmDeactivate": "Deactivate this business partner? They will no longer appear in active lists.",
+    "successCreate": "Business partner created.",
+    "successUpdate": "Business partner updated.",
+    "successDeactivate": "Business partner deactivated.",
+    "errorCreate": "Failed to create business partner.",
+    "errorUpdate": "Failed to update business partner.",
+    "errorDeactivate": "Failed to deactivate business partner.",
+    "validation": {
+      "nameRequired": "Name is required.",
+      "licenseRequired": "Veterinary license number is required for VET type.",
+      "taxIdRequired": "Tax ID is required for SUPPLIER type.",
+      "creditTermRequired": "Credit term days is required for SUPPLIER type."
+    }
   },
   "admin": {
     "clinics": {

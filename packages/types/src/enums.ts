@@ -78,3 +78,11 @@ export enum AuditOperation {
   STATUS_CHANGE = 'status_change',
 }
 
+export enum BusinessPartnerType {
+  CUSTOMER = 'CUSTOMER',
+  STAFF = 'STAFF',
+  VET = 'VET',
+  SUPPLIER = 'SUPPLIER',
+  OTHER = 'OTHER',
+}
+

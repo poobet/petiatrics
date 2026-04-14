@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -151,5 +152,31 @@ export class UserService {
     const user = await this.prisma.user.findFirst({ where: { id, clinicId } });
     if (!user) throw new NotFoundException(`User ${id} not found in clinic.`);
     return user;
+  }
+
+  /**
+   * Link a user to an existing Business Partner.
+   * Both must belong to the same clinic. The user must not already be linked to another BP.
+   */
+  async linkToBusinessPartner(userId: string, businessPartnerId: string, clinicId: string): Promise<User> {
+    const user = await this.findOneInClinic(userId, clinicId);
+    if (user.businessPartnerId && user.businessPartnerId !== businessPartnerId) {
+      throw new ConflictException('User is already linked to another Business Partner');
+    }
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { businessPartnerId },
+    });
+  }
+
+  /**
+   * Remove a user's Business Partner linkage.
+   */
+  async unlinkFromBusinessPartner(userId: string, clinicId: string): Promise<User> {
+    await this.findOneInClinic(userId, clinicId);
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { businessPartnerId: null },
+    });
   }
 }

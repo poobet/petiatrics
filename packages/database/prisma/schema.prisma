@@ -72,6 +72,14 @@ enum StockMovementRefType {
   MANUAL
 }
 
+enum BpType {
+  CUSTOMER
+  STAFF
+  VET
+  SUPPLIER
+  OTHER
+}
+
 enum InvoiceLineItemType {
   SERVICE
   PRODUCT
@@ -94,12 +102,13 @@ model Clinic {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
-  users          User[]
-  branches       Branch[]
-  appointments   Appointment[]
-  products       Product[]
-  stockMovements StockMovement[]
-  invoices       Invoice[]
+  users            User[]
+  branches         Branch[]
+  appointments     Appointment[]
+  products         Product[]
+  stockMovements   StockMovement[]
+  invoices         Invoice[]
+  businessPartners BusinessPartner[]
 
   @@map("clinics")
 }
@@ -138,6 +147,7 @@ model UserBranch {
 model User {
   id                  String     @id @default(uuid())
   clinicId            String?
+  businessPartnerId   String?    @unique
   name                String     @default("")
   email               String?    @unique
   username            String?    @unique
@@ -152,14 +162,61 @@ model User {
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
 
-  clinic       Clinic?       @relation(fields: [clinicId], references: [id])
-  userBranches UserBranch[]
-  appointments Appointment[] @relation("VetAppointments")
+  clinic          Clinic?          @relation(fields: [clinicId], references: [id])
+  businessPartner BusinessPartner? @relation(fields: [businessPartnerId], references: [id])
+  userBranches    UserBranch[]
+  appointments    Appointment[]    @relation("VetAppointments")
 
   @@index([clinicId])
   @@index([email])
   @@index([username])
   @@map("users")
+}
+
+// ─── BusinessPartner ──────────────────────────────────────────────────────────
+
+model BusinessPartner {
+  id        String   @id @default(uuid())
+  clinicId  String
+  type      BpType
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clinic  Clinic       @relation(fields: [clinicId], references: [id])
+  user    User?
+  vetExt  BpVet?
+  suppExt BpSupplier?
+
+  @@index([clinicId])
+  @@index([clinicId, isActive])
+  @@index([clinicId, type, isActive])
+  @@map("business_partners")
+}
+
+// ─── BpVet ────────────────────────────────────────────────────────────────────
+
+model BpVet {
+  bpId          String          @id
+  licenseNumber String          @unique
+  whtRate       Decimal         @default(3.00) @db.Decimal(5, 2)
+
+  bp BusinessPartner @relation(fields: [bpId], references: [id])
+
+  @@map("bp_vets")
+}
+
+// ─── BpSupplier ───────────────────────────────────────────────────────────────
+
+model BpSupplier {
+  bpId           String @id
+  taxId          String
+  creditTermDays Int
+
+  bp BusinessPartner @relation(fields: [bpId], references: [id])
+
+  @@map("bp_suppliers")
 }
 
 // ─── Appointment ─────────────────────────────────────────────────────────────

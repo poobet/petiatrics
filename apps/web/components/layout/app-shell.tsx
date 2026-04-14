@@ -22,6 +22,7 @@ import {
   ChevronDown,
   LogOut,
   Search,
+  Briefcase,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@petiatrics/ui';
 import { Button } from '@petiatrics/ui';
@@ -38,7 +39,7 @@ import type { AuthProfile } from '@petiatrics/types';
 import { BranchSelector } from './branch-selector';
 import { useSessionStore } from '../../lib/session-store';
 
-type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'billing' | 'staff' | 'audit' | 'mobileApp' | 'settings';
+type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'billing' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings';
 
 interface NavItem {
   key: NavKey;
@@ -60,6 +61,12 @@ const NAV_ITEMS: NavItem[] = [
     href: '/clinic/staff',
     icon: UserCog,
     roles: ['CLINIC_OWNER', 'SUPER_ADMIN'],
+  },
+  {
+    key: 'businessPartners',
+    href: '/clinic/business-partners',
+    icon: Briefcase,
+    roles: ['CLINIC_OWNER', 'SUPER_ADMIN', 'STAFF'],
   },
   {
     key: 'audit',

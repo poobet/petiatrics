@@ -1,6 +1,6 @@
 ﻿# petiatrics Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-06
+Auto-generated from all feature plans. Last updated: 2026-04-14
 
 ## Active Technologies
 - TypeScript 5.8.x on Node.js 20+ + Next.js 15 App Router, React 19, NestJS 11, Prisma 6, ioredis, bcrypt, class-validator, next-intl, Turborepo, shared `@petiatrics/*` packages, Zustand for web app session/branch state (002-first-vertical-slice)
@@ -9,6 +9,8 @@ Auto-generated from all feature plans. Last updated: 2026-04-06
 - [if applicable, e.g., PostgreSQL, CoreData, files or N/A] (003-clinic-onboarding-staff)
 - TypeScript 5.8.x on Node.js 20+ + NestJS 11, Next.js 15 App Router, React 19, Prisma 6 (PostgreSQL), ioredis, bcrypt, `@nestjs/throttler`, next-intl, Zustand, Turborepo (003-clinic-onboarding-staff)
 - PostgreSQL for all relational data, Redis for server-side sessions (003-clinic-onboarding-staff)
+- TypeScript 5.8.x on Node.js 20+ + NestJS 11, Next.js 15 App Router, React 19, Prisma 6, PostgreSQL, Redis via ioredis, class-validator, bcrypt, Zustand, next-intl (005-identity-bp-spec)
+- PostgreSQL for identity and BP master data, Redis for server-side sessions, MongoDB retained for existing clinical records and audit collections (005-identity-bp-spec)
 
 - TypeScript 5.x on Node.js 20 LTS + Next.js App Router, React 19, NestJS, Prisma, Mongoose, Redis, Tailwind CSS, Radix UI, Storybook, Turborepo, next-intl or equivalent i18n layer (001-petiatrics-platform-all)
 
@@ -29,9 +31,9 @@ npm test; npm run lint
 TypeScript 5.x on Node.js 20 LTS: Follow standard conventions
 
 ## Recent Changes
+- 005-identity-bp-spec: Added TypeScript 5.8.x on Node.js 20+ + NestJS 11, Next.js 15 App Router, React 19, Prisma 6, PostgreSQL, Redis via ioredis, class-validator, bcrypt, Zustand, next-intl
 - 003-clinic-onboarding-staff: Added TypeScript 5.8.x on Node.js 20+ + NestJS 11, Next.js 15 App Router, React 19, Prisma 6 (PostgreSQL), ioredis, bcrypt, `@nestjs/throttler`, next-intl, Zustand, Turborepo
 - 003-clinic-onboarding-staff: Added [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION] + [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
-- 002-first-vertical-slice: Added TypeScript 5.8.x on Node.js 20+ + Next.js 15 App Router, React 19, NestJS 11, Prisma 6, ioredis, bcrypt, class-validator, next-intl, Turborepo, shared `@petiatrics/*` packages, Zustand for web app session/branch state
 
 
 <!-- MANUAL ADDITIONS START -->
