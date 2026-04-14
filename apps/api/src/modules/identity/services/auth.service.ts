@@ -40,6 +40,9 @@ export class AuthService {
 
   async login(dto: LoginDto, ipAddress?: string): Promise<LoginResult> {
     const { identifier, password } = dto;
+    if (!identifier || !password) {
+      throw new UnauthorizedException('Invalid credentials.');
+    }
     const identifierNorm = identifier.toLowerCase().trim();
 
     const includeShape = {
@@ -57,12 +60,11 @@ export class AuthService {
 
     if (!user && identifierNorm.includes('@')) {
       const atIndex = identifierNorm.lastIndexOf('@');
-      const usernamepart = identifierNorm.slice(0, atIndex);
       const clinicSlug = identifierNorm.slice(atIndex + 1);
       const clinic = await this.prisma.clinic.findUnique({ where: { slug: clinicSlug } });
       if (clinic) {
         user = await this.prisma.user.findFirst({
-          where: { username: usernamepart, clinicId: clinic.id },
+          where: { username: identifierNorm, clinicId: clinic.id },
           include: includeShape,
         });
       }

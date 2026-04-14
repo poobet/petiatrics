@@ -42,7 +42,7 @@
     "logout": "ออกจากระบบ",
     "email": "ที่อยู่อีเมล",
     "identifierLabel": "อีเมลหรือชื่อผู้ใช้",
-    "identifierHint": "สามารถใช้อีเมลหรือ username@รหัสคลินิก"ตเนโดยไม่มีเว้น",
+    "identifierHint": "สามารถใช้อีเมลหรือ username@รหัสคลินิก โดยไม่มีเว้นวรรค",
     "identifierPlaceholder": "email@example.com หรือ username@clinic",
     "password": "รหัสผ่าน",
     "forgotPassword": "ลืมรหัสผ่าน?",

@@ -160,7 +160,7 @@
 - [X] T039 [P] Audit all existing TypeScript consumers of `UserContext.email` and `AuthProfile.email` — fix any non-null assertions that now fail due to nullable email across `apps/api/` and `apps/web/`
 - [X] T040 [P] Verify existing INVITED-status users with email addresses can still log in via the email path — manual smoke test or seed verification in `packages/database/src/seed.ts`
 - [X] T041 [P] Run `turbo build` from repo root and fix any remaining compile errors across all packages
-- [ ] T042 Run quickstart.md validation — follow all steps in `specs/003-clinic-onboarding-staff/quickstart.md` and confirm expected outputs
+- [X] T042 Run quickstart.md validation — follow all steps in `specs/003-clinic-onboarding-staff/quickstart.md` and confirm expected outputs
 
 ---
 
