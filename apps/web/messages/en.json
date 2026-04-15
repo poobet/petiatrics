@@ -35,7 +35,8 @@
     "error": "Error",
     "success": "Success",
     "warning": "Warning",
-    "info": "Info"
+    "info": "Info",
+    "clear": "Clear"
   },
   "auth": {
     "login": "Log In",
@@ -382,13 +383,31 @@
       "SUPPLIER": "Supplier",
       "OTHER": "Other"
     },
-    "vet": {
-      "licenseNumber": "Veterinary License No.",
-      "whtRate": "WHT Rate (%)"
+    "taxId": "Tax ID (13-digit Thai TIN)",
+    "isHeadOffice": "Head Office",
+    "branchCode": "Branch Code (5 digits)",
+    "addressLine1": "Address Line 1",
+    "subDistrict": "Sub-District",
+    "district": "District",
+    "province": "Province",
+    "zipcode": "Postcode",
+    "defaultVatCode": "Default VAT Code",
+    "defaultWhtCode": "Default WHT Code",
+    "noTaxCode": "— None —",
+    "creditTermDays": "Credit Term (days)",
+    "activeRoles": "Active LN Roles",
+    "roles": {
+      "AR_SOLD_TO": "AR Sold-To",
+      "AR_SHIP_TO": "AR Ship-To",
+      "AR_INVOICE_TO": "AR Invoice-To",
+      "AR_PAY_BY": "AR Pay-By",
+      "AP_BUY_FROM": "AP Buy-From",
+      "AP_SHIP_FROM": "AP Ship-From",
+      "AP_INVOICE_FROM": "AP Invoice-From",
+      "AP_PAY_TO": "AP Pay-To"
     },
-    "supplier": {
-      "taxId": "Tax ID",
-      "creditTermDays": "Credit Term (days)"
+    "vet": {
+      "licenseNumber": "Veterinary License No."
     },
     "linkUser": "Link to User Account",
     "linkUserHint": "Optionally link this business partner to a staff user account",
@@ -402,9 +421,9 @@
     "errorDeactivate": "Failed to deactivate business partner.",
     "validation": {
       "nameRequired": "Name is required.",
+      "typeRequired": "Type is required.",
       "licenseRequired": "Veterinary license number is required for VET type.",
-      "taxIdRequired": "Tax ID is required for SUPPLIER type.",
-      "creditTermRequired": "Credit term days is required for SUPPLIER type."
+      "taxIdFormat": "Tax ID must be exactly 13 digits."
     }
   },
   "admin": {

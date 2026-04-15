@@ -35,7 +35,8 @@
     "error": "ข้อผิดพลาด",
     "success": "สำเร็จ",
     "warning": "คำเตือน",
-    "info": "ข้อมูล"
+    "info": "ข้อมูล",
+    "clear": "ล้าง"
   },
   "auth": {
     "login": "เข้าสู่ระบบ",
@@ -382,13 +383,31 @@
       "SUPPLIER": "ซัพพลายเออร์",
       "OTHER": "อื่นๆ"
     },
-    "vet": {
-      "licenseNumber": "เลขที่ใบอนุญาตสัตวแพทย์",
-      "whtRate": "อัตราหัก ณ ที่จ่าย (%)"
+    "taxId": "เลขประจำตัวผู้เสียภาษี (13 หลัก)",
+    "isHeadOffice": "สำนักงานใหญ่",
+    "branchCode": "รหัสสาขา (5 หลัก)",
+    "addressLine1": "ที่อยู่",
+    "subDistrict": "ตำบล / แขวง",
+    "district": "อำเภอ / เขต",
+    "province": "จังหวัด",
+    "zipcode": "รหัสไปรษณีย์",
+    "defaultVatCode": "รหัส VAT เริ่มต้น",
+    "defaultWhtCode": "รหัส WHT เริ่มต้น",
+    "noTaxCode": "— ไม่มี —",
+    "creditTermDays": "เครดิต (วัน)",
+    "activeRoles": "บทบาท LN ที่ใช้งาน",
+    "roles": {
+      "AR_SOLD_TO": "AR Sold-To",
+      "AR_SHIP_TO": "AR Ship-To",
+      "AR_INVOICE_TO": "AR Invoice-To",
+      "AR_PAY_BY": "AR Pay-By",
+      "AP_BUY_FROM": "AP Buy-From",
+      "AP_SHIP_FROM": "AP Ship-From",
+      "AP_INVOICE_FROM": "AP Invoice-From",
+      "AP_PAY_TO": "AP Pay-To"
     },
-    "supplier": {
-      "taxId": "เลขประจำตัวผู้เสียภาษี",
-      "creditTermDays": "เครดิต (วัน)"
+    "vet": {
+      "licenseNumber": "เลขที่ใบอนุญาตสัตวแพทย์"
     },
     "linkUser": "เชื่อมโยงกับบัญชีผู้ใช้",
     "linkUserHint": "เชื่อมโยงคู่ค้าธุรกิจนี้กับบัญชีผู้ใช้พนักงาน (ไม่บังคับ)",
@@ -402,9 +421,9 @@
     "errorDeactivate": "ปิดการใช้งานคู่ค้าธุรกิจไม่สำเร็จ",
     "validation": {
       "nameRequired": "กรุณากรอกชื่อ",
+      "typeRequired": "กรุณาเลือกประเภท",
       "licenseRequired": "กรุณากรอกเลขที่ใบอนุญาตสัตวแพทย์สำหรับประเภท VET",
-      "taxIdRequired": "กรุณากรอกเลขประจำตัวผู้เสียภาษีสำหรับประเภท SUPPLIER",
-      "creditTermRequired": "กรุณากรอกระยะเวลาเครดิตสำหรับประเภท SUPPLIER"
+      "taxIdFormat": "เลขประจำตัวผู้เสียภาษีต้องมี 13 หลัก"
     }
   },
   "admin": {
