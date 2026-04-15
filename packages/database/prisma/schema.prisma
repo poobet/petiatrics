@@ -81,6 +81,18 @@ enum BpType {
   OTHER
 }
 
+// 8 Infor LN partner roles — AR side (receivables) and AP side (payables)
+enum BpRole {
+  AR_SOLD_TO
+  AR_SHIP_TO
+  AR_INVOICE_TO
+  AR_PAY_BY
+  AP_BUY_FROM
+  AP_SHIP_FROM
+  AP_INVOICE_FROM
+  AP_PAY_TO
+}
+
 enum InvoiceLineItemType {
   SERVICE
   PRODUCT
@@ -174,26 +186,88 @@ model User {
   @@map("users")
 }
 
+// ─── TaxCode (global reference — no clinicId, seeded by system) ──────────────
+//
+// VAT registration status of a BusinessPartner is inferred: a BP is VAT-registered
+// when its defaultVatCodeId references a TaxCode where isVatType == true.
+// The deprecated isVatRegistered boolean MUST NOT be re-introduced.
+
+model TaxCode {
+  id          String   @id @default(uuid())
+  code        String   @unique // e.g. "VAT7", "VAT0", "WHT3", "WHT1"
+  description String
+  rate        Decimal  @default(0) @db.Decimal(7, 4) // percentage, e.g. 7.0000
+  isVatType   Boolean  @default(false)               // true = VAT code; false = WHT code
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  defaultVatBps BusinessPartner[] @relation("DefaultVatCode")
+  defaultWhtBps BusinessPartner[] @relation("DefaultWhtCode")
+
+  @@index([isVatType, isActive])
+  @@map("tax_codes")
+}
+
 // ─── BusinessPartner ──────────────────────────────────────────────────────────
+//
+// Clinic-owned, tenant-scoped. Thai enterprise-grade structure.
+// Soft-delete ONLY via isActive = false. Hard deletes are FORBIDDEN.
+// VAT status is INFERRED from defaultVatCodeId → TaxCode.isVatType (not stored).
+// Runtime invoice VAT is driven by ItemMaster — not by this BP default.
 
 model BusinessPartner {
-  id        String   @id @default(uuid())
-  clinicId  String
-  type      BpType
-  name      String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String   @id @default(uuid())
+  clinicId         String
+  type             BpType
+  name             String
+  // Thai compliance core fields
+  taxId            String?  // 13-digit Thai TIN (taxpayer ID)
+  isHeadOffice     Boolean  @default(true)
+  branchCode       String?  // 5-digit branch code for non-HO locations
+  addressLine1     String?
+  subDistrict      String?
+  district         String?
+  province         String?
+  zipcode          String?
+  // BP hierarchy (same clinic only)
+  parentBpId       String?
+  // Tax defaults (FK to global TaxCode table)
+  defaultVatCodeId String?
+  defaultWhtCodeId String?
+  // Payment defaults
+  creditTermDays   Int      @default(0)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  clinic  Clinic       @relation(fields: [clinicId], references: [id])
-  user    User?
-  vetExt  BpVet?
-  suppExt BpSupplier?
+  clinic         Clinic          @relation(fields: [clinicId], references: [id])
+  parentBp       BusinessPartner?  @relation("BpHierarchy", fields: [parentBpId], references: [id])
+  childBps       BusinessPartner[] @relation("BpHierarchy")
+  defaultVatCode TaxCode?        @relation("DefaultVatCode", fields: [defaultVatCodeId], references: [id])
+  defaultWhtCode TaxCode?        @relation("DefaultWhtCode", fields: [defaultWhtCodeId], references: [id])
+  user           User?
+  vetExt         BpVet?
+  suppExt        BpSupplier?
+  activeRoles    BpRoleActive[]
 
   @@index([clinicId])
   @@index([clinicId, isActive])
   @@index([clinicId, type, isActive])
+  @@index([clinicId, taxId])
   @@map("business_partners")
+}
+
+// ─── BpRoleActive (junction — which LN roles this BP currently serves) ────────
+
+model BpRoleActive {
+  bpId String
+  role BpRole
+
+  bp BusinessPartner @relation(fields: [bpId], references: [id])
+
+  @@id([bpId, role])
+  @@map("bp_roles_active")
 }
 
 // ─── BpVet ────────────────────────────────────────────────────────────────────
@@ -209,11 +283,11 @@ model BpVet {
 }
 
 // ─── BpSupplier ───────────────────────────────────────────────────────────────
+// Extension-only. taxId and creditTermDays have moved to BusinessPartner core.
 
 model BpSupplier {
-  bpId           String @id
-  taxId          String
-  creditTermDays Int
+  bpId          String  @id
+  vendorGroupId String?
 
   bp BusinessPartner @relation(fields: [bpId], references: [id])
 

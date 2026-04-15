@@ -19,6 +19,7 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
     "strict": true,
+    "types": ["jest", "node"],
     "paths": {
       "@petiatrics/types": ["../../packages/types/dist"],
       "@petiatrics/types/*": ["../../packages/types/dist/*"],

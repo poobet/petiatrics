@@ -1,4 +1,4 @@
-import { Role, Locale, BusinessPartnerType } from './enums';
+import { Role, Locale, BusinessPartnerType, BpRole } from './enums';
 
 // ─── Response Envelope ───────────────────────────────────────────────────────
 
@@ -82,19 +82,48 @@ export interface DateRangeQuery {
 
 // ─── Business Partner DTOs ────────────────────────────────────────────────────
 
+// Global TaxCode reference (seeded by system, no clinicId).
+// VAT registration of a BP is inferred: isVatRegistered = defaultVatCode.isVatType
+export interface TaxCodeResponse {
+  id: string;
+  code: string;        // e.g. "VAT7", "VAT0", "WHT3"
+  description: string;
+  rate: number;        // percentage, e.g. 7.0
+  isVatType: boolean;  // true = VAT code; false = WHT code
+}
+
 export interface BpVetPayload {
   licenseNumber: string;
   whtRate?: number;
 }
 
+// BpSupplier extension — vendor classification only.
+// taxId and creditTermDays have moved to BusinessPartner core Thai fields.
 export interface BpSupplierPayload {
-  taxId: string;
-  creditTermDays: number;
+  vendorGroupId?: string | null;
 }
 
 export interface CreateBusinessPartnerPayload {
   type: BusinessPartnerType;
   name: string;
+  // Thai compliance core fields
+  taxId?: string | null;          // 13-digit Thai TIN
+  isHeadOffice?: boolean;
+  branchCode?: string | null;     // 5-digit for non-HO branches
+  addressLine1?: string | null;
+  subDistrict?: string | null;
+  district?: string | null;
+  province?: string | null;
+  zipcode?: string | null;
+  // Hierarchy (same clinic)
+  parentBpId?: string | null;
+  // Tax defaults — runtime item-level VAT is driven by ItemMaster, not BP profile
+  defaultVatCodeId?: string | null;
+  defaultWhtCodeId?: string | null;
+  // Payment defaults
+  creditTermDays?: number;
+  // Infor LN role activation
+  activeRoles?: BpRole[];
   linkUserId?: string | null;
   vet?: BpVetPayload | null;
   supplier?: BpSupplierPayload | null;
@@ -102,6 +131,19 @@ export interface CreateBusinessPartnerPayload {
 
 export interface UpdateBusinessPartnerPayload {
   name?: string;
+  taxId?: string | null;
+  isHeadOffice?: boolean;
+  branchCode?: string | null;
+  addressLine1?: string | null;
+  subDistrict?: string | null;
+  district?: string | null;
+  province?: string | null;
+  zipcode?: string | null;
+  parentBpId?: string | null;
+  defaultVatCodeId?: string | null;
+  defaultWhtCodeId?: string | null;
+  creditTermDays?: number;
+  activeRoles?: BpRole[];
   linkUserId?: string | null;
   vet?: BpVetPayload | null;
   supplier?: BpSupplierPayload | null;
@@ -125,9 +167,9 @@ export interface BpVetResponse {
   whtRate: number;
 }
 
+// Extension-only — vendor classification metadata.
 export interface BpSupplierResponse {
-  taxId: string;
-  creditTermDays: number;
+  vendorGroupId: string | null;
 }
 
 export interface BusinessPartnerResponse {
@@ -135,6 +177,32 @@ export interface BusinessPartnerResponse {
   clinicId: string;
   type: BusinessPartnerType;
   name: string;
+  // Thai compliance fields
+  taxId: string | null;
+  isHeadOffice: boolean;
+  branchCode: string | null;
+  addressLine1: string | null;
+  subDistrict: string | null;
+  district: string | null;
+  province: string | null;
+  zipcode: string | null;
+  // Hierarchy
+  parentBpId: string | null;
+  // Tax defaults
+  defaultVatCodeId: string | null;
+  defaultWhtCodeId: string | null;
+  /** Resolved TaxCode objects for display/inference — NOT invoice-level tax calculation */
+  defaultVatCode: TaxCodeResponse | null;
+  defaultWhtCode: TaxCodeResponse | null;
+  /**
+   * Inferred VAT registration status — derived from defaultVatCode.isVatType.
+   * isVatRegistered is NOT a stored field; it must never be persisted or sent in payloads.
+   * Item-level VAT applicability on invoices is driven by ItemMaster, not this flag.
+   */
+  isVatRegistered: boolean;
+  // Payment defaults
+  creditTermDays: number;
+  activeRoles: BpRole[];
   isActive: boolean;
   user: BpUserSummary | null;
   vet: BpVetResponse | null;

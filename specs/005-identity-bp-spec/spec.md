@@ -53,7 +53,7 @@ As a clinic owner or admin, I need to manage Business Partners (Customers, Staff
 - Q: Which roles may create/edit vs. view Business Partners? → A: SUPER_ADMIN, CLINIC_OWNER & STAFF can create/edit; VET and CASHIER have read-only access.
 - Q: What session lifetime and idle timeout should be used? → A: 12-hour absolute TTL with 1-hour idle timeout.
 - Q: What password policy and brute-force protection should be enforced? → A: Min 8 chars (upper+lower+digit+special), lock after 5 failed attempts for 15 min.
-- Q: What deletion strategy should be used for Business Partners? → A: Soft delete only (isActive flag); BP data always retained for referential integrity.
+- Q: What deletion strategy should be used for Business Partners? → A: Strict soft delete only (`isActive` flag). BP data MUST ALWAYS be retained to maintain referential integrity. No user, regardless of role, may perform a hard delete.
 - Q: What is explicitly out of scope for this feature? → A: Procurement (PO/GR), Sales/Billing (AR), Payments, ItemMaster, Warehouse — all deferred to later features.
 
 ## Requirements *(mandatory)*
@@ -71,16 +71,24 @@ As a clinic owner or admin, I need to manage Business Partners (Customers, Staff
 - **FR-009**: Only users with role `SUPER_ADMIN`, `CLINIC_OWNER`, or `STAFF` MUST be permitted to create or edit Business Partners. Roles `VET` and `CASHIER` MUST have read-only access to BP data.
 - **FR-010**: Redis sessions MUST have a 12-hour absolute TTL and a 1-hour sliding idle timeout. Sessions exceeding either limit MUST be invalidated, returning HTTP 401.
 - **FR-011**: Passwords MUST be at least 8 characters and contain at least one uppercase letter, one lowercase letter, one digit, and one special character. After 5 consecutive failed login attempts, the account MUST be locked for 15 minutes.
-- **FR-012**: Business Partners MUST NOT be hard-deleted. Deactivation MUST use a soft-delete `isActive` flag. Deactivated BPs MUST remain queryable for historical document references but MUST be excluded from active selection lists.
+- **FR-012**: Business Partners MUST NOT be hard-deleted. Deactivation MUST use a **strict soft-delete** `isActive` flag. Deactivated BPs MUST remain queryable for historical document references but MUST be excluded from active selection lists. Data integrity must be strictly maintained.
+
+### Business & Tax Logic
+
+- **Tax Inference Logic**: VAT registration status of a Business Partner is NO LONGER determined through a standalone boolean field. The `isVatRegistered` property is explicitly **DEPRECATED and REMOVED**. Instead, a Business Partner's VAT registration is inferred by checking if their `defaultVatCodeId` references a `TaxCode` record where `isVatType == true`.
+- **Item-Level VAT Applicability**: VAT applicability on sales/invoices is driven strictly by the `ItemMaster` (e.g., Medical treatments are VAT_EXEMPT, whereas Pet Food is VAT7), NOT by the customer's profile. The default VAT Code from the customer's profile is only used to determine the rate and presentation if the item is VAT-applicable.
+- **Deletion Strategy**: Strict Soft Delete MUST be enforced. Any deactivation simply toggles `isActive = false`, and hard deletes are forbidden to protect AR/AP referential integrity.
 
 ### Key Entities *(include if feature involves data)*
 
 - **Clinic**: Represents the top-level tenant organization.
 - **Branch**: Represents physical locations within a Clinic.
 - **User**: Stores login credentials (`loginEmail`, `passwordHash`, `role`), strictly linked to a `BusinessPartner`.
-- **BusinessPartner**: Universal entity for all human/corporate actors (`type`, `name`, `clinicId`, `isActive`). Soft-delete only; never hard-deleted.
+- **BusinessPartner**: Universal entity for all human/corporate actors (`type`, `name`, `clinicId`, `isActive`). Incorporates Enterprise-Grade Thai structure: `taxId` (13 digits), branch/head-office details, structured address, and relationships to Default Tax Codes and Parent BPs. Soft-delete only; never hard-deleted.
+- **TaxCode**: Master table defining VAT and WHT rates and types.
+- **BpRoleActive**: Junction table tracking which of the 8 standard Infor LN roles (AR: Sold-to, Ship-to, Invoice-to, Pay-by; AP: Buy-from, Ship-from, Invoice-from, Pay-to) a BP serves.
 - **BpVet**: 1-to-1 extension for Vets, containing `licenseNumber` and `whtRate`.
-- **BpSupplier**: 1-to-1 extension for Suppliers, containing `taxId` and `creditTermDays`.
+- **BpSupplier**: 1-to-1 extension for Suppliers, now containing specific regulatory tracking like `vendorGroupId` (since standard tax/credit details moved to `BusinessPartner`).
 
 ## Success Criteria *(mandatory)*
 

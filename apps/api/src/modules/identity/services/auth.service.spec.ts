@@ -95,6 +95,12 @@ describe('AuthService', () => {
   // ─── Password policy ────────────────────────────────────────────────────
 
   describe('assertPasswordPolicy (via changePassword)', () => {
+    beforeEach(() => {
+      const mustChangeUser = makeUser({ mustChangePassword: true });
+      prismaMock.user.findUnique = jest.fn().mockResolvedValue(mustChangeUser);
+      prismaMock.user.findFirst = jest.fn().mockResolvedValue(mustChangeUser);
+    });
+
     it('rejects password shorter than 8 chars', async () => {
       await expect(service.changePassword('user-1', undefined, 'Ab1!')).rejects.toThrow(
         'at least 8 characters',

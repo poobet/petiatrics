@@ -78,6 +78,19 @@ export enum AuditOperation {
   STATUS_CHANGE = 'status_change',
 }
 
+// 8 Infor LN partner roles — AR side (receivables) and AP side (payables).
+// Mirrors the BpRole enum in schema.prisma.
+export enum BpRole {
+  AR_SOLD_TO = 'AR_SOLD_TO',
+  AR_SHIP_TO = 'AR_SHIP_TO',
+  AR_INVOICE_TO = 'AR_INVOICE_TO',
+  AR_PAY_BY = 'AR_PAY_BY',
+  AP_BUY_FROM = 'AP_BUY_FROM',
+  AP_SHIP_FROM = 'AP_SHIP_FROM',
+  AP_INVOICE_FROM = 'AP_INVOICE_FROM',
+  AP_PAY_TO = 'AP_PAY_TO',
+}
+
 export enum BusinessPartnerType {
   CUSTOMER = 'CUSTOMER',
   STAFF = 'STAFF',
