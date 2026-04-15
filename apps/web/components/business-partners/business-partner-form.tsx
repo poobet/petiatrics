@@ -2,6 +2,8 @@
 
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@petiatrics/ui';
 import { Checkbox } from '@petiatrics/ui';
 import { Input } from '@petiatrics/ui';
@@ -15,7 +17,6 @@ import {
 } from '@petiatrics/ui';
 import { Separator } from '@petiatrics/ui';
 import { Switch } from '@petiatrics/ui';
-import { Loader2 } from 'lucide-react';
 import { apiClient } from '../../lib/api-client';
 import ExtensionFields, { VetFields } from './extension-fields';
 import {
@@ -28,22 +29,16 @@ import {
 } from '@petiatrics/types';
 
 interface BusinessPartnerFormProps {
+  /** Populated when editing an existing BP; absent for create. */
   initial?: BusinessPartnerResponse;
-  onSubmit: (
-    payload: CreateBusinessPartnerPayload | UpdateBusinessPartnerPayload,
-  ) => Promise<void>;
-  onCancel: () => void;
 }
 
 const ALL_ROLES = Object.values(BpRole);
 
-export default function BusinessPartnerForm({
-  initial,
-  onSubmit,
-  onCancel,
-}: BusinessPartnerFormProps) {
+export default function BusinessPartnerForm({ initial }: BusinessPartnerFormProps) {
   const t = useTranslations('businessPartners');
   const tCommon = useTranslations('common');
+  const router = useRouter();
 
   // ── Core Identity ────────────────────────────────────────────────────────
   const [name, setName] = useState(initial?.name ?? '');
@@ -145,17 +140,46 @@ export default function BusinessPartnerForm({
               : null,
           supplier: null,
         };
-      await onSubmit(payload);
+
+      if (initial) {
+        await apiClient.patch<BusinessPartnerResponse>(
+          `/clinic/business-partners/${initial.id}`,
+          payload,
+        );
+      } else {
+        await apiClient.post<BusinessPartnerResponse>(
+          '/clinic/business-partners',
+          payload,
+        );
+      }
+
+      router.push('/clinic/business-partners');
+      router.refresh();
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function handleCancel() {
+    router.back();
   }
 
   const isEdit = !!initial;
   const allTypes = Object.values(BusinessPartnerType);
 
   return (
-    <div className="space-y-5 mt-2">
+    <div className="max-w-2xl mx-auto py-8 px-4 space-y-6">
+      {/* ── Page Header ───────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={handleCancel} disabled={submitting} aria-label={tCommon('back')}>
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <h1 className="text-2xl font-bold text-gray-900">
+          {isEdit ? t('edit') : t('new')}
+        </h1>
+      </div>
+
+      <div className="rounded-lg border bg-card p-6 space-y-5">
       {/* ── Core Identity ─────────────────────────────────────────────── */}
       <div className="space-y-1.5">
         <Label>{t('name')}</Label>
@@ -378,9 +402,10 @@ export default function BusinessPartnerForm({
           {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
           {tCommon('save')}
         </Button>
-        <Button variant="outline" onClick={onCancel} disabled={submitting}>
+        <Button variant="outline" onClick={handleCancel} disabled={submitting}>
           {tCommon('cancel')}
         </Button>
+      </div>
       </div>
     </div>
   );

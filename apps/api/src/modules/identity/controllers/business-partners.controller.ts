@@ -23,8 +23,11 @@ import type { UserContext } from '@petiatrics/types';
 
 const WRITE_ROLES = [Role.SUPER_ADMIN, Role.CLINIC_OWNER, Role.STAFF];
 
+// BPs are clinic-scoped (clinicId from session). GET endpoints only need the
+// session guard (via RolesGuard parent chain) — no branch header required.
+// Write endpoints add BranchContextGuard for operational context enforcement.
 @Controller('clinic/business-partners')
-@UseGuards(RolesGuard, BranchContextGuard)
+@UseGuards(RolesGuard)
 export class BusinessPartnersController {
   constructor(private readonly bpService: BusinessPartnerService) {}
 
@@ -58,6 +61,7 @@ export class BusinessPartnersController {
    */
   @Post()
   @Roles(...WRITE_ROLES)
+  @UseGuards(BranchContextGuard)
   @HttpCode(HttpStatus.CREATED)
   create(@Body() dto: CreateBusinessPartnerDto, @TenantId() clinicId: string) {
     return this.bpService.create(clinicId, dto);
@@ -69,6 +73,7 @@ export class BusinessPartnersController {
    */
   @Patch(':id')
   @Roles(...WRITE_ROLES)
+  @UseGuards(BranchContextGuard)
   update(
     @Param('id') id: string,
     @Body() dto: UpdateBusinessPartnerDto,
@@ -83,6 +88,7 @@ export class BusinessPartnersController {
    */
   @Patch(':id/deactivate')
   @Roles(Role.SUPER_ADMIN, Role.CLINIC_OWNER)
+  @UseGuards(BranchContextGuard)
   @HttpCode(HttpStatus.OK)
   deactivate(@Param('id') id: string, @TenantId() clinicId: string) {
     return this.bpService.deactivate(id, clinicId);

@@ -1,32 +1,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Button } from '@petiatrics/ui';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@petiatrics/ui';
 import { Plus } from 'lucide-react';
 import { apiClient } from '../../../../lib/api-client';
 import { useSessionStore } from '../../../../lib/session-store';
-import {
-  BusinessPartnerResponse,
-  CreateBusinessPartnerPayload,
-  UpdateBusinessPartnerPayload,
-  Role,
-} from '@petiatrics/types';
+import { BusinessPartnerResponse, Role } from '@petiatrics/types';
 import BusinessPartnerTable from '../../../../components/business-partners/business-partner-table';
-import BusinessPartnerForm from '../../../../components/business-partners/business-partner-form';
 
 const WRITE_ROLES: Role[] = [Role.SUPER_ADMIN, Role.CLINIC_OWNER, Role.STAFF];
 const DEACTIVATE_ROLES: Role[] = [Role.SUPER_ADMIN, Role.CLINIC_OWNER];
 
 export default function BusinessPartnersClient() {
   const t = useTranslations('businessPartners');
+  const router = useRouter();
   const role = useSessionStore((s) => s.user?.role as Role | undefined);
 
   const canWrite = role != null && WRITE_ROLES.includes(role);
@@ -35,8 +24,6 @@ export default function BusinessPartnersClient() {
   const [partners, setPartners] = useState<BusinessPartnerResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInactive, setShowInactive] = useState(false);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<BusinessPartnerResponse | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   async function loadPartners(includeInactive: boolean) {
@@ -55,27 +42,6 @@ export default function BusinessPartnersClient() {
   useEffect(() => {
     loadPartners(showInactive);
   }, [showInactive]);
-
-  async function handleCreate(payload: CreateBusinessPartnerPayload | UpdateBusinessPartnerPayload) {
-    const created = await apiClient.post<BusinessPartnerResponse>(
-      '/clinic/business-partners',
-      payload,
-    );
-    setPartners((prev) => [created, ...prev]);
-    setCreateOpen(false);
-  }
-
-  async function handleUpdate(payload: CreateBusinessPartnerPayload | UpdateBusinessPartnerPayload) {
-    if (!editTarget) return;
-    const updated = await apiClient.patch<BusinessPartnerResponse>(
-      `/clinic/business-partners/${editTarget.id}`,
-      payload,
-    );
-    setPartners((prev) =>
-      prev.map((bp) => (bp.id === updated.id ? updated : bp)),
-    );
-    setEditTarget(null);
-  }
 
   async function handleDeactivate(bp: BusinessPartnerResponse) {
     setBusyId(bp.id);
@@ -105,23 +71,10 @@ export default function BusinessPartnersClient() {
             {t('showInactive')}
           </Button>
           {canWrite && (
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="w-4 h-4 mr-2" />
-                  {t('new')}
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>{t('new')}</DialogTitle>
-                </DialogHeader>
-                <BusinessPartnerForm
-                  onSubmit={handleCreate}
-                  onCancel={() => setCreateOpen(false)}
-                />
-              </DialogContent>
-            </Dialog>
+            <Button size="sm" onClick={() => router.push('/clinic/business-partners/new')}>
+              <Plus className="w-4 h-4 mr-2" />
+              {t('new')}
+            </Button>
           )}
         </div>
       </div>
@@ -134,26 +87,10 @@ export default function BusinessPartnersClient() {
           canWrite={canWrite}
           canDeactivate={canDeactivate}
           busyId={busyId}
-          onEdit={setEditTarget}
+          onEdit={(bp) => router.push(`/clinic/business-partners/${bp.id}/edit`)}
           onDeactivate={handleDeactivate}
         />
       )}
-
-      {/* Edit dialog */}
-      <Dialog open={editTarget != null} onOpenChange={(open) => { if (!open) setEditTarget(null); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('edit')}</DialogTitle>
-          </DialogHeader>
-          {editTarget && (
-            <BusinessPartnerForm
-              initial={editTarget}
-              onSubmit={handleUpdate}
-              onCancel={() => setEditTarget(null)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
