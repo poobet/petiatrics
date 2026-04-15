@@ -51,6 +51,7 @@ export default function BusinessPartnerTable({
       <TableHeader>
         <TableRow>
           <TableHead>{t('name')}</TableHead>
+          <TableHead>{t('taxId')}</TableHead>
           <TableHead>{t('type')}</TableHead>
           <TableHead>{tCommon('status')}</TableHead>
           <TableHead>{t('linkedUser')}</TableHead>
@@ -61,6 +62,9 @@ export default function BusinessPartnerTable({
         {partners.map((bp) => (
           <TableRow key={bp.id} className={!bp.isActive ? 'opacity-50' : undefined}>
             <TableCell className="font-medium">{bp.name}</TableCell>
+            <TableCell className="text-sm text-gray-500 font-mono">
+              {bp.taxId ?? '—'}
+            </TableCell>
             <TableCell>
               <Badge variant="outline">{t(`types.${bp.type}`)}</Badge>
             </TableCell>

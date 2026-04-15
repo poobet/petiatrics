@@ -14,7 +14,7 @@ import { ListBusinessPartnersDto } from '../dto/list-business-partners.dto';
 
 // ─── Helper: map a TaxCode row to the shared response shape ──────────────────
 
-function mapTaxCode(tc: { id: string; code: string; description: string; rate: { toNumber(): number }; isVatType: boolean } | null): TaxCodeResponse | null {
+function mapTaxCode(tc: { id: string; code: string; description: string; rate: { toNumber(): number }; isVatType: boolean; isZeroRated: boolean; type: string } | null): TaxCodeResponse | null {
   if (!tc) return null;
   return {
     id: tc.id,
@@ -22,6 +22,8 @@ function mapTaxCode(tc: { id: string; code: string; description: string; rate: {
     description: tc.description,
     rate: tc.rate.toNumber(),
     isVatType: tc.isVatType,
+    isZeroRated: tc.isZeroRated,
+    type: tc.type,
   };
 }
 
@@ -75,7 +77,7 @@ function mapBpToResponse(
         }
       : null,
     vet: bp.vetExt
-      ? { licenseNumber: bp.vetExt.licenseNumber, whtRate: Number(bp.vetExt.whtRate) }
+      ? { licenseNumber: bp.vetExt.licenseNumber }
       : null,
     supplier: bp.suppExt
       ? { vendorGroupId: bp.suppExt.vendorGroupId ?? null }
@@ -201,7 +203,6 @@ export class BusinessPartnerService {
           data: {
             bpId: created.id,
             licenseNumber: dto.vet.licenseNumber,
-            whtRate: dto.vet.whtRate ?? 3.0,
           },
         });
       }
@@ -290,8 +291,8 @@ export class BusinessPartnerService {
         } else {
           await tx.bpVet.upsert({
             where: { bpId: id },
-            create: { bpId: id, licenseNumber: dto.vet.licenseNumber, whtRate: dto.vet.whtRate ?? 3.0 },
-            update: { licenseNumber: dto.vet.licenseNumber, whtRate: dto.vet.whtRate ?? 3.0 },
+            create: { bpId: id, licenseNumber: dto.vet.licenseNumber },
+            update: { licenseNumber: dto.vet.licenseNumber },
           });
         }
       }
@@ -358,6 +359,15 @@ export class BusinessPartnerService {
     const tc = await this.prisma.taxCode.findUnique({ where: { id: taxCodeId }, select: { id: true, isActive: true } });
     if (!tc) throw new BadRequestException(`${field}: TaxCode '${taxCodeId}' not found`);
     if (!tc.isActive) throw new BadRequestException(`${field}: TaxCode '${taxCodeId}' is inactive`);
+  }
+
+  /** Return all active TaxCode records for use in VAT/WHT dropdown selectors. */
+  async listTaxCodes(): Promise<TaxCodeResponse[]> {
+    const rows = await this.prisma.taxCode.findMany({
+      where: { isActive: true },
+      orderBy: [{ type: 'asc' }, { rate: 'asc' }],
+    });
+    return rows.map((tc) => mapTaxCode(tc)!);
   }
 
   /** parentBpId must reference a BP within the same clinic. */

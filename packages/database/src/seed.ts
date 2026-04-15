@@ -31,6 +31,92 @@ async function main() {
   await mongoose.connect(MONGO_URI);
   console.log('✓ MongoDB connected');
 
+  // ── 0. TaxCode — global RD-compliant reference data ───────────────────────
+  //
+  // TaxCode is NOT tenant-owned. It is seeded once and shared across all
+  // clinics. All upserts are keyed on the unique `code` field so re-runs
+  // are idempotent and do not duplicate rows.
+  //
+  // VAT codes: isVatType = true, type = "VAT"
+  // WHT codes: isVatType = false, type = "WHT"
+  // Zero-rated: isZeroRated = true (0% VAT for exports/exempt supplies)
+  const taxCodes = [
+    // ── VAT (Valued Added Tax) ────────────────────────────────────────────
+    {
+      code: 'VAT7',
+      description: 'Standard VAT 7%',
+      rate: 7.0,
+      isVatType: true,
+      isZeroRated: false,
+      type: 'VAT',
+    },
+    {
+      code: 'VAT0',
+      description: 'Zero-rated VAT (exports / exempt supplies)',
+      rate: 0.0,
+      isVatType: true,
+      isZeroRated: true,
+      type: 'VAT',
+    },
+    // ── WHT (Withholding Tax — Section 3 Ter, RD) ─────────────────────────
+    {
+      code: 'WHT1',
+      description: 'Withholding Tax 1% (transport, delivery)',
+      rate: 1.0,
+      isVatType: false,
+      isZeroRated: false,
+      type: 'WHT',
+    },
+    {
+      code: 'WHT3',
+      description: 'Withholding Tax 3% (services, consulting)',
+      rate: 3.0,
+      isVatType: false,
+      isZeroRated: false,
+      type: 'WHT',
+    },
+    {
+      code: 'WHT5',
+      description: 'Withholding Tax 5% (rent, professional fees)',
+      rate: 5.0,
+      isVatType: false,
+      isZeroRated: false,
+      type: 'WHT',
+    },
+    {
+      code: 'WHT15',
+      description: 'Withholding Tax 15% (interest, dividends)',
+      rate: 15.0,
+      isVatType: false,
+      isZeroRated: false,
+      type: 'WHT',
+    },
+  ];
+
+  for (const tc of taxCodes) {
+    await prisma.taxCode.upsert({
+      where: { code: tc.code },
+      update: {
+        description: tc.description,
+        rate: tc.rate,
+        isVatType: tc.isVatType,
+        isZeroRated: tc.isZeroRated,
+        type: tc.type,
+        isActive: true,
+      },
+      create: {
+        code: tc.code,
+        description: tc.description,
+        rate: tc.rate,
+        isVatType: tc.isVatType,
+        isZeroRated: tc.isZeroRated,
+        type: tc.type,
+        isActive: true,
+      },
+    });
+    console.log(`✓ TaxCode: ${tc.code} (${tc.description})`);
+  }
+
   // ── 1. Super Admin (no clinicId) ──────────────────────────────────────────
   const platformAdmin = await prisma.user.upsert({
     where: { email: 'admin@petiatrics.io' },

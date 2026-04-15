@@ -53,6 +53,56 @@ Authenticate a user and create a Redis-backed session.
 
 ---
 
+## Reference Data Endpoints
+
+### GET /reference/tax-codes
+
+Return all active `TaxCode` records. This endpoint serves the VAT and WHT dropdown selectors in the BP form. No clinic scoping — `TaxCode` is a global system-seeded table.
+
+**Authorization**: authenticated session required; all clinic roles may read.
+
+**Response 200**:
+
+```json
+[
+  {
+    "id": "uuid",
+    "code": "VAT7",
+    "description": "Standard VAT 7%",
+    "rate": 7.0,
+    "isVatType": true,
+    "isZeroRated": false,
+    "type": "VAT"
+  },
+  {
+    "id": "uuid",
+    "code": "VAT0",
+    "description": "Zero-rated VAT (exports)",
+    "rate": 0.0,
+    "isVatType": true,
+    "isZeroRated": true,
+    "type": "VAT"
+  },
+  {
+    "id": "uuid",
+    "code": "WHT3",
+    "description": "Withholding Tax 3%",
+    "rate": 3.0,
+    "isVatType": false,
+    "isZeroRated": false,
+    "type": "WHT"
+  }
+]
+```
+
+**Notes**:
+
+- Items with `isVatType = true` populate the **Default VAT Code** selector.
+- Items with `isVatType = false` populate the **Default WHT Code** selector.
+- Items with `isZeroRated = true` indicate zero-rated or exempt VAT categories.
+
+---
+
 ## Business Partner Endpoints
 
 All BP endpoints require:
@@ -69,7 +119,7 @@ List active Business Partners for the caller's clinic.
 
 | Name | Type | Notes |
 |------|------|------|
-| `type` | `CUSTOMER | STAFF | VET | SUPPLIER | OTHER` | optional filter |
+| `type` | `CUSTOMER \| STAFF \| VET \| SUPPLIER \| OTHER` | optional filter |
 | `search` | `string` | optional name search |
 | `includeInactive` | `boolean` | optional, ignored unless caller has management access |
 
@@ -82,16 +132,47 @@ List active Business Partners for the caller's clinic.
     "clinicId": "uuid",
     "type": "VET",
     "name": "Dr. Somchai",
+    "taxId": "1234567890123",
+    "isHeadOffice": true,
+    "branchCode": null,
+    "addressLine1": "123 Sukhumvit Rd",
+    "subDistrict": "Khlong Toei",
+    "district": "Khlong Toei",
+    "province": "Bangkok",
+    "zipcode": "10110",
+    "parentBpId": null,
+    "defaultVatCodeId": "uuid",
+    "defaultWhtCodeId": "uuid",
+    "defaultVatCode": {
+      "id": "uuid",
+      "code": "VAT7",
+      "description": "Standard VAT 7%",
+      "rate": 7.0,
+      "isVatType": true,
+      "isZeroRated": false,
+      "type": "VAT"
+    },
+    "defaultWhtCode": {
+      "id": "uuid",
+      "code": "WHT3",
+      "description": "Withholding Tax 3%",
+      "rate": 3.0,
+      "isVatType": false,
+      "isZeroRated": false,
+      "type": "WHT"
+    },
+    "isVatRegistered": true,
+    "creditTermDays": 30,
+    "activeRoles": ["AR_SOLD_TO", "AP_BUY_FROM"],
     "isActive": true,
     "user": {
       "id": "uuid",
       "role": "VET",
-      "email": "string | null",
-      "username": "string | null"
+      "email": "somchai@clinic.co.th",
+      "username": null
     },
     "vet": {
-      "licenseNumber": "VET-12345",
-      "whtRate": 3.0
+      "licenseNumber": "VET-12345"
     },
     "supplier": null,
     "createdAt": "ISO-8601 datetime",
@@ -103,7 +184,7 @@ List active Business Partners for the caller's clinic.
 **Authorization**:
 
 - `SUPER_ADMIN`, `CLINIC_OWNER`, `STAFF`, `VET`, `CASHIER`, and `ASSISTANT` may view
-- inactive rows should only appear for management-capable callers when explicitly requested
+- inactive rows only appear for management-capable callers when explicitly requested
 
 ---
 
@@ -119,12 +200,43 @@ Return a single Business Partner, including inactive records for authorized mana
   "clinicId": "uuid",
   "type": "SUPPLIER",
   "name": "Thai Vet Supply Co.",
+  "taxId": "0105551234567",
+  "isHeadOffice": false,
+  "branchCode": "00001",
+  "addressLine1": "99 Rama IV Rd",
+  "subDistrict": "Si Phraya",
+  "district": "Bang Rak",
+  "province": "Bangkok",
+  "zipcode": "10500",
+  "parentBpId": "uuid",
+  "defaultVatCodeId": "uuid",
+  "defaultWhtCodeId": "uuid",
+  "defaultVatCode": {
+    "id": "uuid",
+    "code": "VAT7",
+    "description": "Standard VAT 7%",
+    "rate": 7.0,
+    "isVatType": true,
+    "isZeroRated": false,
+    "type": "VAT"
+  },
+  "defaultWhtCode": {
+    "id": "uuid",
+    "code": "WHT3",
+    "description": "Withholding Tax 3%",
+    "rate": 3.0,
+    "isVatType": false,
+    "isZeroRated": false,
+    "type": "WHT"
+  },
+  "isVatRegistered": true,
+  "creditTermDays": 30,
+  "activeRoles": ["AP_BUY_FROM", "AP_INVOICE_FROM"],
   "isActive": false,
   "user": null,
   "vet": null,
   "supplier": {
-    "taxId": "0105551234567",
-    "creditTermDays": 30
+    "vendorGroupId": "VG-MED"
   },
   "createdAt": "ISO-8601 datetime",
   "updatedAt": "ISO-8601 datetime"
@@ -155,10 +267,22 @@ Create a Business Partner.
 {
   "type": "VET",
   "name": "Dr. Somchai",
+  "taxId": "1234567890123",
+  "isHeadOffice": true,
+  "branchCode": null,
+  "addressLine1": "123 Sukhumvit Rd",
+  "subDistrict": "Khlong Toei",
+  "district": "Khlong Toei",
+  "province": "Bangkok",
+  "zipcode": "10110",
+  "parentBpId": null,
+  "defaultVatCodeId": "uuid",
+  "defaultWhtCodeId": "uuid",
+  "creditTermDays": 0,
+  "activeRoles": ["AR_SOLD_TO"],
   "linkUserId": null,
   "vet": {
-    "licenseNumber": "VET-12345",
-    "whtRate": 3.0
+    "licenseNumber": "VET-12345"
   },
   "supplier": null
 }
@@ -166,9 +290,12 @@ Create a Business Partner.
 
 **Conditional validation**:
 
-- `vet` object required when `type = VET`
+- `vet` object required when `type = VET`; `licenseNumber` is mandatory within it
 - `supplier` object required when `type = SUPPLIER`
-- `linkUserId` optional, but if supplied must belong to the same clinic and not already be linked to another BP
+- `branchCode` must be provided when `isHeadOffice = false`
+- `parentBpId` must reference a BP within the same clinic
+- `defaultVatCodeId` / `defaultWhtCodeId` must reference active global `TaxCode` records
+- `linkUserId` optional; if supplied must belong to the same clinic and not already be linked to another BP
 
 **Response 201**:
 
@@ -178,11 +305,42 @@ Create a Business Partner.
   "clinicId": "uuid",
   "type": "VET",
   "name": "Dr. Somchai",
+  "taxId": "1234567890123",
+  "isHeadOffice": true,
+  "branchCode": null,
+  "addressLine1": "123 Sukhumvit Rd",
+  "subDistrict": "Khlong Toei",
+  "district": "Khlong Toei",
+  "province": "Bangkok",
+  "zipcode": "10110",
+  "parentBpId": null,
+  "defaultVatCodeId": "uuid",
+  "defaultWhtCodeId": "uuid",
+  "defaultVatCode": {
+    "id": "uuid",
+    "code": "VAT7",
+    "description": "Standard VAT 7%",
+    "rate": 7.0,
+    "isVatType": true,
+    "isZeroRated": false,
+    "type": "VAT"
+  },
+  "defaultWhtCode": {
+    "id": "uuid",
+    "code": "WHT3",
+    "description": "Withholding Tax 3%",
+    "rate": 3.0,
+    "isVatType": false,
+    "isZeroRated": false,
+    "type": "WHT"
+  },
+  "isVatRegistered": true,
+  "creditTermDays": 0,
+  "activeRoles": ["AR_SOLD_TO"],
   "isActive": true,
   "user": null,
   "vet": {
-    "licenseNumber": "VET-12345",
-    "whtRate": 3.0
+    "licenseNumber": "VET-12345"
   },
   "supplier": null,
   "createdAt": "ISO-8601 datetime",
@@ -194,7 +352,7 @@ Create a Business Partner.
 
 | Status | Code | Trigger |
 |--------|------|---------|
-| 400 | `VALIDATION_ERROR` | Invalid type-specific payload |
+| 400 | `VALIDATION_ERROR` | Invalid or missing required fields |
 | 403 | `FORBIDDEN` | Caller cannot create/edit BPs |
 | 409 | `CONFLICT` | Vet license or user linkage already exists |
 
@@ -202,28 +360,33 @@ Create a Business Partner.
 
 ### PATCH /clinic/business-partners/:id
 
-Update an active Business Partner.
+Update an active Business Partner. All fields are optional; only fields present in the request body are updated.
 
 **Authorization**:
 
 - allowed: `SUPER_ADMIN`, `CLINIC_OWNER`, `STAFF`
+- denied: `VET`, `CASHIER`, `ASSISTANT`
 
-**Request body**:
+**Request body** (example — partial update):
 
 ```json
 {
   "name": "Dr. Somchai Boonmee",
+  "defaultWhtCodeId": "uuid",
+  "activeRoles": ["AR_SOLD_TO", "AP_BUY_FROM"],
   "vet": {
-    "licenseNumber": "VET-12345",
-    "whtRate": 3.0
+    "licenseNumber": "VET-12345"
   }
 }
 ```
 
 **Rules**:
 
-- type cannot change once created in this slice
-- inactive BP rows cannot be edited until reactivated by a future feature or admin workflow
+- `type` cannot change once created
+- `activeRoles` when present replaces the full set of active roles atomically (deleteMany + createMany)
+- `activeRoles: []` clears all active roles
+- supplying `vet: null` removes the VET extension record (allowed only if BP is being re-classified — type is immutable so this is an edge case)
+- inactive BP rows cannot be edited until reactivated
 
 **Response 200**:
 
@@ -238,7 +401,6 @@ Soft-delete a Business Partner by setting `isActive = false`.
 **Authorization**:
 
 - allowed: `SUPER_ADMIN`, `CLINIC_OWNER`
-- optional future allowance for `STAFF` can be added later, but is not included in this plan by default
 
 **Request body**:
 

@@ -86,15 +86,16 @@ export interface DateRangeQuery {
 // VAT registration of a BP is inferred: isVatRegistered = defaultVatCode.isVatType
 export interface TaxCodeResponse {
   id: string;
-  code: string;        // e.g. "VAT7", "VAT0", "WHT3"
+  code: string;          // e.g. "VAT7", "VAT0", "WHT3"
   description: string;
-  rate: number;        // percentage, e.g. 7.0
-  isVatType: boolean;  // true = VAT code; false = WHT code
+  rate: number;          // percentage, e.g. 7.0
+  isVatType: boolean;    // true = VAT code; false = WHT code
+  isZeroRated: boolean;  // true = 0% rate (zero-rated export or exempt)
+  type: string;          // "VAT" or "WHT"
 }
 
 export interface BpVetPayload {
   licenseNumber: string;
-  whtRate?: number;
 }
 
 // BpSupplier extension — vendor classification only.
@@ -164,7 +165,7 @@ export interface BpUserSummary {
 
 export interface BpVetResponse {
   licenseNumber: string;
-  whtRate: number;
+  // whtRate REMOVED — WHT defaults are set via BusinessPartner.defaultWhtCodeId
 }
 
 // Extension-only — vendor classification metadata.

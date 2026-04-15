@@ -21,10 +21,7 @@ export class BpVetDto {
   @IsNotEmpty()
   licenseNumber!: string;
 
-  @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0)
-  whtRate?: number;
+  // whtRate REMOVED — WHT defaults are set via BusinessPartner.defaultWhtCodeId
 }
 
 // Extension-only — vendor classification metadata.

@@ -10,14 +10,12 @@ vi.mock('next-intl', () => ({
 const noop = () => {};
 
 describe('ExtensionFields', () => {
-  it('renders nothing for non-VET/SUPPLIER types', () => {
+  it('renders nothing for non-VET types', () => {
     const { container } = render(
       <ExtensionFields
         type={BusinessPartnerType.CUSTOMER}
-        vet={{ licenseNumber: '', whtRate: '' }}
-        supplier={{ taxId: '', creditTermDays: '' }}
+        vet={{ licenseNumber: '' }}
         onVetChange={noop}
-        onSupplierChange={noop}
       />,
     );
     expect(container.firstChild).toBeNull();
@@ -27,10 +25,8 @@ describe('ExtensionFields', () => {
     render(
       <ExtensionFields
         type={BusinessPartnerType.VET}
-        vet={{ licenseNumber: 'VET-001', whtRate: '3' }}
-        supplier={{ taxId: '', creditTermDays: '' }}
+        vet={{ licenseNumber: 'VET-001' }}
         onVetChange={noop}
-        onSupplierChange={noop}
       />,
     );
     expect(screen.getByTestId('vet-fields')).toBeDefined();
@@ -41,43 +37,23 @@ describe('ExtensionFields', () => {
     render(
       <ExtensionFields
         type={BusinessPartnerType.VET}
-        vet={{ licenseNumber: '', whtRate: '' }}
-        supplier={{ taxId: '', creditTermDays: '' }}
+        vet={{ licenseNumber: '' }}
         onVetChange={onVetChange}
-        onSupplierChange={noop}
       />,
     );
     const inputs = screen.getAllByRole('textbox');
     fireEvent.change(inputs[0], { target: { value: 'VET-999' } });
-    expect(onVetChange).toHaveBeenCalledWith({ licenseNumber: 'VET-999', whtRate: '' });
+    expect(onVetChange).toHaveBeenCalledWith({ licenseNumber: 'VET-999' });
   });
 
-  it('renders supplier fields when type is SUPPLIER', () => {
-    render(
+  it('renders nothing for SUPPLIER type (supplier fields are now core BP fields)', () => {
+    const { container } = render(
       <ExtensionFields
         type={BusinessPartnerType.SUPPLIER}
-        vet={{ licenseNumber: '', whtRate: '' }}
-        supplier={{ taxId: '0105562000000', creditTermDays: '30' }}
+        vet={{ licenseNumber: '' }}
         onVetChange={noop}
-        onSupplierChange={noop}
       />,
     );
-    expect(screen.getByTestId('supplier-fields')).toBeDefined();
-  });
-
-  it('calls onSupplierChange when taxId input changes', () => {
-    const onSupplierChange = vi.fn();
-    render(
-      <ExtensionFields
-        type={BusinessPartnerType.SUPPLIER}
-        vet={{ licenseNumber: '', whtRate: '' }}
-        supplier={{ taxId: '', creditTermDays: '' }}
-        onVetChange={noop}
-        onSupplierChange={onSupplierChange}
-      />,
-    );
-    const inputs = screen.getAllByRole('textbox');
-    fireEvent.change(inputs[0], { target: { value: '0105562000001' } });
-    expect(onSupplierChange).toHaveBeenCalledWith({ taxId: '0105562000001', creditTermDays: '' });
+    expect(container.firstChild).toBeNull();
   });
 });

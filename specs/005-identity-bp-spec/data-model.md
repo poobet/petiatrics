@@ -79,8 +79,8 @@ This feature adds a new relational Business Partner aggregate to the existing id
 | `role` | `BpRole` | required | AR/AP specific role |
 
 *Valid Roles (Infor LN standard):*
-- AR (Accounts Receivable): `SOLD_TO`, `SHIP_TO`, `INVOICE_TO`, `PAY_BY`
-- AP (Accounts Payable): `BUY_FROM`, `SHIP_FROM`, `INVOICE_FROM`, `PAY_TO`
+- AR (Accounts Receivable): `AR_SOLD_TO`, `AR_SHIP_TO`, `AR_INVOICE_TO`, `AR_PAY_BY`
+- AP (Accounts Payable): `AP_BUY_FROM`, `AP_SHIP_FROM`, `AP_INVOICE_FROM`, `AP_PAY_TO`
 
 ### BpVet (new)
 
@@ -90,12 +90,11 @@ This feature adds a new relational Business Partner aggregate to the existing id
 |------|------|-------------|------|
 | `bpId` | `String` | PK + FK to `BusinessPartner.id` | 1:1 extension |
 | `licenseNumber` | `String` | unique | Must be unique across active and inactive rows |
-| `whtRate` | `Decimal` | `@default(3.00)` | Withholding tax rate |
 
 **Validation rules**:
 
 - `licenseNumber` required when `BusinessPartner.type = VET`
-- `whtRate` defaults to `3.00` and must be non-negative
+- `whtRate` has been **DEPRECATED and REMOVED** — WHT defaults are now set via `BusinessPartner.defaultWhtCodeId`
 
 ---
 
