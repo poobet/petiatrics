@@ -20,8 +20,14 @@ function makeBp(overrides: Partial<{
   name: string;
   isActive: boolean;
   user: null | { id: string; role: string; email: string | null; username: string | null };
-  vetExt: null | { licenseNumber: string };
+  vetExt: null | { licenseNumber: string; specialty: string | null; defaultDfRate: { toNumber: () => number } | null };
   suppExt: null | { vendorGroupId: string | null };
+  groupId: string | null;
+  code: string | null;
+  isMarketingOptIn: boolean;
+  internalNotes: string | null;
+  alertMessage: string | null;
+  group: null | { id: string; name: string; prefix: string };
   createdAt: Date;
   updatedAt: Date;
 }> = {}) {
@@ -53,6 +59,13 @@ function makeBp(overrides: Partial<{
     creditLimit: null,
     creditHold: false,
     discountGroupId: null,
+    // ERP / CRM fields
+    groupId: null,
+    code: null,
+    isMarketingOptIn: false,
+    internalNotes: null,
+    alertMessage: null,
+    group: null,
     // Bank
     bankAccountName: null,
     bankAccountBranch: null,
@@ -106,6 +119,10 @@ function makePrisma(bpRecord: ReturnType<typeof makeBp> | null = makeBp()) {
       findUnique: jest.fn().mockResolvedValue({ id: 'user-1', clinicId: 'clinic-1', businessPartnerId: null }),
       update: jest.fn().mockResolvedValue({}),
     },
+    bpGroup: {
+      update: jest.fn().mockResolvedValue({}),
+    },
+    $queryRaw: jest.fn().mockResolvedValue([]),
   };
 
   return {
@@ -124,8 +141,7 @@ function makePrisma(bpRecord: ReturnType<typeof makeBp> | null = makeBp()) {
       findUnique: jest.fn().mockResolvedValue({ id: 'tc-1', isActive: true }),
       findMany: jest.fn().mockResolvedValue([]),
     },
-    contactPosition: {
-      findUnique: jest.fn().mockResolvedValue({ id: 'cp-1', isActive: true }),
+    bpGroup: {
       findMany: jest.fn().mockResolvedValue([]),
     },
     clinic: {
@@ -281,6 +297,112 @@ describe('BusinessPartnerService', () => {
       await service.deactivate('bp-1', 'clinic-1');
       // update called, NOT delete
       expect(prismaMock.businessPartner.update).toHaveBeenCalled();
+    });
+  });
+
+  // ─── listBpGroups ─────────────────────────────────────────────────────────
+
+  describe('listBpGroups', () => {
+    it('returns active groups for the clinic', async () => {
+      const mockGroups = [
+        { id: 'grp-1', name: 'Customers', prefix: 'C-', currentSequence: 5, isActive: true },
+        { id: 'grp-2', name: 'Vets',      prefix: 'V-', currentSequence: 0, isActive: true },
+      ];
+      prismaMock.bpGroup.findMany = jest.fn().mockResolvedValue(mockGroups);
+
+      const result = await service.listBpGroups('clinic-1');
+
+      expect(prismaMock.bpGroup.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { clinicId: 'clinic-1', isActive: true } }),
+      );
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({ id: 'grp-1', name: 'Customers', prefix: 'C-', currentSequence: 5, isActive: true });
+    });
+
+    it('returns empty array when no groups', async () => {
+      prismaMock.bpGroup.findMany = jest.fn().mockResolvedValue([]);
+      const result = await service.listBpGroups('clinic-1');
+      expect(result).toEqual([]);
+    });
+  });
+
+  // ─── create — BpGroup code generation ─────────────────────────────────────
+
+  describe('create — BpGroup code generation', () => {
+    it('generates a code and increments sequence when groupId is supplied', async () => {
+      const mockGroup = { id: 'grp-1', prefix: 'C-', current_sequence: 3 };
+      // The $queryRaw on the tx must return the group row
+      const bpRecord = makeBp({ groupId: 'grp-1', code: 'C-0004' });
+      prismaMock = makePrisma(bpRecord);
+
+      // Override the $transaction to capture tx.$queryRaw
+      let capturedTx: any;
+      prismaMock.$transaction = jest.fn().mockImplementation(async (fn: (tx: any) => Promise<unknown>) => {
+        capturedTx = {
+          ...prismaMock,
+          businessPartner: {
+            ...prismaMock.businessPartner,
+            create: jest.fn().mockResolvedValue(bpRecord),
+            findFirstOrThrow: jest.fn().mockResolvedValue(bpRecord),
+          },
+          bpGroup: { update: jest.fn().mockResolvedValue({}) },
+          bpVet: { create: jest.fn(), findUnique: jest.fn().mockResolvedValue(null) },
+          bpSupplier: { create: jest.fn() },
+          bpContact: { createMany: jest.fn().mockResolvedValue({}) },
+          user: { findUnique: jest.fn().mockResolvedValue({ id: 'u-1', clinicId: 'clinic-1', businessPartnerId: null }), update: jest.fn() },
+          $queryRaw: jest.fn().mockResolvedValue([mockGroup]),
+        };
+        return fn(capturedTx);
+      });
+
+      const module = await Test.createTestingModule({
+        providers: [
+          BusinessPartnerService,
+          { provide: PrismaClient, useValue: prismaMock },
+        ],
+      }).compile();
+      const svc = module.get(BusinessPartnerService);
+
+      const result = await svc.create('clinic-1', {
+        type: BusinessPartnerType.CUSTOMER,
+        name: 'Jane',
+        groupId: 'grp-1',
+      });
+
+      expect(capturedTx.$queryRaw).toHaveBeenCalled();
+      expect(capturedTx.bpGroup.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'grp-1' }, data: { currentSequence: 4 } }),
+      );
+      expect(result.code).toBe('C-0004');
+    });
+
+    it('throws BadRequestException when groupId is not found', async () => {
+      const bpRecord = makeBp();
+      prismaMock = makePrisma(bpRecord);
+      prismaMock.$transaction = jest.fn().mockImplementation(async (fn: (tx: any) => Promise<unknown>) => {
+        const tx = {
+          businessPartner: { create: jest.fn().mockResolvedValue(bpRecord), findFirstOrThrow: jest.fn().mockResolvedValue(bpRecord) },
+          bpGroup: { update: jest.fn() },
+          bpVet: { create: jest.fn(), findUnique: jest.fn().mockResolvedValue(null) },
+          bpSupplier: { create: jest.fn() },
+          bpContact: { createMany: jest.fn() },
+          user: { findUnique: jest.fn().mockResolvedValue({ id: 'u-1', clinicId: 'clinic-1', businessPartnerId: null }), update: jest.fn() },
+          $queryRaw: jest.fn().mockResolvedValue([]), // empty — group not found
+        };
+        return fn(tx);
+      });
+
+      const module = await Test.createTestingModule({
+        providers: [
+          BusinessPartnerService,
+          { provide: PrismaClient, useValue: prismaMock },
+        ],
+      }).compile();
+      const svc = module.get(BusinessPartnerService);
+
+      await expect(
+        svc.create('clinic-1', { type: BusinessPartnerType.CUSTOMER, name: 'Jane', groupId: 'bad-group' }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

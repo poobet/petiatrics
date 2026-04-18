@@ -5,19 +5,21 @@ import { BranchContextGuard } from '../../../common/guards/branch-context.guard'
 
 const allowGuard = { canActivate: () => true };
 
+const CLINIC_ID = 'clinic-1';
+
 const mockTaxCodes = [
   { id: 'tc-1', code: 'V7', name: 'VAT 7%', rate: 7, isVatType: true, description: 'Standard VAT' },
 ];
 
-const mockContactPositions = [
-  { id: 'cp-1', name: 'ผู้จัดการ / Manager' },
-  { id: 'cp-2', name: 'ฝ่ายจัดซื้อ / Purchasing' },
+const mockBpGroups = [
+  { id: 'grp-1', name: 'Customers', prefix: 'C-', currentSequence: 0, isActive: true },
+  { id: 'grp-2', name: 'Vets',      prefix: 'V-', currentSequence: 0, isActive: true },
 ];
 
 function makeBpServiceMock() {
   return {
     listTaxCodes: jest.fn().mockResolvedValue(mockTaxCodes),
-    listContactPositions: jest.fn().mockResolvedValue(mockContactPositions),
+    listBpGroups: jest.fn().mockResolvedValue(mockBpGroups),
   };
 }
 
@@ -46,16 +48,16 @@ describe('ReferenceController', () => {
     });
   });
 
-  describe('listContactPositions', () => {
-    it('delegates to bpService.listContactPositions and returns result', async () => {
-      const result = await controller.listContactPositions();
-      expect(bpService.listContactPositions).toHaveBeenCalledTimes(1);
-      expect(result).toEqual(mockContactPositions);
+  describe('listBpGroups', () => {
+    it('delegates to bpService.listBpGroups with clinicId and returns result', async () => {
+      const result = await controller.listBpGroups(CLINIC_ID);
+      expect(bpService.listBpGroups).toHaveBeenCalledWith(CLINIC_ID);
+      expect(result).toEqual(mockBpGroups);
     });
 
     it('returns empty array when service returns none', async () => {
-      bpService.listContactPositions.mockResolvedValueOnce([]);
-      const result = await controller.listContactPositions();
+      bpService.listBpGroups.mockResolvedValueOnce([]);
+      const result = await controller.listBpGroups(CLINIC_ID);
       expect(result).toEqual([]);
     });
   });
