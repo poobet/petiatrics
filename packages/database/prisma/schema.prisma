@@ -122,6 +122,7 @@ model Clinic {
   stockMovements   StockMovement[]
   invoices         Invoice[]
   businessPartners BusinessPartner[]
+  bpGroups         BpGroup[]
 
   @@map("clinics")
 }
@@ -251,6 +252,13 @@ model BusinessPartner {
   bankAccountName   String?
   bankAccountBranch String?
   bankAccountNumber String?
+  // ── BpGroup & auto-code
+  groupId          String?
+  code             String?
+  // ── CRM
+  isMarketingOptIn Boolean  @default(false)
+  internalNotes    String?  @db.Text
+  alertMessage     String?
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -263,9 +271,11 @@ model BusinessPartner {
   user           User?
   vetExt         BpVet?
   suppExt        BpSupplier?
+  group          BpGroup?        @relation(fields: [groupId], references: [id])
   activeRoles    BpRoleActive[]
   contacts       BpContact[]
 
+  @@unique([clinicId, code])
   @@index([clinicId])
   @@index([clinicId, isActive])
   @@index([clinicId, type, isActive])
@@ -290,6 +300,8 @@ model BpRoleActive {
 model BpVet {
   bpId          String          @id
   licenseNumber String          @unique
+  specialty     String?
+  defaultDfRate Decimal?        @db.Decimal(5,2)
 
   bp BusinessPartner @relation(fields: [bpId], references: [id])
 
@@ -308,36 +320,41 @@ model BpSupplier {
   @@map("bp_suppliers")
 }
 
-// ─── ContactPosition ──────────────────────────────────────────────────────────
+// ─── BpGroup ─────────────────────────────────────────────────────────────────
 
-model ContactPosition {
-  id        String      @id @default(uuid())
-  name      String
-  isActive  Boolean     @default(true)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  contacts  BpContact[]
+model BpGroup {
+  id              String   @id @default(uuid())
+  clinicId        String
+  name            String
+  prefix          String
+  currentSequence Int      @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  @@unique([name])
-  @@map("contact_positions")
+  clinic           Clinic            @relation(fields: [clinicId], references: [id])
+  businessPartners BusinessPartner[]
+
+  @@unique([clinicId, prefix])
+  @@index([clinicId])
+  @@map("bp_groups")
 }
 
 // ─── BpContact ────────────────────────────────────────────────────────────────
 
 model BpContact {
-  id         String           @id @default(uuid())
-  bpId       String
-  name       String
-  phone      String?
-  email      String?
-  lineId     String?
-  positionId String?
-  isPrimary  Boolean          @default(false)
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
+  id        String           @id @default(uuid())
+  bpId      String
+  name      String
+  phone     String?
+  email     String?
+  lineId    String?
+  position  String?
+  isPrimary Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
 
-  bp       BusinessPartner  @relation(fields: [bpId], references: [id])
-  position ContactPosition? @relation(fields: [positionId], references: [id])
+  bp BusinessPartner @relation(fields: [bpId], references: [id])
 
   @@index([bpId])
   @@map("bp_contacts")
