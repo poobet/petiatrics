@@ -20,8 +20,8 @@ function makeBp(overrides: Partial<{
   name: string;
   isActive: boolean;
   user: null | { id: string; role: string; email: string | null; username: string | null };
-  vetExt: null | { licenseNumber: string; whtRate: number };
-  suppExt: null | { taxId: string; creditTermDays: number };
+  vetExt: null | { licenseNumber: string };
+  suppExt: null | { vendorGroupId: string | null };
   createdAt: Date;
   updatedAt: Date;
 }> = {}) {
@@ -31,9 +31,40 @@ function makeBp(overrides: Partial<{
     type: BusinessPartnerType.CUSTOMER,
     name: 'Test BP',
     isActive: true,
+    // Thai compliance
+    taxId: null,
+    isHeadOffice: true,
+    branchCode: null,
+    addressLine1: null,
+    subDistrict: null,
+    district: null,
+    province: null,
+    zipcode: null,
+    parentBpId: null,
+    defaultVatCodeId: null,
+    defaultWhtCodeId: null,
+    // Payment
+    creditTermDays: 0,
+    // Communication
+    phone: null,
+    email: null,
+    lineId: null,
+    // Commercial
+    creditLimit: null,
+    creditHold: false,
+    discountGroupId: null,
+    // Bank
+    bankAccountName: null,
+    bankAccountBranch: null,
+    bankAccountNumber: null,
+    // Relations
     user: null,
     vetExt: null,
     suppExt: null,
+    activeRoles: [],
+    defaultVatCode: null,
+    defaultWhtCode: null,
+    contacts: [],
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -42,6 +73,7 @@ function makeBp(overrides: Partial<{
 
 function makePrisma(bpRecord: ReturnType<typeof makeBp> | null = makeBp()) {
   const txFn: Record<string, jest.Mock> = {};
+  void txFn;
   const tx = {
     businessPartner: {
       create: jest.fn().mockResolvedValue(bpRecord),
@@ -63,6 +95,13 @@ function makePrisma(bpRecord: ReturnType<typeof makeBp> | null = makeBp()) {
       upsert: jest.fn().mockResolvedValue({}),
       deleteMany: jest.fn().mockResolvedValue({}),
     },
+    bpContact: {
+      createMany: jest.fn().mockResolvedValue({}),
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: jest.fn().mockResolvedValue({}),
+      update: jest.fn().mockResolvedValue({}),
+      create: jest.fn().mockResolvedValue({}),
+    },
     user: {
       findUnique: jest.fn().mockResolvedValue({ id: 'user-1', clinicId: 'clinic-1', businessPartnerId: null }),
       update: jest.fn().mockResolvedValue({}),
@@ -80,6 +119,17 @@ function makePrisma(bpRecord: ReturnType<typeof makeBp> | null = makeBp()) {
     },
     bpVet: {
       findUnique: jest.fn().mockResolvedValue(null),
+    },
+    taxCode: {
+      findUnique: jest.fn().mockResolvedValue({ id: 'tc-1', isActive: true }),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    contactPosition: {
+      findUnique: jest.fn().mockResolvedValue({ id: 'cp-1', isActive: true }),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    clinic: {
+      findUnique: jest.fn().mockResolvedValue({ id: 'clinic-1' }),
     },
     user: {
       findUnique: jest.fn().mockResolvedValue({ id: 'user-1', clinicId: 'clinic-1', businessPartnerId: null }),
