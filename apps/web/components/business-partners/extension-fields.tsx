@@ -1,36 +1,34 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { useFormContext } from 'react-hook-form';
 import { Input } from '@petiatrics/ui';
 import { Label } from '@petiatrics/ui';
 import { BusinessPartnerType } from '@petiatrics/types';
-
-export interface VetFields {
-  licenseNumber: string;
-}
+import { CreateBpFormValues } from './bp-form-schema';
 
 interface ExtensionFieldsProps {
   type: BusinessPartnerType | '';
-  vet: VetFields;
-  onVetChange: (fields: VetFields) => void;
 }
 
-export default function ExtensionFields({
-  type,
-  vet,
-  onVetChange,
-}: ExtensionFieldsProps) {
+export default function ExtensionFields({ type }: ExtensionFieldsProps) {
   const t = useTranslations('businessPartners');
+  const {
+    register,
+    formState: { errors },
+  } = useFormContext<CreateBpFormValues>();
 
   if (type === BusinessPartnerType.VET) {
     return (
       <div className="space-y-1.5" data-testid="vet-fields">
         <Label>{t('vet.licenseNumber')}</Label>
         <Input
-          value={vet.licenseNumber}
-          onChange={(e) => onVetChange({ licenseNumber: e.target.value })}
+          {...register('vet.licenseNumber')}
           placeholder="VET-0001"
         />
+        {errors.vet?.licenseNumber && (
+          <p className="text-destructive text-sm">{errors.vet.licenseNumber.message}</p>
+        )}
       </div>
     );
   }
