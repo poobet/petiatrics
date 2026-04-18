@@ -1,13 +1,13 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { BusinessPartnerService } from '../services/business-partner.service';
 import { BranchContextGuard } from '../../../common/guards/branch-context.guard';
+import { TenantId } from '../../../common/decorators/tenant.decorator';
 
 /**
- * ReferenceController — read-only global reference data endpoints.
+ * ReferenceController — read-only reference data endpoints.
  *
- * These endpoints serve system-seeded, non-tenant-owned reference tables
- * (e.g. TaxCode) that all authenticated clinic users may read.
- * No clinic scoping is applied — TaxCode is global.
+ * - TaxCode: global (no clinic scoping)
+ * - BpGroup: clinic-scoped (reads clinicId from session via TenantId)
  */
 @Controller('reference')
 @UseGuards(BranchContextGuard)
@@ -17,7 +17,6 @@ export class ReferenceController {
   /**
    * GET /api/v1/reference/tax-codes
    * Return all active TaxCode records for use in the BP form VAT/WHT selectors.
-   * Accessible to all authenticated clinic users (read-only reference data).
    */
   @Get('tax-codes')
   listTaxCodes() {
@@ -25,12 +24,11 @@ export class ReferenceController {
   }
 
   /**
-   * GET /api/v1/reference/contact-positions
-   * Return all active ContactPosition records for use in the BpContact position selector.
-   * Global (no clinic scoping). Inherits BranchContextGuard from controller class.
+   * GET /api/v1/reference/bp-groups
+   * Return all active BpGroup records for the current clinic.
    */
-  @Get('contact-positions')
-  listContactPositions() {
-    return this.bpService.listContactPositions();
+  @Get('bp-groups')
+  listBpGroups(@TenantId() clinicId: string) {
+    return this.bpService.listBpGroups(clinicId);
   }
 }

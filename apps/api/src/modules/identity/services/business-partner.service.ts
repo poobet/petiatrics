@@ -5,8 +5,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
-import type { BusinessPartnerResponse, ContactPositionResponse, TaxCodeResponse } from '@petiatrics/types';
+import { PrismaClient, Prisma } from '@prisma/client';
+import type { BusinessPartnerResponse, BpGroupResponse, TaxCodeResponse } from '@petiatrics/types';
 import { BusinessPartnerType, BpRole } from '@petiatrics/types';
 import { CreateBusinessPartnerDto } from '../dto/create-business-partner.dto';
 import { UpdateBusinessPartnerDto } from '../dto/update-business-partner.dto';
@@ -25,11 +25,6 @@ function mapTaxCode(tc: { id: string; code: string; description: string; rate: {
     isZeroRated: tc.isZeroRated,
     type: tc.type,
   };
-}
-
-function mapContactPosition(cp: { id: string; name: string } | null): ContactPositionResponse | null {
-  if (!cp) return null;
-  return { id: cp.id, name: cp.name };
 }
 
 // ─── Helper: map a full BP record to the shared response shape ───────────────
@@ -79,6 +74,20 @@ function mapBpToResponse(
     creditLimit: bp.creditLimit ?? null,
     creditHold: bp.creditHold,
     discountGroupId: bp.discountGroupId ?? null,
+    // Group & auto-code
+    groupId: (bp as any).groupId ?? null,
+    code: (bp as any).code ?? null,
+    // CRM
+    isMarketingOptIn: (bp as any).isMarketingOptIn ?? false,
+    internalNotes: (bp as any).internalNotes ?? null,
+    alertMessage: (bp as any).alertMessage ?? null,
+    group: (bp as any).group
+      ? {
+          id: (bp as any).group.id,
+          name: (bp as any).group.name,
+          prefix: (bp as any).group.prefix,
+        }
+      : null,
     // Bank account
     bankAccountName: bp.bankAccountName ?? null,
     bankAccountBranch: bp.bankAccountBranch ?? null,
@@ -90,8 +99,7 @@ function mapBpToResponse(
       phone: c.phone ?? null,
       email: c.email ?? null,
       lineId: c.lineId ?? null,
-      positionId: c.positionId ?? null,
-      position: mapContactPosition(c.position ?? null),
+      position: c.position ?? null,
       isPrimary: c.isPrimary,
     })),
     activeRoles: bp.activeRoles.map((r) => r.role as BpRole),
@@ -105,7 +113,11 @@ function mapBpToResponse(
         }
       : null,
     vet: bp.vetExt
-      ? { licenseNumber: bp.vetExt.licenseNumber }
+      ? {
+          licenseNumber: bp.vetExt.licenseNumber,
+          specialty: (bp.vetExt as any).specialty ?? null,
+          defaultDfRate: (bp.vetExt as any).defaultDfRate?.toNumber() ?? null,
+        }
       : null,
     supplier: bp.suppExt
       ? { vendorGroupId: bp.suppExt.vendorGroupId ?? null }
@@ -119,11 +131,11 @@ const BP_INCLUDE = {
   user: { select: { id: true, role: true, email: true, username: true } },
   vetExt: true,
   suppExt: true,
+  group: true,
   activeRoles: true,
   defaultVatCode: true,
   defaultWhtCode: true,
   contacts: {
-    include: { position: { select: { id: true, name: true } } },
     orderBy: [{ isPrimary: 'desc' as const }, { createdAt: 'asc' as const }],
   },
 };
@@ -200,17 +212,23 @@ export class BusinessPartnerService {
       await this.assertUserLinkage(dto.linkUserId, clinicId);
     }
 
-    // Validate contact position references
-    if (dto.contacts) {
-      const uniquePositionIds = [...new Set(
-        dto.contacts.filter((c) => c.positionId).map((c) => c.positionId!),
-      )];
-      for (const pid of uniquePositionIds) {
-        await this.assertContactPositionExists(pid);
-      }
-    }
-
     const bp = await this.prisma.$transaction(async (tx) => {
+      // ── Auto-generate BP code if groupId provided ─────────────────────────
+      let generatedCode: string | null = null;
+      if (dto.groupId) {
+        const rows = await tx.$queryRaw<Array<{
+          id: string; prefix: string; current_sequence: number;
+        }>>(Prisma.sql`SELECT id, prefix, current_sequence FROM bp_groups WHERE id = ${dto.groupId} FOR UPDATE`);
+        const group = rows[0];
+        if (!group) throw new BadRequestException(`groupId '${dto.groupId}' not found`);
+        const newSeq = group.current_sequence + 1;
+        await tx.bpGroup.update({
+          where: { id: dto.groupId },
+          data: { currentSequence: newSeq },
+        });
+        generatedCode = `${group.prefix}${newSeq.toString().padStart(4, '0')}`;
+      }
+
       const created = await tx.businessPartner.create({
         data: {
           clinicId,
@@ -234,6 +252,11 @@ export class BusinessPartnerService {
           creditLimit: dto.creditLimit ?? null,
           creditHold: dto.creditHold ?? false,
           discountGroupId: dto.discountGroupId ?? null,
+          groupId: dto.groupId ?? null,
+          code: generatedCode,
+          isMarketingOptIn: dto.isMarketingOptIn ?? false,
+          internalNotes: dto.internalNotes ?? null,
+          alertMessage: dto.alertMessage ?? null,
           bankAccountName: dto.bankAccountName ?? null,
           bankAccountBranch: dto.bankAccountBranch ?? null,
           bankAccountNumber: dto.bankAccountNumber ?? null,
@@ -254,6 +277,8 @@ export class BusinessPartnerService {
           data: {
             bpId: created.id,
             licenseNumber: dto.vet.licenseNumber,
+            specialty: dto.vet.specialty ?? null,
+            defaultDfRate: dto.vet.defaultDfRate ?? null,
           },
         });
       }
@@ -277,7 +302,7 @@ export class BusinessPartnerService {
             phone: c.phone ?? null,
             email: c.email ?? null,
             lineId: c.lineId ?? null,
-            positionId: c.positionId ?? null,
+            position: c.position ?? null,
             isPrimary: primaryIdx === -1 ? false : i === primaryIdx,
           })),
         });
@@ -320,16 +345,6 @@ export class BusinessPartnerService {
       await this.assertUserLinkage(dto.linkUserId, clinicId, id);
     }
 
-    // Validate contact position references
-    if (dto.contacts) {
-      const uniquePositionIds = [...new Set(
-        dto.contacts.filter((c) => c.positionId).map((c) => c.positionId!),
-      )];
-      for (const pid of uniquePositionIds) {
-        await this.assertContactPositionExists(pid);
-      }
-    }
-
     const updated = await this.prisma.$transaction(async (tx) => {
       // Build core BP update payload — only include fields present in dto
       const coreUpdate: Record<string, unknown> = {};
@@ -352,6 +367,9 @@ export class BusinessPartnerService {
       if (dto.creditLimit !== undefined) coreUpdate.creditLimit = dto.creditLimit;
       if (dto.creditHold !== undefined) coreUpdate.creditHold = dto.creditHold;
       if (dto.discountGroupId !== undefined) coreUpdate.discountGroupId = dto.discountGroupId;
+      if (dto.isMarketingOptIn !== undefined) coreUpdate.isMarketingOptIn = dto.isMarketingOptIn;
+      if (dto.internalNotes !== undefined) coreUpdate.internalNotes = dto.internalNotes;
+      if (dto.alertMessage !== undefined) coreUpdate.alertMessage = dto.alertMessage;
       if (dto.bankAccountName !== undefined) coreUpdate.bankAccountName = dto.bankAccountName;
       if (dto.bankAccountBranch !== undefined) coreUpdate.bankAccountBranch = dto.bankAccountBranch;
       if (dto.bankAccountNumber !== undefined) coreUpdate.bankAccountNumber = dto.bankAccountNumber;
@@ -377,8 +395,17 @@ export class BusinessPartnerService {
         } else {
           await tx.bpVet.upsert({
             where: { bpId: id },
-            create: { bpId: id, licenseNumber: dto.vet.licenseNumber },
-            update: { licenseNumber: dto.vet.licenseNumber },
+            create: {
+              bpId: id,
+              licenseNumber: dto.vet.licenseNumber,
+              specialty: dto.vet.specialty ?? null,
+              defaultDfRate: dto.vet.defaultDfRate ?? null,
+            },
+            update: {
+              licenseNumber: dto.vet.licenseNumber,
+              specialty: dto.vet.specialty ?? null,
+              defaultDfRate: dto.vet.defaultDfRate ?? null,
+            },
           });
         }
       }
@@ -432,7 +459,7 @@ export class BusinessPartnerService {
                 phone: c.phone ?? null,
                 email: c.email ?? null,
                 lineId: c.lineId ?? null,
-                positionId: c.positionId ?? null,
+                position: c.position ?? null,
                 isPrimary: contactIsPrimary,
               },
             });
@@ -445,7 +472,7 @@ export class BusinessPartnerService {
                 phone: c.phone ?? null,
                 email: c.email ?? null,
                 lineId: c.lineId ?? null,
-                positionId: c.positionId ?? null,
+                position: c.position ?? null,
                 isPrimary: contactIsPrimary,
               },
             });
@@ -496,24 +523,12 @@ export class BusinessPartnerService {
     return mapBpToResponse(updated as any);
   }
 
-  // ─── Private guards ─────────────────────────────────────────────────────────
 
   /** TaxCode is a global reference table — validate it exists without clinic scoping. */
   private async assertTaxCodeExists(taxCodeId: string, field: string): Promise<void> {
     const tc = await this.prisma.taxCode.findUnique({ where: { id: taxCodeId }, select: { id: true, isActive: true } });
     if (!tc) throw new BadRequestException(`${field}: TaxCode '${taxCodeId}' not found`);
     if (!tc.isActive) throw new BadRequestException(`${field}: TaxCode '${taxCodeId}' is inactive`);
-  }
-
-  /** Validate that a positionId references an active ContactPosition. */
-  private async assertContactPositionExists(positionId: string): Promise<void> {
-    const cp = await this.prisma.contactPosition.findUnique({
-      where: { id: positionId },
-      select: { id: true, isActive: true },
-    });
-    if (!cp || !cp.isActive) {
-      throw new BadRequestException(`positionId '${positionId}' is not a valid active ContactPosition`);
-    }
   }
 
   /** Return all active TaxCode records for use in VAT/WHT dropdown selectors. */
@@ -525,13 +540,19 @@ export class BusinessPartnerService {
     return rows.map((tc) => mapTaxCode(tc)!);
   }
 
-  /** Return all active ContactPosition records for use in the BpContact position selector. */
-  async listContactPositions(): Promise<ContactPositionResponse[]> {
-    const rows = await this.prisma.contactPosition.findMany({
-      where: { isActive: true },
+  /** Return all active BpGroup records for the clinic — for use in the BP form group selector. */
+  async listBpGroups(clinicId: string): Promise<BpGroupResponse[]> {
+    const rows = await this.prisma.bpGroup.findMany({
+      where: { clinicId, isActive: true },
       orderBy: { name: 'asc' },
     });
-    return rows.map((cp) => ({ id: cp.id, name: cp.name }));
+    return rows.map((g) => ({
+      id: g.id,
+      name: g.name,
+      prefix: g.prefix,
+      currentSequence: g.currentSequence,
+      isActive: g.isActive,
+    }));
   }
 
   /** parentBpId must reference a BP within the same clinic. */
