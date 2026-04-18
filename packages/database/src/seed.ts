@@ -117,6 +117,24 @@ async function main() {
     console.log(`✓ TaxCode: ${tc.code} (${tc.description})`);
   }
 
+  // ── 1b. ContactPosition — global reference, no clinic scoping ────────────
+  const contactPositions = [
+    { name: 'ผู้จัดการ / Manager' },
+    { name: 'ฝ่ายจัดซื้อ / Purchasing' },
+    { name: 'ฝ่ายบัญชี / Accounting' },
+    { name: 'พนักงานขาย / Sales' },
+    { name: 'กรรมการ / Director' },
+  ];
+
+  for (const cp of contactPositions) {
+    await prisma.contactPosition.upsert({
+      where: { name: cp.name },
+      update: { isActive: true },
+      create: { name: cp.name, isActive: true },
+    });
+  }
+  console.log('✓ ContactPositions seeded');
+
   // ── 1. Super Admin (no clinicId) ──────────────────────────────────────────
   const platformAdmin = await prisma.user.upsert({
     where: { email: 'admin@petiatrics.io' },
