@@ -26,11 +26,23 @@ This design extends the existing Business Partner system with:
 | BpGroup scope | Clinic-scoped (`clinicId` FK); auto-seeded 3 defaults on clinic creation |
 | Concurrent code generation | `SELECT ... FOR UPDATE` row lock inside a Prisma `$transaction` |
 | ContactPosition migration | Drop-and-lose (pre-production; no real data); `BpContact.position` becomes free-form `String?` |
-| Alert banner placement | Everywhere a full `BusinessPartnerResponse` is rendered (form, detail page, future invoice selectors) |
+| Alert banner placement | Form only (`business-partner-form.tsx`); no separate detail page exists — the form IS the view; future invoice selectors deferred |
 
 ---
 
 ## Section 1: Schema Changes
+
+### Modified: `Clinic`
+
+Add back-relation required by Prisma for the new `BpGroup` model:
+
+```prisma
+  bpGroups  BpGroup[]
+```
+
+Prisma requires both sides of every relation to be declared. Without this addition, `prisma generate` will fail.
+
+---
 
 ### New model: `BpGroup`
 
@@ -63,7 +75,7 @@ Five new fields added after `isActive`:
 
 ```prisma
   groupId          String?           // FK to BpGroup.id
-  code             String?  @unique  // auto-generated: "{prefix}{seq:04d}"
+  code             String?           // auto-generated: "{prefix}{seq:04d}"
   isMarketingOptIn Boolean  @default(false)
   internalNotes    String?  @db.Text
   alertMessage     String?
@@ -74,6 +86,14 @@ And the FK relation:
 ```prisma
   group            BpGroup?  @relation(fields: [groupId], references: [id])
 ```
+
+`code` uniqueness is scoped per clinic: `@@unique([clinicId, code])` (NOT a global `@unique`). This constraint must be added to the `BusinessPartner` model alongside the existing `@@index` lines:
+
+```prisma
+  @@unique([clinicId, code])
+```
+
+Two clinics may each have a `C-0001` — they are independent.
 
 ### Modified: `BpVet`
 
@@ -105,17 +125,19 @@ Migration: drop-and-lose — the `contact_positions` table and `bp_contacts.posi
 Triggered when `groupId` is present on `POST /clinic/business-partners`.
 
 ```
-1. Begin Prisma $transaction
-2. SELECT * FROM bp_groups WHERE id = groupId FOR UPDATE
+1. Begin Prisma $transaction (interactive)
+2. tx.$queryRaw<BpGroup[]>(Prisma.sql`SELECT * FROM bp_groups WHERE id = ${groupId} FOR UPDATE`)
+   → MUST use $queryRaw — standard ORM calls (tx.bpGroup.findUnique) do NOT emit FOR UPDATE
 3. INCREMENT currentSequence by 1
 4. FORMAT code = `${prefix}${currentSequence.toString().padStart(4, '0')}`
    → e.g. prefix "C-", sequence 1 → "C-0001"
-5. Save BusinessPartner with { code, groupId } + save incremented BpGroup.currentSequence
-6. Commit transaction
+5. tx.bpGroup.update({ where: { id: groupId }, data: { currentSequence: newSeq } })
+6. tx.businessPartner.create({ data: { ...fields, code, groupId } })
+7. Commit transaction
 ```
 
 - If `groupId` is null, `code` remains null — no sequence consumed.
-- `code` has `@unique` on the table. Cross-clinic uniqueness is acceptable (codes are short references, not tenant keys).
+- `code` uniqueness is enforced by `@@unique([clinicId, code])`. Two clinics may share the same code string.
 - The generated `code` is immutable after creation. `groupId` and `code` are excluded from the update DTO.
 
 ### `GET /reference/bp-groups`
@@ -129,10 +151,26 @@ interface BpGroupResponse {
   prefix: string;
   currentSequence: number;
   isActive: boolean;
+  // clinicId intentionally omitted — always scoped to the requester's clinic
 }
 ```
 
 Requires authentication; all roles may read. No clinic-override from query params — `clinicId` from session only.
+
+### `BusinessPartnerResponse` group sub-object
+
+To support the edit-mode display of group name without a second lookup, `BusinessPartnerResponse` includes an optional nested `group` sub-object:
+
+```ts
+interface BusinessPartnerResponse {
+  // ... existing fields ...
+  groupId: string | null;
+  code: string | null;
+  group: { id: string; name: string; prefix: string } | null; // nested, read from BP_INCLUDE
+}
+```
+
+This requires adding `group: true` to the Prisma `BP_INCLUDE` constant in `business-partner.service.ts`. The `mapBpToResponse()` function maps it to the sub-object above.
 
 ### Clinic Auto-Seed
 
@@ -158,10 +196,10 @@ The `listContactPositions()` method and `@Get('contact-positions')` route are **
 
 ### Alert Banner
 
-New component rendered in two places:
+New `BpAlertBanner` component (created as `apps/web/components/business-partners/bp-alert-banner.tsx`). Rendered in:
 
-1. **`business-partner-form.tsx`** — above `<Tabs>`, below the form header
-2. **BP detail/view page** — at the top of the page
+1. **`business-partner-form.tsx`** — above `<Tabs>`, below the form header (covers both create and edit modes; there is no separate read-only detail page — the form IS the detail view)
+2. **Any future UI context** that receives a full `BusinessPartnerResponse` (e.g., invoice partner selector — deferred)
 
 ```tsx
 // Render condition
@@ -186,12 +224,12 @@ Add the following fields:
 
 | Field | Control | Source |
 |---|---|---|
-| `groupId` | `<Select>` | `GET /reference/bp-groups` (async, same pattern as tax codes) |
+| `groupId` | `<Select>` (disabled in edit mode) | `GET /reference/bp-groups` (async, same pattern as tax codes) |
 | `isMarketingOptIn` | `<Checkbox>` | static |
 | `internalNotes` | `<Textarea>` | static |
 | `alertMessage` | `<Input type="text">` | static |
 
-The `groupId` selector is optional. When a group is selected, display the next code preview as hint text: `Next code: {prefix}{(currentSequence+1).toString().padStart(4,'0')}`.
+The `groupId` selector is optional. In **create mode**: interactive `<Select>`. In **edit mode**: render as read-only text (show the group name + current `code` value) — the field is disabled since `groupId` and `code` are immutable after creation. When a group is selected in create mode, display the next code preview as hint text: `Next code: {prefix}{(currentSequence+1).toString().padStart(4,'0')}`.
 
 #### Vet Extension (`extension-fields.tsx`)
 
@@ -229,7 +267,7 @@ alertMessage: z.string().nullable().optional()
 - **FR-016**: System MUST auto-generate a human-readable `code` for new Business Partners when a `groupId` is provided, using the `prefix` and `currentSequence` from the assigned `BpGroup`. Code generation MUST be atomic (row-level lock) to prevent duplicates under concurrent creation.
 - **FR-017**: `BpGroup` records MUST be clinic-scoped. Each clinic MUST have 3 default groups auto-seeded on clinic creation: Customers (`C-`), Vets (`V-`), Suppliers (`S-`).
 - **FR-018**: `BpContact.position` MUST be a free-form text field. No master `ContactPosition` table exists. Staff enter any job title string.
-- **FR-019**: The `alertMessage` field on `BusinessPartner` MUST be surfaced as a visible warning banner in every UI context where a full `BusinessPartnerResponse` is displayed (BP form, BP detail page, and any future selector that loads the full response).
+- **FR-019**: The `alertMessage` field on `BusinessPartner` MUST be surfaced as a visible warning banner in the BP form (which serves as both the create and edit/view context). Future UI contexts that load a full `BusinessPartnerResponse` (e.g., invoice partner selector) MUST also render the banner when the field is non-null.
 - **FR-020**: `BpVet` MUST support optional `specialty` (free-form text) and `defaultDfRate` (decimal 0–100, 2dp) fields.
 
 ### Superseded tasks (annotate in `tasks.md`)
@@ -250,21 +288,21 @@ See Section 5.
 
 ### Phase 2 Revision (Schema)
 
-- **T037** Update `packages/database/prisma/schema.prisma`: add `BpGroup` model; add 5 new fields to `BusinessPartner`; add `specialty`/`defaultDfRate` to `BpVet`; replace `BpContact.positionId` FK with `position String?`; drop `ContactPosition` model
+- **T037** Update `packages/database/prisma/schema.prisma`: add `BpGroup` model; add `bpGroups BpGroup[]` back-relation to `Clinic` model; add 5 new fields to `BusinessPartner` with `@@unique([clinicId, code])`; add `specialty`/`defaultDfRate` to `BpVet`; replace `BpContact.positionId` FK with `position String?`; drop `ContactPosition` model
 - **T038** Generate Prisma migration (`20260419_advanced_bp_erp`): drop `contact_positions` table, drop `bp_contacts.position_id`, add `bp_contacts.position`, add `bp_groups` table, add 5 columns to `business_partners`, add 2 columns to `bp_vets`
 
 ### Phase 3 — Shared Types
 
-- **T039** Update `packages/types/src/api.ts`: add `BpGroupResponse`; add `groupId`, `code`, `isMarketingOptIn`, `internalNotes`, `alertMessage` to `BusinessPartnerResponse` and payloads; add `specialty`, `defaultDfRate` to `BpContactResponse` / vet payload; remove `ContactPositionResponse` and `BpContactPayload.positionId`; rebuild dist
+- **T039** Update `packages/types/src/api.ts`: add `BpGroupResponse`; add `groupId`, `code`, `isMarketingOptIn`, `internalNotes`, `alertMessage`, and `group: { id: string; name: string; prefix: string } | null` to `BusinessPartnerResponse` and payloads; add `specialty`, `defaultDfRate: number | null` to **`BpVetResponse` / `BpVetPayload`** (NOT `BpContactResponse`; `defaultDfRate` is `number | null` in TS — Prisma `Decimal` is serialized to number by the service); remove `ContactPositionResponse` and `BpContactPayload.positionId`; replace `positionId` with `position: string | null` in `BpContactPayload`/`BpContactResponse`; rebuild dist
 
 ### Phase 4 — Backend
 
 - **T040** [P] Update `apps/api/src/modules/identity/dto/create-business-partner.dto.ts`: add `groupId?`, `isMarketingOptIn?`, `internalNotes?`, `alertMessage?`; add `specialty?`, `defaultDfRate?` to `BpVetDto`; replace `positionId?` with `position?` in `BpContactDto`
 - **T041** [P] Update `apps/api/src/modules/identity/dto/update-business-partner.dto.ts`: same field additions; exclude `groupId`/`code` from update (immutable after creation)
-- **T042** Update `apps/api/src/modules/identity/services/business-partner.service.ts`: implement sequence generation inside `$transaction` with `SELECT FOR UPDATE`; map new fields in `mapBpToResponse()`; update `create()`/`update()` flows
+- **T042** Update `apps/api/src/modules/identity/services/business-partner.service.ts`: add `group: true` to `BP_INCLUDE`; implement sequence generation inside `$transaction` with `SELECT FOR UPDATE` via `$queryRaw`; map new fields in `mapBpToResponse()` — **must call `vetExt.defaultDfRate?.toNumber() ?? null`** to convert Prisma `Decimal` to plain `number` before assigning to response; map `group` sub-object `{ id, name, prefix }`; update `create()`/`update()` flows
 - **T043** [P] Add `GET /reference/bp-groups` to `apps/api/src/modules/identity/controllers/reference.controller.ts`; add `listBpGroups()` method to `business-partner.service.ts`
 - **T044** Remove `GET /reference/contact-positions` from `reference.controller.ts` and `listContactPositions()` from service (~~SUPERSEDED~~)
-- **T045** Update `apps/api/src/modules/identity/services/clinic.service.ts` (or equivalent clinic creation service): auto-seed 3 `BpGroup` rows when a `Clinic` is created
+- **T045** Update `apps/api/src/modules/identity/services/clinic.service.ts` — specifically the **`registerRequest()`** method (which already uses a `$transaction` for clinic + user creation): insert 3 default `BpGroup` rows within the same transaction after the `Clinic` row is persisted. Also update the direct-create `create()` method to seed the same 3 groups (for admin/system-created clinics that bypass `registerRequest()`), using a separate transaction if `create()` does not already use one.
 
 ### Phase 4 — Backend Tests
 
@@ -277,7 +315,8 @@ See Section 5.
 - **T049** Update `apps/web/components/business-partners/tabs/contact-tab.tsx`: replace position `<Select>` + `__none__` sentinel with plain `<Input type="text">` for `position`
 - **T050** Update `apps/web/components/business-partners/tabs/roles-commercial-tab.tsx`: add `groupId` `<Select>` (from `/reference/bp-groups`), `isMarketingOptIn` checkbox, `internalNotes` textarea, `alertMessage` input; add next-code preview hint
 - **T051** Update `apps/web/components/business-partners/extension-fields.tsx`: add `specialty` input and `defaultDfRate` number input below `licenseNumber`
-- **T052** Update `apps/web/components/business-partners/business-partner-form.tsx`: remove `/reference/contact-positions` fetch; add `/reference/bp-groups` fetch; add `<BpAlertBanner>` above `<Tabs>` when `alertMessage` is set; wire new schema fields into `buildDefaultValues()`
+- **T052a** Create `apps/web/components/business-partners/bp-alert-banner.tsx`: yellow warning banner component that accepts a `message: string` prop; uses UI package warning/alert variant
+- **T052b** Update `apps/web/components/business-partners/business-partner-form.tsx`: remove `/reference/contact-positions` fetch; add `/reference/bp-groups` fetch; import and render `<BpAlertBanner>` above `<Tabs>` when `alertMessage` is set; wire new schema fields into `buildDefaultValues()`; pass `isEdit` to `roles-commercial-tab` so `groupId` renders read-only in edit mode
 - **T053** [P] Update `apps/web/messages/en.json` and `th.json`: add keys for `group`, `code`, `isMarketingOptIn`, `internalNotes`, `alertMessage`, `specialty`, `defaultDfRate`, `contacts.position` (replacing `contacts.selectPosition`/`contacts.noPosition`)
 
 ### Phase 5 — Frontend Tests
