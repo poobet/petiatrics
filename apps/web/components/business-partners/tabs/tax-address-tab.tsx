@@ -78,12 +78,12 @@ export default function TaxAddressTab({ vatCodes, whtCodes }: TaxAddressTabProps
             control={control}
             name="defaultVatCodeId"
             render={({ field: f }) => (
-              <Select value={f.value ?? ''} onValueChange={(v) => f.onChange(v || null)}>
+              <Select value={f.value ?? '__none__'} onValueChange={(v) => f.onChange(v === '__none__' ? null : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder={t('none')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">{t('none')}</SelectItem>
+                  <SelectItem value="__none__">{t('none')}</SelectItem>
                   {vatCodes.map((tc) => (
                     <SelectItem key={tc.id} value={tc.id}>
                       {tc.name} ({tc.rate}%)
@@ -101,12 +101,12 @@ export default function TaxAddressTab({ vatCodes, whtCodes }: TaxAddressTabProps
             control={control}
             name="defaultWhtCodeId"
             render={({ field: f }) => (
-              <Select value={f.value ?? ''} onValueChange={(v) => f.onChange(v || null)}>
+              <Select value={f.value ?? '__none__'} onValueChange={(v) => f.onChange(v === '__none__' ? null : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder={t('none')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">{t('none')}</SelectItem>
+                  <SelectItem value="__none__">{t('none')}</SelectItem>
                   {whtCodes.map((tc) => (
                     <SelectItem key={tc.id} value={tc.id}>
                       {tc.name} ({tc.rate}%)

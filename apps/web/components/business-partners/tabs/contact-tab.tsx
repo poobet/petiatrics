@@ -107,15 +107,15 @@ export default function ContactTab({ contactPositions, positionsLoading }: Conta
                     name={`contacts.${index}.positionId`}
                     render={({ field: f }) => (
                       <Select
-                        value={f.value ?? ''}
-                        onValueChange={(v) => f.onChange(v || null)}
+                        value={f.value ?? '__none__'}
+                        onValueChange={(v) => f.onChange(v === '__none__' ? null : v)}
                         disabled={positionsLoading}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder={positionsLoading ? t('loading') : t('contacts.selectPosition')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">{t('contacts.noPosition')}</SelectItem>
+                          <SelectItem value="__none__">{t('contacts.noPosition')}</SelectItem>
                           {contactPositions.map((pos) => (
                             <SelectItem key={pos.id} value={pos.id}>
                               {pos.name}
