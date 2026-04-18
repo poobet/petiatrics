@@ -64,7 +64,7 @@ function buildDefaultValues(initial?: BusinessPartnerResponse): Partial<CreateBp
     groupId: initial.groupId ?? null,
     isMarketingOptIn: initial.isMarketingOptIn ?? false,
     internalNotes: initial.internalNotes ?? '',
-    alertMessage: initial.alertMessage ?? '',,
+    alertMessage: initial.alertMessage ?? '',
     bankAccountName: initial.bankAccountName ?? '',
     bankAccountBranch: initial.bankAccountBranch ?? '',
     bankAccountNumber: initial.bankAccountNumber ?? '',
