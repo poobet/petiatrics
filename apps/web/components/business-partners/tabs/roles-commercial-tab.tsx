@@ -2,8 +2,8 @@
 
 import { useFormContext, Controller } from 'react-hook-form';
 import { useTranslations } from 'next-intl';
-import { Checkbox, Input, Label } from '@petiatrics/ui';
-import { BpRole } from '@petiatrics/types';
+import { Checkbox, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch } from '@petiatrics/ui';
+import { BpRole, BpGroupResponse } from '@petiatrics/types';
 import { CreateBpFormValues } from '../bp-form-schema';
 
 const ROLE_LABELS: Record<BpRole, string> = {
@@ -19,11 +19,32 @@ const ROLE_LABELS: Record<BpRole, string> = {
 
 const ALL_ROLES = Object.values(BpRole);
 
-export default function RolesCommercialTab() {
+interface RolesCommercialTabProps {
+  bpGroups: BpGroupResponse[];
+  groupsLoading: boolean;
+  isEdit: boolean;
+  /** When editing, the already-assigned group (read-only display). */
+  existingGroup?: { id: string; name: string; prefix: string } | null;
+  /** When editing, the already-assigned BP code (read-only display). */
+  existingCode?: string | null;
+}
+
+export default function RolesCommercialTab({
+  bpGroups,
+  groupsLoading,
+  isEdit,
+  existingGroup,
+  existingCode,
+}: RolesCommercialTabProps) {
   const t = useTranslations('businessPartners');
   const { control, register, watch } = useFormContext<CreateBpFormValues>();
 
   const activeRoles = watch('activeRoles') ?? [];
+  const watchedGroupId = watch('groupId');
+  const previewGroup = bpGroups.find((g) => g.id === watchedGroupId);
+  const previewCode = previewGroup
+    ? `${previewGroup.prefix}${(previewGroup.currentSequence + 1).toString().padStart(4, '0')}`
+    : null;
 
   return (
     <div className="space-y-6">
@@ -66,9 +87,98 @@ export default function RolesCommercialTab() {
       {/* Commercial */}
       <div>
         <h3 className="mb-3 text-sm font-medium">{t('commercial.title')}</h3>
-        <div className="space-y-1.5 sm:w-1/2">
-          <Label>{t('discountGroupId')}</Label>
-          <Input {...register('discountGroupId')} placeholder={t('discountGroupId')} />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label>{t('discountGroupId')}</Label>
+            <Input {...register('discountGroupId')} placeholder={t('discountGroupId')} />
+          </div>
+
+          {/* BP Group — editable only on create */}
+          <div className="space-y-1.5">
+            <Label>{t('group')}</Label>
+            {isEdit ? (
+              <p className="text-muted-foreground mt-1 text-sm">
+                {existingGroup ? existingGroup.name : t('noGroup')}
+                {existingCode && (
+                  <span className="ml-2 font-mono text-xs">({existingCode})</span>
+                )}
+              </p>
+            ) : (
+              <>
+                <Controller
+                  control={control}
+                  name="groupId"
+                  render={({ field: f }) => (
+                    <Select
+                      value={f.value ?? '__none__'}
+                      onValueChange={(v) => f.onChange(v === '__none__' ? null : v)}
+                      disabled={groupsLoading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={groupsLoading ? t('loading') : t('noGroup')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">{t('noGroup')}</SelectItem>
+                        {bpGroups.map((g) => (
+                          <SelectItem key={g.id} value={g.id}>
+                            {g.name} ({g.prefix})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {previewCode && (
+                  <p className="text-muted-foreground text-xs">
+                    {t('nextCode', { code: previewCode })}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* CRM */}
+      <div>
+        <h3 className="mb-3 text-sm font-medium">CRM</h3>
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Controller
+              control={control}
+              name="isMarketingOptIn"
+              render={({ field: f }) => (
+                <Switch
+                  id="isMarketingOptIn"
+                  checked={f.value ?? false}
+                  onCheckedChange={f.onChange}
+                />
+              )}
+            />
+            <Label htmlFor="isMarketingOptIn" className="cursor-pointer font-normal">
+              {t('isMarketingOptIn')}
+            </Label>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="alertMessage">{t('alertMessage')}</Label>
+            <Input
+              id="alertMessage"
+              {...register('alertMessage')}
+              placeholder="e.g. VIP customer — handle with care"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="internalNotes">{t('internalNotes')}</Label>
+            <textarea
+              id="internalNotes"
+              {...register('internalNotes')}
+              rows={3}
+              className="border-input bg-background placeholder:text-muted-foreground focus-visible:ring-ring w-full rounded-md border px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1"
+              placeholder="Internal notes visible to staff only…"
+            />
+          </div>
         </div>
       </div>
     </div>

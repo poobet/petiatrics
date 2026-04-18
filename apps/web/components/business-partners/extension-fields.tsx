@@ -20,15 +20,40 @@ export default function ExtensionFields({ type }: ExtensionFieldsProps) {
 
   if (type === BusinessPartnerType.VET) {
     return (
-      <div className="space-y-1.5" data-testid="vet-fields">
-        <Label>{t('vet.licenseNumber')}</Label>
-        <Input
-          {...register('vet.licenseNumber')}
-          placeholder="VET-0001"
-        />
-        {errors.vet?.licenseNumber && (
-          <p className="text-destructive text-sm">{errors.vet.licenseNumber.message}</p>
-        )}
+      <div className="space-y-4" data-testid="vet-fields">
+        <div className="space-y-1.5">
+          <Label>{t('vet.licenseNumber')}</Label>
+          <Input
+            {...register('vet.licenseNumber')}
+            placeholder="VET-0001"
+          />
+          {errors.vet?.licenseNumber && (
+            <p className="text-destructive text-sm">{errors.vet.licenseNumber.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>{t('vet.specialty')}</Label>
+          <Input
+            {...register('vet.specialty')}
+            placeholder="e.g. Internal Medicine"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>{t('vet.defaultDfRate')}</Label>
+          <Input
+            type="number"
+            step="0.01"
+            min={0}
+            max={100}
+            {...register('vet.defaultDfRate', { valueAsNumber: true })}
+            placeholder="e.g. 35.00"
+          />
+          {errors.vet?.defaultDfRate && (
+            <p className="text-destructive text-sm">{errors.vet.defaultDfRate.message}</p>
+          )}
+        </div>
       </div>
     );
   }

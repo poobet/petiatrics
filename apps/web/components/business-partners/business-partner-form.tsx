@@ -9,13 +9,14 @@ import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Separator, Tabs, TabsList, TabsTrigger, TabsContent } from '@petiatrics/ui';
 import { apiClient } from '../../lib/api-client';
 import ExtensionFields from './extension-fields';
+import BpAlertBanner from './bp-alert-banner';
 import {
   BusinessPartnerType,
   BusinessPartnerResponse,
   CreateBusinessPartnerPayload,
   TaxCodeResponse,
   UpdateBusinessPartnerPayload,
-  ContactPositionResponse,
+  BpGroupResponse,
 } from '@petiatrics/types';
 import {
   createBpSchema,
@@ -35,7 +36,7 @@ interface BusinessPartnerFormProps {
 const TAB_FIELDS: Record<string, (keyof CreateBpFormValues)[]> = {
   contact: ['phone', 'email', 'lineId', 'contacts'],
   tax: ['taxId', 'isHeadOffice', 'branchCode', 'addressLine1', 'subDistrict', 'district', 'province', 'zipcode', 'defaultVatCodeId', 'defaultWhtCodeId'],
-  roles: ['activeRoles', 'discountGroupId'],
+  roles: ['activeRoles', 'discountGroupId', 'groupId', 'isMarketingOptIn', 'internalNotes', 'alertMessage'],
   financials: ['creditLimit', 'creditTermDays', 'creditHold', 'bankAccountName', 'bankAccountBranch', 'bankAccountNumber'],
 };
 
@@ -60,18 +61,26 @@ function buildDefaultValues(initial?: BusinessPartnerResponse): Partial<CreateBp
     creditLimit: initial.creditLimit ?? undefined,
     creditHold: initial.creditHold ?? false,
     discountGroupId: initial.discountGroupId ?? '',
+    groupId: initial.groupId ?? null,
+    isMarketingOptIn: initial.isMarketingOptIn ?? false,
+    internalNotes: initial.internalNotes ?? '',
+    alertMessage: initial.alertMessage ?? '',,
     bankAccountName: initial.bankAccountName ?? '',
     bankAccountBranch: initial.bankAccountBranch ?? '',
     bankAccountNumber: initial.bankAccountNumber ?? '',
     activeRoles: initial.activeRoles ?? [],
-    vet: initial.vet ? { licenseNumber: initial.vet.licenseNumber } : undefined,
+    vet: initial.vet ? {
+      licenseNumber: initial.vet.licenseNumber,
+      specialty: initial.vet.specialty ?? '',
+      defaultDfRate: initial.vet.defaultDfRate ?? undefined,
+    } : undefined,
     contacts: (initial.contacts ?? []).map((c) => ({
       id: c.id,
       name: c.name,
       phone: c.phone ?? '',
       email: c.email ?? '',
       lineId: c.lineId ?? '',
-      positionId: c.positionId ?? undefined,
+      position: c.position ?? '',
       isPrimary: c.isPrimary,
     })),
   };
@@ -84,8 +93,8 @@ export default function BusinessPartnerForm({ initial }: BusinessPartnerFormProp
   const isEdit = !!initial;
 
   const [taxCodes, setTaxCodes] = useState<TaxCodeResponse[]>([]);
-  const [contactPositions, setContactPositions] = useState<ContactPositionResponse[]>([]);
-  const [positionsLoading, setPositionsLoading] = useState(true);
+  const [bpGroups, setBpGroups] = useState<BpGroupResponse[]>([]);
+  const [groupsLoading, setGroupsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -110,11 +119,11 @@ export default function BusinessPartnerForm({ initial }: BusinessPartnerFormProp
   useEffect(() => {
     Promise.all([
       apiClient.get<TaxCodeResponse[]>('/reference/tax-codes').catch(() => [] as TaxCodeResponse[]),
-      apiClient.get<ContactPositionResponse[]>('/reference/contact-positions').catch(() => [] as ContactPositionResponse[]),
-    ]).then(([codes, positions]) => {
+      apiClient.get<BpGroupResponse[]>('/reference/bp-groups').catch(() => [] as BpGroupResponse[]),
+    ]).then(([codes, groups]) => {
       setTaxCodes(codes);
-      setContactPositions(positions);
-      setPositionsLoading(false);
+      setBpGroups(groups);
+      setGroupsLoading(false);
     });
   }, []);
 
@@ -155,7 +164,11 @@ export default function BusinessPartnerForm({ initial }: BusinessPartnerFormProp
         bankAccountNumber: values.bankAccountNumber ?? null,
         activeRoles: values.activeRoles ?? [],
         vet: type === BusinessPartnerType.VET && values.vet?.licenseNumber
-          ? { licenseNumber: values.vet.licenseNumber }
+          ? {
+              licenseNumber: values.vet.licenseNumber,
+              specialty: values.vet.specialty ?? null,
+              defaultDfRate: values.vet.defaultDfRate ?? null,
+            }
           : null,
         contacts: (values.contacts ?? []).map((c) => ({
           id: c.id,
@@ -163,9 +176,13 @@ export default function BusinessPartnerForm({ initial }: BusinessPartnerFormProp
           phone: c.phone ?? null,
           email: c.email ?? null,
           lineId: c.lineId ?? null,
-          positionId: c.positionId ?? null,
+          position: c.position ?? null,
           isPrimary: c.isPrimary ?? false,
         })),
+        isMarketingOptIn: values.isMarketingOptIn ?? false,
+        internalNotes: values.internalNotes ?? null,
+        alertMessage: values.alertMessage ?? null,
+        ...(!isEdit ? { groupId: (values as CreateBpFormValues).groupId ?? null } : {}),
         supplier: null,
       };
 
@@ -228,6 +245,10 @@ export default function BusinessPartnerForm({ initial }: BusinessPartnerFormProp
 
           <Separator />
 
+          {initial?.alertMessage && (
+            <BpAlertBanner message={initial.alertMessage} />
+          )}
+
           <Tabs defaultValue="contact">
             <TabsList className="w-full">
               <TabsTrigger value="contact" className="flex-1 gap-1.5">
@@ -249,13 +270,19 @@ export default function BusinessPartnerForm({ initial }: BusinessPartnerFormProp
             </TabsList>
 
             <TabsContent value="contact" className="pt-4">
-              <ContactTab contactPositions={contactPositions} positionsLoading={positionsLoading} />
+              <ContactTab />
             </TabsContent>
             <TabsContent value="tax" className="pt-4">
               <TaxAddressTab vatCodes={vatCodes} whtCodes={whtCodes} />
             </TabsContent>
             <TabsContent value="roles" className="pt-4">
-              <RolesCommercialTab />
+              <RolesCommercialTab
+                bpGroups={bpGroups}
+                groupsLoading={groupsLoading}
+                isEdit={isEdit}
+                existingGroup={initial?.group ?? null}
+                existingCode={initial?.code ?? null}
+              />
             </TabsContent>
             <TabsContent value="financials" className="pt-4">
               <FinancialsTab />
