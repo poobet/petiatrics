@@ -1,7 +1,9 @@
 import {
   IsArray,
   IsBoolean,
+  IsEmail,
   IsEnum,
+  IsInt,
   IsNumber,
   IsObject,
   IsOptional,
@@ -9,11 +11,12 @@ import {
   IsUUID,
   Matches,
   Min,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { BpRole } from '@petiatrics/types';
-import { BpVetDto, BpSupplierDto } from './create-business-partner.dto';
+import { BpVetDto, BpSupplierDto, BpContactDto } from './create-business-partner.dto';
 
 export class UpdateBusinessPartnerDto {
   @IsOptional()
@@ -72,9 +75,63 @@ export class UpdateBusinessPartnerDto {
 
   // ── Payment defaults ─────────────────────────────────────────────────────
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   @Min(0)
   creditTermDays?: number;
+
+  // ── Communication ────────────────────────────────────────────────────────
+  @ValidateIf((o: UpdateBusinessPartnerDto) => o.phone != null)
+  @IsOptional()
+  @IsString()
+  phone?: string | null;
+
+  @ValidateIf((o: UpdateBusinessPartnerDto) => o.email != null)
+  @IsOptional()
+  @IsEmail()
+  email?: string | null;
+
+  @ValidateIf((o: UpdateBusinessPartnerDto) => o.lineId != null)
+  @IsOptional()
+  @IsString()
+  lineId?: string | null;
+
+  // ── Commercial ───────────────────────────────────────────────────────────
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  creditLimit?: number | null;
+
+  @IsOptional()
+  @IsBoolean()
+  creditHold?: boolean;
+
+  @ValidateIf((o: UpdateBusinessPartnerDto) => o.discountGroupId != null)
+  @IsOptional()
+  @IsString()
+  discountGroupId?: string | null;
+
+  // ── Bank account ─────────────────────────────────────────────────────────
+  @ValidateIf((o: UpdateBusinessPartnerDto) => o.bankAccountName != null)
+  @IsOptional()
+  @IsString()
+  bankAccountName?: string | null;
+
+  @ValidateIf((o: UpdateBusinessPartnerDto) => o.bankAccountBranch != null)
+  @IsOptional()
+  @IsString()
+  bankAccountBranch?: string | null;
+
+  @ValidateIf((o: UpdateBusinessPartnerDto) => o.bankAccountNumber != null)
+  @IsOptional()
+  @IsString()
+  bankAccountNumber?: string | null;
+
+  // ── Contact persons ──────────────────────────────────────────────────────
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BpContactDto)
+  contacts?: BpContactDto[];
 
   // ── Infor LN role activation ─────────────────────────────────────────────
   @IsOptional()

@@ -1,7 +1,9 @@
 import {
   IsArray,
   IsBoolean,
+  IsEmail,
   IsEnum,
+  IsInt,
   IsNotEmpty,
   IsNumber,
   IsObject,
@@ -30,6 +32,41 @@ export class BpSupplierDto {
   @IsOptional()
   @IsString()
   vendorGroupId?: string | null;
+}
+
+export class BpContactDto {
+  /** Present for existing rows; absent for new rows. Server always generates a fresh UUID for new rows. */
+  @IsOptional()
+  @IsUUID()
+  id?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  name!: string;
+
+  @ValidateIf((o: BpContactDto) => o.phone != null)
+  @IsOptional()
+  @IsString()
+  phone?: string | null;
+
+  @ValidateIf((o: BpContactDto) => o.email != null)
+  @IsOptional()
+  @IsEmail()
+  email?: string | null;
+
+  @ValidateIf((o: BpContactDto) => o.lineId != null)
+  @IsOptional()
+  @IsString()
+  lineId?: string | null;
+
+  @ValidateIf((o: BpContactDto) => o.positionId != null)
+  @IsOptional()
+  @IsUUID()
+  positionId?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  isPrimary?: boolean;
 }
 
 export class CreateBusinessPartnerDto {
@@ -93,9 +130,63 @@ export class CreateBusinessPartnerDto {
 
   // ── Payment defaults ─────────────────────────────────────────────────────
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   @Min(0)
   creditTermDays?: number;
+
+  // ── Communication ────────────────────────────────────────────────────────
+  @ValidateIf((o: CreateBusinessPartnerDto) => o.phone != null)
+  @IsOptional()
+  @IsString()
+  phone?: string | null;
+
+  @ValidateIf((o: CreateBusinessPartnerDto) => o.email != null)
+  @IsOptional()
+  @IsEmail()
+  email?: string | null;
+
+  @ValidateIf((o: CreateBusinessPartnerDto) => o.lineId != null)
+  @IsOptional()
+  @IsString()
+  lineId?: string | null;
+
+  // ── Commercial ───────────────────────────────────────────────────────────
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  creditLimit?: number | null;
+
+  @IsOptional()
+  @IsBoolean()
+  creditHold?: boolean;
+
+  @ValidateIf((o: CreateBusinessPartnerDto) => o.discountGroupId != null)
+  @IsOptional()
+  @IsString()
+  discountGroupId?: string | null;
+
+  // ── Bank account ─────────────────────────────────────────────────────────
+  @ValidateIf((o: CreateBusinessPartnerDto) => o.bankAccountName != null)
+  @IsOptional()
+  @IsString()
+  bankAccountName?: string | null;
+
+  @ValidateIf((o: CreateBusinessPartnerDto) => o.bankAccountBranch != null)
+  @IsOptional()
+  @IsString()
+  bankAccountBranch?: string | null;
+
+  @ValidateIf((o: CreateBusinessPartnerDto) => o.bankAccountNumber != null)
+  @IsOptional()
+  @IsString()
+  bankAccountNumber?: string | null;
+
+  // ── Contact persons ──────────────────────────────────────────────────────
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BpContactDto)
+  contacts?: BpContactDto[];
 
   // ── Infor LN role activation ─────────────────────────────────────────────
   @IsOptional()
