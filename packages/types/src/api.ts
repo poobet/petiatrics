@@ -98,6 +98,32 @@ export interface BpVetPayload {
   licenseNumber: string;
 }
 
+export interface ContactPositionResponse {
+  id: string;
+  name: string;
+}
+
+export interface BpContactPayload {
+  id?: string;           // present for existing rows; absent for new rows
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  lineId?: string | null;
+  positionId?: string | null;
+  isPrimary?: boolean;
+}
+
+export interface BpContactResponse {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  lineId: string | null;
+  positionId: string | null;
+  position: ContactPositionResponse | null;
+  isPrimary: boolean;
+}
+
 // BpSupplier extension — vendor classification only.
 // taxId and creditTermDays have moved to BusinessPartner core Thai fields.
 export interface BpSupplierPayload {
@@ -123,6 +149,20 @@ export interface CreateBusinessPartnerPayload {
   defaultWhtCodeId?: string | null;
   // Payment defaults
   creditTermDays?: number;
+  // ── Communication
+  phone?: string | null;
+  email?: string | null;
+  lineId?: string | null;
+  // ── Commercial
+  creditLimit?: number | null;
+  creditHold?: boolean;
+  discountGroupId?: string | null;
+  // ── Bank account
+  bankAccountName?: string | null;
+  bankAccountBranch?: string | null;
+  bankAccountNumber?: string | null;
+  // ── Contact persons
+  contacts?: BpContactPayload[];
   // Infor LN role activation
   activeRoles?: BpRole[];
   linkUserId?: string | null;
@@ -144,6 +184,20 @@ export interface UpdateBusinessPartnerPayload {
   defaultVatCodeId?: string | null;
   defaultWhtCodeId?: string | null;
   creditTermDays?: number;
+  // ── Communication
+  phone?: string | null;
+  email?: string | null;
+  lineId?: string | null;
+  // ── Commercial
+  creditLimit?: number | null;
+  creditHold?: boolean;
+  discountGroupId?: string | null;
+  // ── Bank account
+  bankAccountName?: string | null;
+  bankAccountBranch?: string | null;
+  bankAccountNumber?: string | null;
+  // ── Contact persons
+  contacts?: BpContactPayload[];
   activeRoles?: BpRole[];
   linkUserId?: string | null;
   vet?: BpVetPayload | null;
@@ -203,6 +257,20 @@ export interface BusinessPartnerResponse {
   isVatRegistered: boolean;
   // Payment defaults
   creditTermDays: number;
+  // ── Communication
+  phone: string | null;
+  email: string | null;
+  lineId: string | null;
+  // ── Commercial
+  creditLimit: number | null;
+  creditHold: boolean;
+  discountGroupId: string | null;
+  // ── Bank account
+  bankAccountName: string | null;
+  bankAccountBranch: string | null;
+  bankAccountNumber: string | null;
+  // ── Contact persons
+  contacts: BpContactResponse[];
   activeRoles: BpRole[];
   isActive: boolean;
   user: BpUserSummary | null;
