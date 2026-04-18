@@ -43,15 +43,15 @@ model ContactPosition {
 }
 ```
 
-**Seed records** (added to `packages/database/prisma/seed.ts`):
+**Seed records** — the `name` field stores a single bilingual string; the ` / ` separator is intentional and is the literal stored value. No separate language field is planned.
 
-```ts
-{ name: 'ผู้จัดการ / Manager' },
-{ name: 'ฝ่ายจัดซื้อ / Purchasing' },
-{ name: 'ฝ่ายบัญชี / Accounting' },
-{ name: 'พนักงานขาย / Sales' },
-{ name: 'กรรมการ / Director' },
-```
+| Stored `name` value |
+|---|
+| `ผู้จัดการ / Manager` |
+| `ฝ่ายจัดซื้อ / Purchasing` |
+| `ฝ่ายบัญชี / Accounting` |
+| `พนักงานขาย / Sales` |
+| `กรรมการ / Director` |
 
 ### 1b. New `BpContact` model
 
@@ -166,7 +166,7 @@ New endpoint added alongside `GET /reference/tax-codes`:
 GET /api/v1/reference/contact-positions
 ```
 
-Returns all `ContactPosition` records where `isActive = true`. No clinic scoping. Accessible to all authenticated clinic users.
+The new endpoint uses `@UseGuards(BranchContextGuard)` — the same guard already decorating the `ReferenceController` class — so no additional guard configuration is needed for the new method.
 
 ### 3b. `BusinessPartnerService`
 
@@ -180,7 +180,7 @@ Returns all `ContactPosition` records where `isActive = true`. No clinic scoping
 2. If `contacts` is an explicit array (including empty `[]`) → perform the following inside a transaction:
    a. Load existing `BpContact.id` values for the BP.
    b. Delete all rows whose `id` is not present in the incoming array.
-   c. For each element in the incoming array: `update` the row if `id` is present and matches an existing row; `create` a new row otherwise, always generating a fresh server-side UUID (client-supplied `id` values for new rows are discarded — the server never uses a client-provided UUID when creating a row to prevent ID injection).
+   c. For each element in the incoming array: `update` the row if `id` is present **and matches an existing `BpContact.id` scoped to this BP**; `create` a new row otherwise, always generating a fresh server-side UUID (client-supplied `id` values for new rows are discarded — the server never uses a client-provided UUID when creating a row to prevent ID injection). A client-supplied `id` that does not match any existing contact for this BP is treated as a new row (fresh UUID created); it is **not** an error.
 
 This approach preserves row IDs across saves (important for FK references on other tables in future phases) and avoids the "delete all, re-create" pattern which destroys identity.
 
@@ -188,31 +188,34 @@ This approach preserves row IDs across saves (important for FK references on oth
 
 **New `BpContactDto`** (used in both Create and Update DTOs):
 
+> **`null` handling note:** All `string | null` fields in the DTOs below use `@ValidateIf((o) => o.field != null)` in addition to `@IsString()` so that `null` (not just `undefined`) bypasses string validation. The global `ValidationPipe` is assumed to have `transform: true` but not `skipNullProperties`. Implementers MUST apply `@ValidateIf(o => o.<fieldName> != null)` on every nullable string field.
+
 ```ts
 export class BpContactDto {
   @IsOptional() @IsUUID()     id?: string;     // ignored for new rows — server generates a fresh UUID
   @IsString() @IsNotEmpty()   name!: string;
-  @IsOptional() @IsString()   phone?: string | null;
-  @IsOptional() @IsEmail() @IsString() email?: string | null;
-  @IsOptional() @IsString()   lineId?: string | null;
-  @IsOptional() @IsUUID()     positionId?: string | null;
+  @ValidateIf(o => o.phone != null) @IsOptional() @IsString()   phone?: string | null;
+  @ValidateIf(o => o.email != null) @IsOptional() @IsEmail()    email?: string | null;
+  @ValidateIf(o => o.lineId != null) @IsOptional() @IsString()  lineId?: string | null;
+  @ValidateIf(o => o.positionId != null) @IsOptional() @IsUUID() positionId?: string | null;
   @IsOptional() @IsBoolean()  isPrimary?: boolean;
 }
 ```
 
-The `creditTermDays` field (already existing) adds `@IsInt()` to align with Zod's `z.number().int().min(0)` rule.
+The `creditTermDays` field (already existing in the DTO with `@IsNumber() @Min(0)`) gains `@IsInt()`. This is safe: Prisma already stores `creditTermDays` as `Int`, so no existing row contains a float. The change only tightens DTO validation to reject future float inputs.
 
-**`CreateBusinessPartnerDto`** and **`UpdateBusinessPartnerDto`** gain:
+**`CreateBusinessPartnerDto`** and **`UpdateBusinessPartnerDto`** gain the following. Note: both DTOs apply the same new fields.
 
 ```ts
-@IsOptional() @IsString()   phone?: string | null;
-  @IsOptional() @IsEmail() @IsString() email?: string | null;
-@IsOptional() @IsNumber() @Min(0) creditLimit?: number | null;
-@IsOptional() @IsBoolean()  creditHold?: boolean;
-@IsOptional() @IsString()   discountGroupId?: string | null;
-@IsOptional() @IsString()   bankAccountName?: string | null;
-@IsOptional() @IsString()   bankAccountBranch?: string | null;
-@IsOptional() @IsString()   bankAccountNumber?: string | null;
+@ValidateIf(o => o.phone != null) @IsOptional() @IsString()   phone?: string | null;
+  @ValidateIf(o => o.email != null) @IsOptional() @IsEmail()    email?: string | null;
+  @ValidateIf(o => o.lineId != null) @IsOptional() @IsString()  lineId?: string | null;
+  @IsOptional() @IsNumber() @Min(0) creditLimit?: number | null;
+  @IsOptional() @IsBoolean()  creditHold?: boolean;
+  @ValidateIf(o => o.discountGroupId != null) @IsOptional() @IsString() discountGroupId?: string | null;
+  @ValidateIf(o => o.bankAccountName != null) @IsOptional() @IsString() bankAccountName?: string | null;
+  @ValidateIf(o => o.bankAccountBranch != null) @IsOptional() @IsString() bankAccountBranch?: string | null;
+  @ValidateIf(o => o.bankAccountNumber != null) @IsOptional() @IsString() bankAccountNumber?: string | null;
 
 @IsOptional()
 @IsArray()
@@ -229,6 +232,8 @@ contacts?: BpContactDto[];
 
 The current form uses local `useState` per field. This will be migrated to `react-hook-form` with a Zod schema. This is required to enable `formState.errors` — without it there is no reliable way to detect which tab contains invalid fields.
 
+The form uses **two Zod schemas**: `createBpSchema` (includes `type` as required enum) and `editBpSchema` (omits `type`). Both share a common base object. Conditional validation for `vet.licenseNumber` is handled via `.superRefine()` on the base schema. The `react-hook-form` resolver receives `createBpSchema` on the create page and `editBpSchema` on the edit page.
+
 **Zod schema field-level rules (frontend validation):**
 
 | Field | Rule |
@@ -243,7 +248,8 @@ The current form uses local `useState` per field. This will be migrated to `reac
 | `creditTermDays` | Optional; if provided, must be a non-negative integer (`z.number().int().min(0)`) |
 | `contacts[].name` | Required on each contact row, non-empty string |
 | `contacts[].email` | Optional; if provided, must be a valid email format (`z.string().email()`) |
-| `contacts` (array-level) | At most one entry may have `isPrimary: true` — enforced by a `.refine()` on the array. If multiple are checked the form shows an error rather than silently demoting. |
+| `contacts[].positionId` | Optional; if provided, must be a valid UUID (`z.string().uuid()`) |
+| `contacts` (array-level) | At most one entry may have `isPrimary: true` — enforced by `.refine()`. |
 | `vet.licenseNumber` | Required when `type === 'VET'` |
 
 All other fields are optional with no additional format constraints at the frontend layer. The frontend Zod schema mirrors the backend DTO constraints — they must not diverge.
@@ -256,9 +262,9 @@ components/business-partners/
   tabs/
     contact-tab.tsx              ← phone, email, lineId + BpContact inline editor
     tax-address-tab.tsx          ← taxId, isHeadOffice, branchCode, VAT/WHT, address
-    roles-commercial-tab.tsx     ← 8 LN role checkboxes + discountGroupId
+  roles-commercial-tab.tsx     ← 8 Infor LN business role checkboxes (`AR_SOLD_TO`, `AR_SHIP_TO`, `AR_INVOICE_TO`, `AR_PAY_BY`, `AP_BUY_FROM`, `AP_SHIP_FROM`, `AP_INVOICE_FROM`, `AP_PAY_TO`) + discountGroupId
     financials-tab.tsx           ← creditLimit, creditTermDays, creditHold, bank account
-  extension-fields.tsx           ← updated: props changed to use react-hook-form `Controller`
+  extension-fields.tsx           ← updated: migrated to `useFormContext()` from react-hook-form; removes `vet`/`onVetChange` props. The orchestrator wraps all sub-components in a `FormProvider`.
 ```
 
 ### 4c. Tab layout
@@ -291,10 +297,18 @@ Because `vet.licenseNumber` lives outside the tabs, a validation error on it doe
 </TabsTrigger>
 ```
 
-`hasContactErrors` is derived from `formState.errors` by checking the field names belonging to the Contact tab (phone, email, lineId, contacts).
+`hasContactErrors` checks `formState.errors` for: `phone`, `email`, `lineId`, `contacts`.
+
+**Field-to-tab mapping for error indicator:**
+
+| Tab | `formState.errors` keys checked |
+|---|---|
+| Contact | `phone`, `email`, `lineId`, `contacts` |
+| Tax & Address | `taxId`, `isHeadOffice`, `branchCode`, `addressLine1`, `subDistrict`, `district`, `province`, `zipcode`, `defaultVatCodeId`, `defaultWhtCodeId` |
+| Roles & Commercial | `activeRoles`, `discountGroupId` |
+| Financials | `creditLimit`, `creditTermDays`, `creditHold`, `bankAccountName`, `bankAccountBranch`, `bankAccountNumber` |
 
 ### 4e. BpContact inline editor (Contact tab)
-
 ```
 [ Name* ] [ Phone ] [ Email ] [ LINE ID ] [ Position ▼ ] [ Primary ] [×]
 [ Name* ] [ Phone ] [ Email ] [ LINE ID ] [ Position ▼ ] [ Primary ] [×]
@@ -310,6 +324,10 @@ Because `vet.licenseNumber` lives outside the tabs, a validation error on it doe
 ### 4f. Edit page hydration
 
 On the edit page, `initial` (a `BusinessPartnerResponse`) is passed to the form as `defaultValues` in `useForm`. All new fields default to their `initial` value or a sensible empty/false fallback. `contacts` defaults to `initial.contacts ?? []`.
+
+### 4g. `BpSupplier` extension
+
+The `BpSupplier` extension (`vendorGroupId`) currently has no UI and its existing handling is out of scope for this refactor. The `supplier` field in the DTO is preserved as-is. No `supplier` tab or section is added in this phase.
 
 ---
 
