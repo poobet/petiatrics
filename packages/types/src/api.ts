@@ -96,11 +96,16 @@ export interface TaxCodeResponse {
 
 export interface BpVetPayload {
   licenseNumber: string;
+  specialty?: string | null;
+  defaultDfRate?: number | null;
 }
 
-export interface ContactPositionResponse {
+export interface BpGroupResponse {
   id: string;
   name: string;
+  prefix: string;
+  currentSequence: number;
+  isActive: boolean;
 }
 
 export interface BpContactPayload {
@@ -109,7 +114,7 @@ export interface BpContactPayload {
   phone?: string | null;
   email?: string | null;
   lineId?: string | null;
-  positionId?: string | null;
+  position?: string | null;
   isPrimary?: boolean;
 }
 
@@ -119,8 +124,7 @@ export interface BpContactResponse {
   phone: string | null;
   email: string | null;
   lineId: string | null;
-  positionId: string | null;
-  position: ContactPositionResponse | null;
+  position: string | null;
   isPrimary: boolean;
 }
 
@@ -157,6 +161,12 @@ export interface CreateBusinessPartnerPayload {
   creditLimit?: number | null;
   creditHold?: boolean;
   discountGroupId?: string | null;
+  // ── BpGroup & auto-code
+  groupId?: string | null;
+  // ── CRM
+  isMarketingOptIn?: boolean;
+  internalNotes?: string | null;
+  alertMessage?: string | null;
   // ── Bank account
   bankAccountName?: string | null;
   bankAccountBranch?: string | null;
@@ -192,6 +202,10 @@ export interface UpdateBusinessPartnerPayload {
   creditLimit?: number | null;
   creditHold?: boolean;
   discountGroupId?: string | null;
+  // ── CRM (no groupId — immutable after creation)
+  isMarketingOptIn?: boolean;
+  internalNotes?: string | null;
+  alertMessage?: string | null;
   // ── Bank account
   bankAccountName?: string | null;
   bankAccountBranch?: string | null;
@@ -219,7 +233,8 @@ export interface BpUserSummary {
 
 export interface BpVetResponse {
   licenseNumber: string;
-  // whtRate REMOVED — WHT defaults are set via BusinessPartner.defaultWhtCodeId
+  specialty: string | null;
+  defaultDfRate: number | null;
 }
 
 // Extension-only — vendor classification metadata.
@@ -265,6 +280,14 @@ export interface BusinessPartnerResponse {
   creditLimit: number | null;
   creditHold: boolean;
   discountGroupId: string | null;
+  // ── BpGroup & auto-code
+  groupId: string | null;
+  code: string | null;
+  // ── CRM
+  isMarketingOptIn: boolean;
+  internalNotes: string | null;
+  alertMessage: string | null;
+  group: { id: string; name: string; prefix: string } | null;
   // ── Bank account
   bankAccountName: string | null;
   bankAccountBranch: string | null;
