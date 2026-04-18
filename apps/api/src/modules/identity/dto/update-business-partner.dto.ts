@@ -110,6 +110,19 @@ export class UpdateBusinessPartnerDto {
   @IsString()
   discountGroupId?: string | null;
 
+  // ── CRM fields ───────────────────────────────────────────────────────────
+  @IsOptional()
+  @IsBoolean()
+  isMarketingOptIn?: boolean;
+
+  @IsOptional()
+  @IsString()
+  internalNotes?: string | null;
+
+  @IsOptional()
+  @IsString()
+  alertMessage?: string | null;
+
   // ── Bank account ─────────────────────────────────────────────────────────
   @ValidateIf((o: UpdateBusinessPartnerDto) => o.bankAccountName != null)
   @IsOptional()

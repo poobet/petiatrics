@@ -11,6 +11,7 @@ import {
   IsString,
   IsUUID,
   Matches,
+  Max,
   Min,
   ValidateIf,
   ValidateNested,
@@ -23,7 +24,15 @@ export class BpVetDto {
   @IsNotEmpty()
   licenseNumber!: string;
 
-  // whtRate REMOVED — WHT defaults are set via BusinessPartner.defaultWhtCodeId
+  @IsOptional()
+  @IsString()
+  specialty?: string | null;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  defaultDfRate?: number | null;
 }
 
 // Extension-only — vendor classification metadata.
@@ -59,10 +68,9 @@ export class BpContactDto {
   @IsString()
   lineId?: string | null;
 
-  @ValidateIf((o: BpContactDto) => o.positionId != null)
   @IsOptional()
-  @IsUUID()
-  positionId?: string | null;
+  @IsString()
+  position?: string | null;
 
   @IsOptional()
   @IsBoolean()
@@ -164,6 +172,24 @@ export class CreateBusinessPartnerDto {
   @IsOptional()
   @IsString()
   discountGroupId?: string | null;
+
+  // ── BpGroup & auto-code ───────────────────────────────────────────
+  @IsOptional()
+  @IsUUID()
+  groupId?: string | null;
+
+  // ── CRM fields ────────────────────────────────────────────────
+  @IsOptional()
+  @IsBoolean()
+  isMarketingOptIn?: boolean;
+
+  @IsOptional()
+  @IsString()
+  internalNotes?: string | null;
+
+  @IsOptional()
+  @IsString()
+  alertMessage?: string | null;
 
   // ── Bank account ─────────────────────────────────────────────────────────
   @ValidateIf((o: CreateBusinessPartnerDto) => o.bankAccountName != null)
