@@ -72,15 +72,25 @@ export class ClinicService {
       throw new ConflictException(`Clinic with Tax ID ${dto.taxId} already exists.`);
     }
     const slug = await this.generateUniqueSlug(dto.name);
-    return this.prisma.clinic.create({
-      data: {
-        name: dto.name,
-        taxId: dto.taxId,
-        slug,
-        address: dto.address,
-        subscriptionTier: dto.subscriptionTier ?? SubscriptionTier.FREE,
-        status: ClinicStatus.ACTIVE,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const clinic = await tx.clinic.create({
+        data: {
+          name: dto.name,
+          taxId: dto.taxId,
+          slug,
+          address: dto.address,
+          subscriptionTier: dto.subscriptionTier ?? SubscriptionTier.FREE,
+          status: ClinicStatus.ACTIVE,
+        },
+      });
+      await tx.bpGroup.createMany({
+        data: [
+          { clinicId: clinic.id, name: 'Customers', prefix: 'C-' },
+          { clinicId: clinic.id, name: 'Vets',      prefix: 'V-' },
+          { clinicId: clinic.id, name: 'Suppliers', prefix: 'S-' },
+        ],
+      });
+      return clinic;
     });
   }
 
@@ -121,6 +131,13 @@ export class ClinicService {
             password_require_number: true,
           },
         },
+      });
+      await tx.bpGroup.createMany({
+        data: [
+          { clinicId: c.id, name: 'Customers', prefix: 'C-' },
+          { clinicId: c.id, name: 'Vets',      prefix: 'V-' },
+          { clinicId: c.id, name: 'Suppliers', prefix: 'S-' },
+        ],
       });
       const u = await tx.user.create({
         data: {
