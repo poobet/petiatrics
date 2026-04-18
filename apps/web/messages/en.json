@@ -408,7 +408,9 @@
       "AP_PAY_TO": "AP Pay-To"
     },
     "vet": {
-      "licenseNumber": "Veterinary License No."
+      "licenseNumber": "Veterinary License No.",
+      "specialty": "Specialty",
+      "defaultDfRate": "Default DF Rate (%)"
     },
     "linkUser": "Link to User Account",
     "linkUserHint": "Optionally link this business partner to a staff user account",
@@ -440,9 +442,7 @@
       "phone": "Phone",
       "email": "Email",
       "lineId": "LINE ID",
-      "isPrimary": "Primary contact",
-      "selectPosition": "Select position",
-      "noPosition": "— No position —"
+      "isPrimary": "Primary contact"
     },
     "address": {
       "title": "Address",
@@ -455,6 +455,14 @@
     "creditLimit": "Credit Limit",
     "creditHold": "Credit Hold",
     "discountGroupId": "Discount Group",
+    "group": "BP Group",
+    "groupCode": "Group Code",
+    "code": "BP Code",
+    "noGroup": "— No Group —",
+    "nextCode": "Next code: {code}",
+    "isMarketingOptIn": "Marketing Opt-In",
+    "internalNotes": "Internal Notes",
+    "alertMessage": "Alert Message",
     "bankAccountName": "Account Name",
     "bankAccountBranch": "Branch",
     "bankAccountNumber": "Account Number",

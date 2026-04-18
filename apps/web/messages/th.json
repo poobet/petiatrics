@@ -408,7 +408,9 @@
       "AP_PAY_TO": "AP Pay-To"
     },
     "vet": {
-      "licenseNumber": "เลขที่ใบอนุญาตสัตวแพทย์"
+      "licenseNumber": "เลขที่ใบอนุญาตสัตวแพทย์",
+      "specialty": "สาขาเชี่ยวชาญ",
+      "defaultDfRate": "อัตรา DF เริ่มต้น (%)"
     },
     "linkUser": "เชื่อมโยงกับบัญชีผู้ใช้",
     "linkUserHint": "เชื่อมโยงคู่ค้าธุรกิจนี้กับบัญชีผู้ใช้พนักงาน (ไม่บังคับ)",
@@ -440,9 +442,7 @@
       "phone": "เบอร์โทรศัพท์",
       "email": "อีเมล์",
       "lineId": "LINE ID",
-      "isPrimary": "ผู้ติดต่อหลัก",
-      "selectPosition": "เลือกตำแหน่ง",
-      "noPosition": "— ไม่ระบุตำแหน่ง —"
+      "isPrimary": "ผู้ติดต่อหลัก"
     },
     "address": {
       "title": "ที่อยู่",
@@ -455,6 +455,14 @@
     "creditLimit": "วงเงินเครดิต",
     "creditHold": "อายัดเครดิต",
     "discountGroupId": "กลุ่มส่วนลด",
+    "group": "กลุ่ม BP",
+    "groupCode": "รหัสกลุ่ม",
+    "code": "รหัส BP",
+    "noGroup": "— ไม่ระบุกลุ่ม —",
+    "nextCode": "รหัสถัดไป: {code}",
+    "isMarketingOptIn": "ยินยอมรับสื่อสารการตลาด",
+    "internalNotes": "หมายเหตุภายใน",
+    "alertMessage": "ข้อความแจ้งเตือน",
     "bankAccountName": "ชื่อบัญชี",
     "bankAccountBranch": "สาขา",
     "bankAccountNumber": "เลขบัญชี",
