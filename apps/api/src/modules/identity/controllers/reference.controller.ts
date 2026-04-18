@@ -23,4 +23,14 @@ export class ReferenceController {
   listTaxCodes() {
     return this.bpService.listTaxCodes();
   }
+
+  /**
+   * GET /api/v1/reference/contact-positions
+   * Return all active ContactPosition records for use in the BpContact position selector.
+   * Global (no clinic scoping). Inherits BranchContextGuard from controller class.
+   */
+  @Get('contact-positions')
+  listContactPositions() {
+    return this.bpService.listContactPositions();
+  }
 }
