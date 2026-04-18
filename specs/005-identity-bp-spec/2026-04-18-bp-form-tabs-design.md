@@ -180,7 +180,7 @@ Returns all `ContactPosition` records where `isActive = true`. No clinic scoping
 2. If `contacts` is an explicit array (including empty `[]`) → perform the following inside a transaction:
    a. Load existing `BpContact.id` values for the BP.
    b. Delete all rows whose `id` is not present in the incoming array.
-   c. For each element in the incoming array: `update` the row if `id` is present and matches an existing row; `create` a new row otherwise.
+   c. For each element in the incoming array: `update` the row if `id` is present and matches an existing row; `create` a new row otherwise, always generating a fresh server-side UUID (client-supplied `id` values for new rows are discarded — the server never uses a client-provided UUID when creating a row to prevent ID injection).
 
 This approach preserves row IDs across saves (important for FK references on other tables in future phases) and avoids the "delete all, re-create" pattern which destroys identity.
 
@@ -190,22 +190,23 @@ This approach preserves row IDs across saves (important for FK references on oth
 
 ```ts
 export class BpContactDto {
-  @IsOptional() @IsUUID()    id?: string;
-  @IsString() @IsNotEmpty()  name!: string;
-  @IsOptional() @IsString()  phone?: string | null;
-  @IsOptional() @IsString()  email?: string | null;
-  @IsOptional() @IsString()  lineId?: string | null;
-  @IsOptional() @IsUUID()    positionId?: string | null;
-  @IsOptional() @IsBoolean() isPrimary?: boolean;
+  @IsOptional() @IsUUID()     id?: string;     // ignored for new rows — server generates a fresh UUID
+  @IsString() @IsNotEmpty()   name!: string;
+  @IsOptional() @IsString()   phone?: string | null;
+  @IsOptional() @IsEmail() @IsString() email?: string | null;
+  @IsOptional() @IsString()   lineId?: string | null;
+  @IsOptional() @IsUUID()     positionId?: string | null;
+  @IsOptional() @IsBoolean()  isPrimary?: boolean;
 }
 ```
+
+The `creditTermDays` field (already existing) adds `@IsInt()` to align with Zod's `z.number().int().min(0)` rule.
 
 **`CreateBusinessPartnerDto`** and **`UpdateBusinessPartnerDto`** gain:
 
 ```ts
 @IsOptional() @IsString()   phone?: string | null;
-@IsOptional() @IsString()   email?: string | null;
-@IsOptional() @IsString()   lineId?: string | null;
+  @IsOptional() @IsEmail() @IsString() email?: string | null;
 @IsOptional() @IsNumber() @Min(0) creditLimit?: number | null;
 @IsOptional() @IsBoolean()  creditHold?: boolean;
 @IsOptional() @IsString()   discountGroupId?: string | null;
@@ -237,11 +238,12 @@ The current form uses local `useState` per field. This will be migrated to `reac
 | `taxId` | Optional; if provided, must match `/^\d{13}$/` |
 | `branchCode` | Optional; if provided, must match `/^\d{5}$/` |
 | `zipcode` | Optional; if provided, must match `/^\d{5}$/` |
-| `email` | Optional; if provided, must be a valid email format |
+| `email` | Optional; if provided, must be a valid email format (`z.string().email()`) |
 | `creditLimit` | Optional; if provided, must be a non-negative number |
-| `creditTermDays` | Optional; if provided, must be a non-negative integer |
+| `creditTermDays` | Optional; if provided, must be a non-negative integer (`z.number().int().min(0)`) |
 | `contacts[].name` | Required on each contact row, non-empty string |
-| `contacts[].email` | Optional; if provided, must be a valid email format |
+| `contacts[].email` | Optional; if provided, must be a valid email format (`z.string().email()`) |
+| `contacts` (array-level) | At most one entry may have `isPrimary: true` — enforced by a `.refine()` on the array. If multiple are checked the form shows an error rather than silently demoting. |
 | `vet.licenseNumber` | Required when `type === 'VET'` |
 
 All other fields are optional with no additional format constraints at the frontend layer. The frontend Zod schema mirrors the backend DTO constraints — they must not diverge.
@@ -256,23 +258,26 @@ components/business-partners/
     tax-address-tab.tsx          ← taxId, isHeadOffice, branchCode, VAT/WHT, address
     roles-commercial-tab.tsx     ← 8 LN role checkboxes + discountGroupId
     financials-tab.tsx           ← creditLimit, creditTermDays, creditHold, bank account
-  extension-fields.tsx           ← unchanged (Vet extension)
+  extension-fields.tsx           ← updated: props changed to use react-hook-form `Controller`
 ```
 
 ### 4c. Tab layout
 
-Core identity fields (`name`, `type`) sit **above** the `<Tabs>` component inside the outer card — they apply to all tabs. Save / Cancel buttons sit **below** the `<Tabs>` component, outside the tab boundary.
+Core identity fields sit **above** the `<Tabs>` component inside the outer card — they apply to all tabs. `name` is always visible; `type` is visible only on create (hidden on edit, matching existing behavior). The VET extension (`licenseNumber`) is rendered **below** the `<Tabs>` component, conditionally visible when `type === 'VET'`, before the Save/Cancel row. Save / Cancel buttons are always visible outside the tab boundary.
 
 ```
-┌─ Card ────────────────────────────────────┐
-│  name, type (always visible)              │
-│  ┌─ Tabs ──────────────────────────────┐  │
+┌─ Card ────────────────────────────────────────────┐
+│  name (always)   type (create only)               │
+│  ┌─ Tabs ──────────────────────────────────────┐  │
 │  │ Contact | Tax & Address | Roles & Commercial | Financials │
-│  │ <tab content>                       │  │
-│  └─────────────────────────────────────┘  │
-│  [ Save ]  [ Cancel ]                     │
-└───────────────────────────────────────────┘
+│  │ <tab content>                               │  │
+│  └─────────────────────────────────────────────┘  │
+│  [VET: licenseNumber — shown only when type=VET]  │
+│  [ Save ]  [ Cancel ]                             │
+└───────────────────────────────────────────────────┘
 ```
+
+Because `vet.licenseNumber` lives outside the tabs, a validation error on it does **not** trigger any tab's red-dot indicator. It renders inline below the tabs where it is always visible when applicable. `ExtensionFields` must be updated to register its field via `Controller` from react-hook-form so that `vet.licenseNumber` participates in `formState.errors`.
 
 ### 4d. Per-tab error indicator
 
@@ -298,6 +303,7 @@ Core identity fields (`name`, `type`) sit **above** the `<Tabs>` component insid
 
 - "Add contact" appends a blank row via `useFieldArray` from react-hook-form.
 - Delete button removes the row from the array.
+- The `isPrimary` checkbox uses **radio-button semantics**: checking a row's Primary checkbox automatically unchecks all other rows' Primary checkboxes. Only one row can be primary at a time; the UI enforces this before the Zod array-level refine runs.
 - `Position` is a `<Select>` populated from `GET /reference/contact-positions` (fetched once on form mount alongside tax codes). While positions are loading, the Select is disabled. If the fetch fails, the Position field degrades to a disabled Select (no options) and a non-blocking toast error is displayed; the save is **not** blocked.
 - On submit, the `contacts` array is sent as `BpContactPayload[]`; existing rows carry their `id`, new rows omit it.
 
@@ -325,6 +331,9 @@ On the edit page, `initial` (a `BusinessPartnerResponse`) is passed to the form 
 | AC-12 | No more than one contact per BP has `isPrimary = true` after any save operation |
 | AC-13 | If the `GET /reference/contact-positions` fetch fails, the Position selector degrades gracefully (disabled, non-blocking toast); the form remains saveable |
 | AC-14 | `discountGroupId` is stored as a plain string; no FK constraint exists in the database |
+| AC-15 | The VET licenseNumber field renders outside the tabs and participates in form validation via `Controller` |
+| AC-16 | Checking a contact's Primary checkbox automatically unchecks all other contacts' Primary checkboxes |
+| AC-17 | Submitting a form with two `isPrimary = true` contacts shows a Zod validation error (not a silent backend demotion) |
 
 ## 6. Out of Scope
 
