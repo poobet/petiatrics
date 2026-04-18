@@ -397,6 +397,7 @@
     "creditTermDays": "Credit Term (days)",
     "activeRoles": "Active LN Roles",
     "roles": {
+      "title": "LN Roles",
       "AR_SOLD_TO": "AR Sold-To",
       "AR_SHIP_TO": "AR Ship-To",
       "AR_INVOICE_TO": "AR Invoice-To",
@@ -419,6 +420,51 @@
     "errorCreate": "Failed to create business partner.",
     "errorUpdate": "Failed to update business partner.",
     "errorDeactivate": "Failed to deactivate business partner.",
+    "loading": "Loading…",
+    "none": "— None —",
+    "tabs": {
+      "contact": "Contact (ข้อมูลติดต่อ)",
+      "tax": "Tax & Address (ภาษีและที่อยู่)",
+      "roles": "Roles & Commercial (บทบาทและข้อตกลง)",
+      "financials": "Financials (การเงิน)"
+    },
+    "phone": "Phone",
+    "email": "Email",
+    "lineId": "LINE ID",
+    "contacts": {
+      "title": "Contact Persons",
+      "add": "Add Contact",
+      "person": "Contact",
+      "name": "Name",
+      "position": "Position",
+      "phone": "Phone",
+      "email": "Email",
+      "lineId": "LINE ID",
+      "isPrimary": "Primary contact",
+      "selectPosition": "Select position",
+      "noPosition": "— No position —"
+    },
+    "address": {
+      "title": "Address",
+      "line1": "Address Line 1",
+      "subDistrict": "Sub-District",
+      "district": "District",
+      "province": "Province",
+      "zipcode": "Postcode"
+    },
+    "creditLimit": "Credit Limit",
+    "creditHold": "Credit Hold",
+    "discountGroupId": "Discount Group",
+    "bankAccountName": "Account Name",
+    "bankAccountBranch": "Branch",
+    "bankAccountNumber": "Account Number",
+    "financials": {
+      "credit": "Credit Settings",
+      "bankAccount": "Bank Account"
+    },
+    "commercial": {
+      "title": "Commercial"
+    },
     "validation": {
       "nameRequired": "Name is required.",
       "typeRequired": "Type is required.",
