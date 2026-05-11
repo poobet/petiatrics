@@ -67,12 +67,15 @@ async function request<T>(
     return undefined as T;
   }
 
-  // 401 → clear session state and redirect to login (browser only)
+  // 401 → clear session state and redirect to login (browser only, not when already on login page)
   if (response.status === 401 && typeof window !== 'undefined') {
-    const { useSessionStore } = await import('./session-store');
-    useSessionStore.getState().clear();
-    window.location.href = '/login';
-    return undefined as T;
+    const isLoginPage = window.location.pathname === '/login';
+    if (!isLoginPage) {
+      const { useSessionStore } = await import('./session-store');
+      useSessionStore.getState().clear();
+      window.location.href = '/login';
+      return undefined as T;
+    }
   }
 
   const envelope: ApiEnvelope<T> = await response.json();

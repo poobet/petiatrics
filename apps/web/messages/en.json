@@ -35,20 +35,54 @@
     "error": "Error",
     "success": "Success",
     "warning": "Warning",
-    "info": "Info"
+    "info": "Info",
+    "clear": "Clear",
+    "currency": "Currency"
   },
   "auth": {
     "login": "Log In",
     "logout": "Log Out",
     "email": "Email Address",
+    "identifierLabel": "Email or Username",
+    "identifierHint": "Use your email address or username@clinic-id",
+    "identifierPlaceholder": "email@example.com or username@clinic",
     "password": "Password",
     "forgotPassword": "Forgot password?",
     "loginButton": "Log In",
     "loginTitle": "Welcome to Petiatrics",
     "loginSubtitle": "Sign in to your clinic account",
-    "invalidCredentials": "Invalid email or password.",
+    "invalidCredentials": "Invalid credentials.",
     "accountLocked": "Your account has been locked due to too many failed attempts. Please contact your administrator.",
-    "sessionExpired": "Your session has expired. Please log in again."
+    "sessionExpired": "Your session has expired. Please log in again.",
+    "register": {
+      "title": "Register Your Clinic",
+      "subtitle": "Submit your clinic for review — we'll activate it within 1–2 business days",
+      "clinicName": "Clinic Name",
+      "taxId": "Tax ID",
+      "phone": "Phone Number",
+      "ownerName": "Your Full Name",
+      "ownerEmail": "Your Email Address",
+      "ownerPassword": "Password",
+      "submit": "Submit Registration",
+      "submitting": "Submitting…",
+      "successTitle": "Registration Submitted!",
+      "successMessage": "Thank you! Your clinic registration is pending review. We will contact you once it has been approved.",
+      "loginLink": "Back to Login",
+      "alreadyHaveAccount": "Already have an account?"
+    },
+    "changePassword": {
+      "title": "Change Password",
+      "subtitle": "You must set a new password before continuing",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm New Password",
+      "submit": "Change Password",
+      "mismatch": "Passwords do not match",
+      "successMessage": "Password changed successfully.",
+      "mustChangeNotice": "You must change your temporary password before using the system.",
+      "error": "Failed to change password. Please try again.",
+      "saving": "Saving…"
+    }
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -59,9 +93,11 @@
     "inventory": "Inventory",
     "billing": "Billing",
     "staff": "Staff",
+    "businessPartners": "Business Partners",
     "audit": "Audit Log",
     "settings": "Settings",
-    "mobileApp": "Mobile App"
+    "mobileApp": "Mobile App",
+    "mobileAppSubtitle": "Owner mobile view"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -255,8 +291,15 @@
     "new": "Add Staff Member",
     "name": "Full Name",
     "email": "Email",
+    "username": "Username",
+    "usernamePrefix": "Username Prefix",
+    "usernameSuffix": "@{slug}",
+    "usernamePreview": "Login username: {username}",
+    "temporaryPassword": "Temporary Password",
+    "temporaryPasswordHint": "Staff must change this on first login",
     "role": "Role",
     "status": "Status",
+    "branches": "Branch Access",
     "noStaff": "No staff members found.",
     "roles": {
       "platform_admin": "Platform Admin",
@@ -324,5 +367,137 @@
   "locale": {
     "th": "ภาษาไทย",
     "en": "English"
+  },
+  "businessPartners": {
+    "title": "Business Partners",
+    "new": "Add Business Partner",
+    "edit": "Edit Business Partner",
+    "name": "Name",
+    "type": "Type",
+    "linkedUser": "Linked User",
+    "noPartners": "No business partners found.",
+    "showInactive": "Show Inactive",
+    "types": {
+      "CUSTOMER": "Customer",
+      "STAFF": "Staff",
+      "VET": "Veterinarian",
+      "SUPPLIER": "Supplier",
+      "OTHER": "Other"
+    },
+    "taxId": "Tax ID (13-digit Thai TIN)",
+    "isHeadOffice": "Head Office",
+    "branchCode": "Branch Code (5 digits)",
+    "addressLine1": "Address Line 1",
+    "subDistrict": "Sub-District",
+    "district": "District",
+    "province": "Province",
+    "zipcode": "Postcode",
+    "defaultVatCode": "Default VAT Code",
+    "defaultWhtCode": "Default WHT Code",
+    "noTaxCode": "— None —",
+    "creditTermDays": "Credit Term (days)",
+    "activeRoles": "Active LN Roles",
+    "roles": {
+      "title": "LN Roles",
+      "AR_SOLD_TO": "AR Sold-To",
+      "AR_SHIP_TO": "AR Ship-To",
+      "AR_INVOICE_TO": "AR Invoice-To",
+      "AR_PAY_BY": "AR Pay-By",
+      "AP_BUY_FROM": "AP Buy-From",
+      "AP_SHIP_FROM": "AP Ship-From",
+      "AP_INVOICE_FROM": "AP Invoice-From",
+      "AP_PAY_TO": "AP Pay-To"
+    },
+    "vet": {
+      "licenseNumber": "Veterinary License No.",
+      "specialty": "Specialty",
+      "defaultDfRate": "Default DF Rate (%)"
+    },
+    "linkUser": "Link to User Account",
+    "linkUserHint": "Optionally link this business partner to a staff user account",
+    "deactivate": "Deactivate",
+    "confirmDeactivate": "Deactivate this business partner? They will no longer appear in active lists.",
+    "successCreate": "Business partner created.",
+    "successUpdate": "Business partner updated.",
+    "successDeactivate": "Business partner deactivated.",
+    "errorCreate": "Failed to create business partner.",
+    "errorUpdate": "Failed to update business partner.",
+    "errorDeactivate": "Failed to deactivate business partner.",
+    "loading": "Loading…",
+    "none": "— None —",
+    "tabs": {
+      "contact": "Contact Info",
+      "tax": "Tax & Address",
+      "roles": "Roles & Trade Terms",
+      "financials": "Financials"
+    },
+    "phone": "Phone",
+    "email": "Email",
+    "lineId": "LINE ID",
+    "contacts": {
+      "title": "Contact Persons",
+      "add": "Add Contact",
+      "person": "Contact",
+      "name": "Name",
+      "position": "Position",
+      "phone": "Phone",
+      "email": "Email",
+      "lineId": "LINE ID",
+      "isPrimary": "Primary contact",
+      "primarySection": "Primary Contact Name",
+      "secondarySection": "Contact List",
+      "addRow": "Add Row",
+      "markAsPrimary": "Set as Primary"
+    },
+    "address": {
+      "title": "Address",
+      "line1": "Address Line 1",
+      "subDistrict": "Sub-District",
+      "district": "District",
+      "province": "Province",
+      "zipcode": "Postcode"
+    },
+    "creditLimit": "Credit Limit",
+    "creditHold": "Credit Hold",
+    "discountGroupId": "Discount Group",
+    "group": "BP Group",
+    "groupCode": "Group Code",
+    "code": "BP Code",
+    "noGroup": "— No Group —",
+    "nextCode": "Next code: {code}",
+    "isMarketingOptIn": "Marketing Opt-In",
+    "internalNotes": "Internal Notes",
+    "alertMessage": "Alert Message",
+    "bankAccountName": "Account Name",
+    "bankAccountBranch": "Branch",
+    "bankAccountNumber": "Account Number",
+    "financials": {
+      "credit": "Credit Settings",
+      "bankAccount": "Bank Account"
+    },
+    "commercial": {
+      "title": "Commercial"
+    },
+    "validation": {
+      "nameRequired": "Name is required.",
+      "typeRequired": "Type is required.",
+      "licenseRequired": "Veterinary license number is required for VET type.",
+      "taxIdFormat": "Tax ID must be exactly 13 digits."
+    }
+  },
+  "admin": {
+    "clinics": {
+      "pending": "Pending Approval",
+      "approve": "Approve",
+      "reject": "Reject",
+      "approveTitle": "Approve Clinic",
+      "approveConfirm": "Approve this clinic registration? The owner will be able to log in immediately.",
+      "rejectTitle": "Reject Registration",
+      "rejectReason": "Reason for Rejection",
+      "rejectConfirm": "Reject this clinic registration? This action cannot be undone.",
+      "owner": "Owner",
+      "taxId": "Tax ID",
+      "submittedAt": "Submitted"
+    }
   }
 }

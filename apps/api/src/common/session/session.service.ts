@@ -4,14 +4,16 @@ import Redis from 'ioredis';
 import { UserContext } from '@petiatrics/types';
 import { v4 as uuidv4 } from 'uuid';
 
+/** 1-hour idle timeout in seconds */
+const IDLE_TTL_SECONDS = 3600;
+/** 12-hour absolute session lifetime in ms */
+const ABSOLUTE_TTL_MS = 12 * 60 * 60 * 1000;
+
 @Injectable()
 export class SessionService implements OnModuleInit, OnModuleDestroy {
   private redis!: Redis;
-  private readonly ttlSeconds: number;
 
-  constructor(private readonly config: ConfigService) {
-    this.ttlSeconds = this.config.get<number>('SESSION_TTL_SECONDS') ?? 86400;
-  }
+  constructor(private readonly config: ConfigService) {}
 
   onModuleInit() {
     this.redis = new Redis(this.config.getOrThrow<string>('REDIS_URL'), {
@@ -27,7 +29,8 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
   async createSession(context: UserContext): Promise<string> {
     const sessionId = uuidv4();
     const key = `session:${sessionId}`;
-    await this.redis.setex(key, this.ttlSeconds, JSON.stringify(context));
+    const payload: UserContext = { ...context, issuedAt: Date.now() };
+    await this.redis.setex(key, IDLE_TTL_SECONDS, JSON.stringify(payload));
     return sessionId;
   }
 
@@ -36,12 +39,25 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
     const raw = await this.redis.get(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as UserContext;
-    // Backfill fields added in 002 migration so old sessions degrade gracefully
+
+    // Enforce 12-hour absolute expiry
+    if (parsed.issuedAt && Date.now() - parsed.issuedAt > ABSOLUTE_TTL_MS) {
+      await this.redis.del(key);
+      return null;
+    }
+
+    // Backfill fields added in later migrations so old sessions degrade gracefully
     if (!Array.isArray(parsed.authorizedBranches)) {
       parsed.authorizedBranches = [];
     }
     if (parsed.clinicName === undefined) {
       parsed.clinicName = null;
+    }
+    if (parsed.clinicSlug === undefined) {
+      parsed.clinicSlug = null;
+    }
+    if (parsed.mustChangePassword === undefined) {
+      parsed.mustChangePassword = false;
     }
     return parsed;
   }
@@ -50,7 +66,24 @@ export class SessionService implements OnModuleInit, OnModuleDestroy {
     await this.redis.del(`session:${sessionId}`);
   }
 
+  /** Refresh only the idle TTL — never extends beyond the 12h absolute limit */
   async refreshSession(sessionId: string): Promise<void> {
-    await this.redis.expire(`session:${sessionId}`, this.ttlSeconds);
+    const key = `session:${sessionId}`;
+    const raw = await this.redis.get(key);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as UserContext;
+
+    if (!parsed.issuedAt) return;
+
+    const remainingAbsoluteMs = ABSOLUTE_TTL_MS - (Date.now() - parsed.issuedAt);
+    if (remainingAbsoluteMs <= 0) {
+      await this.redis.del(key);
+      return;
+    }
+
+    // Use the smaller of the idle TTL and remaining absolute lifetime
+    const newTtl = Math.min(IDLE_TTL_SECONDS, Math.floor(remainingAbsoluteMs / 1000));
+    await this.redis.expire(key, newTtl);
   }
 }
+

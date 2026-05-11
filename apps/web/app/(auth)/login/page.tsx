@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { PawPrint, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '@petiatrics/ui';
@@ -19,7 +20,7 @@ export default function LoginPage() {
   const tErr = useTranslations('errors');
   const tCommon = useTranslations('common');
 
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -32,7 +33,7 @@ export default function LoginPage() {
 
     try {
       const profile = await apiClient.post<AuthProfile>('/auth/login', {
-        email,
+        identifier,
         password,
       });
 
@@ -78,17 +79,18 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-1.5">
-              <Label htmlFor="email">{t('email')}</Label>
+              <Label htmlFor="identifier">{t('identifierLabel')}</Label>
               <Input
-                id="email"
-                type="email"
-                autoComplete="email"
+                id="identifier"
+                type="text"
+                autoComplete="username"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="vet@clinic.com"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder={t('identifierPlaceholder')}
                 disabled={loading}
               />
+              <p className="text-xs text-gray-400">{t('identifierHint')}</p>
             </div>
 
             <div className="space-y-1.5">
@@ -120,6 +122,15 @@ export default function LoginPage() {
               {loading ? tCommon('submitting') : t('loginButton')}
             </Button>
           </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-500">
+              {t('register.alreadyHaveAccount')}{' '}
+              <Link href="/register" className="text-blue-600 hover:underline font-medium">
+                {t('register.title')}
+              </Link>
+            </p>
+          </div>
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-6">
@@ -129,3 +140,4 @@ export default function LoginPage() {
     </div>
   );
 }
+

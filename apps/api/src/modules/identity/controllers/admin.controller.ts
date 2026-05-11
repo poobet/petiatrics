@@ -20,7 +20,7 @@ export class AdminController {
 
   /**
    * POST /api/v1/admin/clinics
-   * Platform Admin creates a new clinic.
+   * Platform Admin creates a new clinic directly (active).
    */
   @Post('clinics')
   @Audit({ entity: 'clinics', operation: 'create' })
@@ -44,6 +44,31 @@ export class AdminController {
   @Get('clinics/:id')
   getClinic(@Param('id') id: string) {
     return this.clinics.findById(id);
+  }
+
+  /**
+   * PATCH /api/v1/admin/clinics/:id/approve
+   * US2: Platform Admin approves a PENDING clinic registration.
+   */
+  @Patch('clinics/:id/approve')
+  @HttpCode(HttpStatus.OK)
+  @Audit({ entity: 'clinics', operation: 'status_change' })
+  approveClinic(@Param('id') id: string) {
+    return this.clinics.approve(id);
+  }
+
+  /**
+   * PATCH /api/v1/admin/clinics/:id/reject
+   * US2: Platform Admin rejects a PENDING clinic registration.
+   */
+  @Patch('clinics/:id/reject')
+  @HttpCode(HttpStatus.OK)
+  @Audit({ entity: 'clinics', operation: 'status_change' })
+  rejectClinic(
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+  ) {
+    return this.clinics.reject(id, body.reason);
   }
 
   /**

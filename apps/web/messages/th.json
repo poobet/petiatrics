@@ -35,12 +35,17 @@
     "error": "ข้อผิดพลาด",
     "success": "สำเร็จ",
     "warning": "คำเตือน",
-    "info": "ข้อมูล"
+    "info": "ข้อมูล",
+    "clear": "ล้าง",
+    "currency": "สกุลเงิน"
   },
   "auth": {
     "login": "เข้าสู่ระบบ",
     "logout": "ออกจากระบบ",
     "email": "ที่อยู่อีเมล",
+    "identifierLabel": "อีเมลหรือชื่อผู้ใช้",
+    "identifierHint": "สามารถใช้อีเมลหรือ username@รหัสคลินิก โดยไม่มีเว้นวรรค",
+    "identifierPlaceholder": "email@example.com หรือ username@clinic",
     "password": "รหัสผ่าน",
     "forgotPassword": "ลืมรหัสผ่าน?",
     "loginButton": "เข้าสู่ระบบ",
@@ -48,7 +53,36 @@
     "loginSubtitle": "เข้าสู่ระบบบัญชีคลินิกของคุณ",
     "invalidCredentials": "อีเมลหรือรหัสผ่านไม่ถูกต้อง",
     "accountLocked": "บัญชีของคุณถูกล็อกเนื่องจากพยายามเข้าสู่ระบบผิดพลาดหลายครั้ง กรุณาติดต่อผู้ดูแลระบบ",
-    "sessionExpired": "เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง"
+    "sessionExpired": "เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง",
+    "register": {
+      "title": "ลงทะเบียนคลินิก",
+      "subtitle": "ส่งคำขอลงทะเบียน — ทีมใช้ไฟจะตรวจสอบและเปิดใช้งานภายใน 1–2 วันทำการ",
+      "clinicName": "ชื่อคลินิก",
+      "taxId": "เลขประจำตัวผู้เสียภาษี",
+      "phone": "เบอร์โทร",
+      "ownerName": "ชื่อ-นามสกุล",
+      "ownerEmail": "อีเมล",
+      "ownerPassword": "รหัสผ่าน",
+      "submit": "ส่งคำขอลงทะเบียน",
+      "submitting": "กำลังส่งข้อมูล…",
+      "successTitle": "ส่งคำขอลงทะเบียนสำเร็จแล้ว!",
+      "successMessage": "ขอบคุณ! การลงทะเบียนกำลังรอตรวจสอบ เราจะติดต่อเมื่ออนุมัติแล้ว",
+      "loginLink": "กลับหน้าเข้าสู่ระบบ",
+      "alreadyHaveAccount": "มีบัญชีอยู่แล้ว?"
+    },
+    "changePassword": {
+      "title": "เปลี่ยนรหัสผ่าน",
+      "subtitle": "คุณต้องตั้งรหัสผ่านใหม่ก่อนดำเนินการต่อ",
+      "currentPassword": "รหัสผ่านปัจจุบัน",
+      "newPassword": "รหัสผ่านใหม่",
+      "confirmPassword": "ยืนยันรหัสผ่านใหม่",
+      "submit": "เปลี่ยนรหัสผ่าน",
+      "mismatch": "รหัสผ่านไม่ตรงกัน",
+      "successMessage": "เปลี่ยนรหัสผ่านสำเร็จ",
+      "mustChangeNotice": "คุณต้องเปลี่ยนรหัสผ่านชั่วคราวก่อนใช้งานระบบ",
+      "error": "เปลี่ยนรหัสผ่านไม่สำเร็จ กรุณาลองใหม่",
+      "saving": "กำลังบันทึก…"
+    }
   },
   "nav": {
     "dashboard": "แดชบอร์ด",
@@ -59,9 +93,11 @@
     "inventory": "คลังสินค้า",
     "billing": "การเรียกเก็บเงิน",
     "staff": "พนักงาน",
+    "businessPartners": "คู่ค้าธุรกิจ",
     "audit": "บันทึกการตรวจสอบ",
     "settings": "การตั้งค่า",
-    "mobileApp": "แอปมือถือ"
+    "mobileApp": "แอปเจ้าของสัตว์",
+    "mobileAppSubtitle": "มุมมองมือถือ"
   },
   "dashboard": {
     "title": "แดชบอร์ด",
@@ -255,8 +291,15 @@
     "new": "เพิ่มพนักงาน",
     "name": "ชื่อ-นามสกุล",
     "email": "อีเมล",
+    "username": "ชื่อผู้ใช้",
+    "usernamePrefix": "คำนำหน้าชื่อผู้ใช้",
+    "usernameSuffix": "@{slug}",
+    "usernamePreview": "ชื่อเข้าสู่ระบบ: {username}",
+    "temporaryPassword": "รหัสผ่านชั่วคราว",
+    "temporaryPasswordHint": "พนักงานต้องเปลี่ยนรหัสผ่านเมื่อเข้าสู่ระบบครั้งแรก",
     "role": "บทบาท",
     "status": "สถานะ",
+    "branches": "สาขาที่อนุญาต",
     "noStaff": "ไม่พบพนักงาน",
     "roles": {
       "platform_admin": "ผู้ดูแลระบบแพลตฟอร์ม",
@@ -324,5 +367,137 @@
   "locale": {
     "th": "ภาษาไทย",
     "en": "English"
+  },
+  "businessPartners": {
+    "title": "คู่ค้าธุรกิจ",
+    "new": "เพิ่มคู่ค้าธุรกิจ",
+    "edit": "แก้ไขคู่ค้าธุรกิจ",
+    "name": "ชื่อ",
+    "type": "ประเภท",
+    "linkedUser": "ผู้ใช้ที่เชื่อมโยง",
+    "noPartners": "ไม่พบคู่ค้าธุรกิจ",
+    "showInactive": "แสดงที่ไม่ใช้งาน",
+    "types": {
+      "CUSTOMER": "ลูกค้า",
+      "STAFF": "พนักงาน",
+      "VET": "สัตวแพทย์",
+      "SUPPLIER": "ซัพพลายเออร์",
+      "OTHER": "อื่นๆ"
+    },
+    "taxId": "เลขประจำตัวผู้เสียภาษี (13 หลัก)",
+    "isHeadOffice": "สำนักงานใหญ่",
+    "branchCode": "รหัสสาขา (5 หลัก)",
+    "addressLine1": "ที่อยู่",
+    "subDistrict": "ตำบล / แขวง",
+    "district": "อำเภอ / เขต",
+    "province": "จังหวัด",
+    "zipcode": "รหัสไปรษณีย์",
+    "defaultVatCode": "รหัส VAT เริ่มต้น",
+    "defaultWhtCode": "รหัส WHT เริ่มต้น",
+    "noTaxCode": "— ไม่มี —",
+    "creditTermDays": "เครดิต (วัน)",
+    "activeRoles": "บทบาท LN ที่ใช้งาน",
+    "roles": {
+      "title": "บทบาท LN",
+      "AR_SOLD_TO": "AR Sold-To",
+      "AR_SHIP_TO": "AR Ship-To",
+      "AR_INVOICE_TO": "AR Invoice-To",
+      "AR_PAY_BY": "AR Pay-By",
+      "AP_BUY_FROM": "AP Buy-From",
+      "AP_SHIP_FROM": "AP Ship-From",
+      "AP_INVOICE_FROM": "AP Invoice-From",
+      "AP_PAY_TO": "AP Pay-To"
+    },
+    "vet": {
+      "licenseNumber": "เลขที่ใบอนุญาตสัตวแพทย์",
+      "specialty": "สาขาเชี่ยวชาญ",
+      "defaultDfRate": "อัตรา DF เริ่มต้น (%)"
+    },
+    "linkUser": "เชื่อมโยงกับบัญชีผู้ใช้",
+    "linkUserHint": "เชื่อมโยงคู่ค้าธุรกิจนี้กับบัญชีผู้ใช้พนักงาน (ไม่บังคับ)",
+    "deactivate": "ปิดการใช้งาน",
+    "confirmDeactivate": "ปิดการใช้งานคู่ค้าธุรกิจนี้? จะไม่ปรากฏในรายการที่ใช้งานอยู่",
+    "successCreate": "เพิ่มคู่ค้าธุรกิจสำเร็จ",
+    "successUpdate": "แก้ไขคู่ค้าธุรกิจสำเร็จ",
+    "successDeactivate": "ปิดการใช้งานคู่ค้าธุรกิจสำเร็จ",
+    "errorCreate": "เพิ่มคู่ค้าธุรกิจไม่สำเร็จ",
+    "errorUpdate": "แก้ไขคู่ค้าธุรกิจไม่สำเร็จ",
+    "errorDeactivate": "ปิดการใช้งานคู่ค้าธุรกิจไม่สำเร็จ",
+    "loading": "กำลังโหลด…",
+    "none": "— ไม่มี —",
+    "tabs": {
+      "contact": "ข้อมูลการติดต่อ",
+      "tax": "ภาษีและที่อยู่",
+      "roles": "บทบาทและเงื่อนไขการค้า",
+      "financials": "ข้อมูลการเงิน"
+    },
+    "phone": "เบอร์โทรศัพท์",
+    "email": "อีเมล์",
+    "lineId": "LINE ID",
+    "contacts": {
+      "title": "ผู้ติดต่อ",
+      "add": "เพิ่มผู้ติดต่อ",
+      "person": "ผู้ติดต่อ",
+      "name": "ชื่อ",
+      "position": "ตำแหน่ง",
+      "phone": "เบอร์โทรศัพท์",
+      "email": "อีเมล์",
+      "lineId": "LINE ID",
+      "isPrimary": "ผู้ติดต่อหลัก",
+      "primarySection": "ชื่อผู้ติดต่อหลัก",
+      "secondarySection": "รายชื่อผู้ติดต่อย่อย",
+      "addRow": "เพิ่มแถว",
+      "markAsPrimary": "ตั้งเป็นหลัก"
+    },
+    "address": {
+      "title": "ที่อยู่",
+      "line1": "ที่อยู่",
+      "subDistrict": "ตำบล / แขวง",
+      "district": "อำเภอ / เขต",
+      "province": "จังหวัด",
+      "zipcode": "รหัสไปรษณีย์"
+    },
+    "creditLimit": "วงเงินเครดิต",
+    "creditHold": "อายัดเครดิต",
+    "discountGroupId": "กลุ่มส่วนลด",
+    "group": "กลุ่ม BP",
+    "groupCode": "รหัสกลุ่ม",
+    "code": "รหัส BP",
+    "noGroup": "— ไม่ระบุกลุ่ม —",
+    "nextCode": "รหัสถัดไป: {code}",
+    "isMarketingOptIn": "ยินยอมรับสื่อสารการตลาด",
+    "internalNotes": "หมายเหตุภายใน",
+    "alertMessage": "ข้อความแจ้งเตือน",
+    "bankAccountName": "ชื่อบัญชี",
+    "bankAccountBranch": "สาขา",
+    "bankAccountNumber": "เลขบัญชี",
+    "financials": {
+      "credit": "การตั้งค่าเครดิต",
+      "bankAccount": "บัญชีธนาคาร"
+    },
+    "commercial": {
+      "title": "ข้อตกลงทางการค้า"
+    },
+    "validation": {
+      "nameRequired": "กรุณากรอกชื่อ",
+      "typeRequired": "กรุณาเลือกประเภท",
+      "licenseRequired": "กรุณากรอกเลขที่ใบอนุญาตสัตวแพทย์สำหรับประเภท VET",
+      "taxIdFormat": "เลขประจำตัวผู้เสียภาษีต้องมี 13 หลัก"
+    }
+  },
+  "admin": {
+    "clinics": {
+      "pending": "รออนุมัติ",
+      "approve": "อนุมัติ",
+      "reject": "ปฎิเสธ",
+      "approveTitle": "อนุมัติคลินิก",
+      "approveConfirm": "อนุมัติการลงทะเบียนคลินิกนี้? เจ้าของจะสามารถเข้าสู่ระบบได้ทันที",
+      "rejectTitle": "ปฎิเสธการลงทะเบียน",
+      "rejectReason": "เหตุผลที่ปฎิเสธ",
+      "rejectConfirm": "ปฎิเสธการลงทะเบียนคลินิกนี้? ไม่สามารถย้อนกลับได้",
+      "owner": "เจ้าของคลินิก",
+      "taxId": "เลขประจำตัวผู้เสียภาษี",
+      "submittedAt": "วันที่ยื่น"
+    }
   }
 }

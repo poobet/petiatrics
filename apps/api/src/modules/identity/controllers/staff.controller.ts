@@ -11,9 +11,10 @@ import {
 } from '@nestjs/common';
 import {
   UserService,
-  InviteUserDto,
   UpdateUserRoleDto,
 } from '../services/user.service';
+import { ClinicService } from '../services/clinic.service';
+import { CreateStaffDto } from '../dto/create-staff.dto';
 import { Roles } from '../../../common/guards/roles.decorator';
 import { TenantId, CurrentUser } from '../../../common/decorators/tenant.decorator';
 import { Role } from '@petiatrics/types';
@@ -23,7 +24,10 @@ import { Audit } from '../../../common/interceptors/audit.interceptor';
 @Controller('clinic/staff')
 @Roles(Role.CLINIC_OWNER)
 export class StaffController {
-  constructor(private readonly users: UserService) {}
+  constructor(
+    private readonly users: UserService,
+    private readonly clinics: ClinicService,
+  ) {}
 
   /**
    * GET /api/v1/clinic/staff
@@ -35,24 +39,25 @@ export class StaffController {
   }
 
   /**
-   * POST /api/v1/clinic/staff/invite
-   * Clinic Admin invites a new staff member.
+   * POST /api/v1/clinic/staff
+   * US4: Clinic Owner creates a staff member with username@clinicSlug identity.
    */
-  @Post('invite')
+  @Post()
   @Audit({ entity: 'users', operation: 'create' })
-  async invite(
-    @Body() dto: Omit<InviteUserDto, 'clinicId' | 'invitedBy'>,
+  async createStaff(
+    @Body() dto: CreateStaffDto,
     @TenantId() clinicId: string,
-    @CurrentUser() user: UserContext,
   ) {
-    const result = await this.users.invite({
-      ...dto,
+    const clinic = await this.clinics.findById(clinicId);
+    return this.users.createStaff({
+      usernamePrefix: dto.usernamePrefix,
+      clinicSlug: clinic.slug,
       clinicId,
-      invitedBy: user.userId,
+      name: dto.name,
+      temporaryPassword: dto.temporaryPassword,
+      role: dto.role,
+      branchIds: dto.branchIds,
     });
-    // Don't surface temporaryPassword in normal response — return just the user
-    const { temporaryPassword: _pwd, ...userRecord } = result;
-    return userRecord;
   }
 
   /**

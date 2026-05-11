@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 // ─── Enums ───────────────────────────────────────────────────────────────────
@@ -19,6 +20,8 @@ enum ClinicStatus {
   ACTIVE
   SUSPENDED
   ARCHIVED
+  PENDING
+  REJECTED
 }
 
 enum Role {
@@ -35,6 +38,7 @@ enum UserStatus {
   ACTIVE
   INACTIVE
   LOCKED
+  PENDING
 }
 
 enum Locale {
@@ -69,6 +73,26 @@ enum StockMovementRefType {
   MANUAL
 }
 
+enum BpType {
+  CUSTOMER
+  STAFF
+  VET
+  SUPPLIER
+  OTHER
+}
+
+// 8 Infor LN partner roles — AR side (receivables) and AP side (payables)
+enum BpRole {
+  AR_SOLD_TO
+  AR_SHIP_TO
+  AR_INVOICE_TO
+  AR_PAY_BY
+  AP_BUY_FROM
+  AP_SHIP_FROM
+  AP_INVOICE_FROM
+  AP_PAY_TO
+}
+
 enum InvoiceLineItemType {
   SERVICE
   PRODUCT
@@ -79,22 +103,27 @@ enum InvoiceLineItemType {
 model Clinic {
   id               String           @id @default(uuid())
   name             String
+  slug             String           @unique
+  phone            String?
   taxId            String           @unique
   address          Json             @default("{}")
+  currencyCode     String           @default("THB")
   subscriptionTier SubscriptionTier @default(FREE)
-  status           ClinicStatus     @default(ACTIVE)
+  status           ClinicStatus     @default(PENDING)
   // JSONB settings: max_login_attempts, lockout_duration_minutes,
   //                 password_min_length, password_require_uppercase, password_require_number
   settings         Json             @default("{\"max_login_attempts\":5,\"lockout_duration_minutes\":15,\"password_min_length\":8,\"password_require_uppercase\":true,\"password_require_number\":true}")
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
-  users          User[]
-  branches       Branch[]
-  appointments   Appointment[]
-  products       Product[]
-  stockMovements StockMovement[]
-  invoices       Invoice[]
+  users            User[]
+  branches         Branch[]
+  appointments     Appointment[]
+  products         Product[]
+  stockMovements   StockMovement[]
+  invoices         Invoice[]
+  businessPartners BusinessPartner[]
+  bpGroups         BpGroup[]
 
   @@map("clinics")
 }
@@ -133,10 +162,14 @@ model UserBranch {
 model User {
   id                  String     @id @default(uuid())
   clinicId            String?
-  email               String     @unique
+  businessPartnerId   String?    @unique
+  name                String     @default("")
+  email               String?    @unique
+  username            String?    @unique
   passwordHash        String
   role                Role
-  status              UserStatus @default(INVITED)
+  status              UserStatus @default(PENDING)
+  mustChangePassword  Boolean    @default(false)
   invitedBy           String?
   failedLoginAttempts Int        @default(0)
   lockedUntil         DateTime?
@@ -144,13 +177,188 @@ model User {
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
 
-  clinic       Clinic?       @relation(fields: [clinicId], references: [id])
-  userBranches UserBranch[]
-  appointments Appointment[] @relation("VetAppointments")
+  clinic          Clinic?          @relation(fields: [clinicId], references: [id])
+  businessPartner BusinessPartner? @relation(fields: [businessPartnerId], references: [id])
+  userBranches    UserBranch[]
+  appointments    Appointment[]    @relation("VetAppointments")
 
   @@index([clinicId])
   @@index([email])
+  @@index([username])
   @@map("users")
+}
+
+// ─── TaxCode (global reference — no clinicId, seeded by system) ──────────────
+//
+// VAT registration status of a BusinessPartner is inferred: a BP is VAT-registered
+// when its defaultVatCodeId references a TaxCode where isVatType == true.
+// The deprecated isVatRegistered boolean MUST NOT be re-introduced.
+
+model TaxCode {
+  id          String   @id @default(uuid())
+  code        String   @unique // e.g. "VAT7", "VAT0", "WHT3", "WHT1"
+  description String
+  rate        Decimal  @default(0) @db.Decimal(7, 4) // percentage, e.g. 7.0000
+  isVatType   Boolean  @default(false)               // true = VAT code; false = WHT code
+  isZeroRated Boolean  @default(false)               // true = 0% rate (zero-rated exports or exempt)
+  type        String   @default("VAT")               // "VAT" or "WHT"
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  defaultVatBps BusinessPartner[] @relation("DefaultVatCode")
+  defaultWhtBps BusinessPartner[] @relation("DefaultWhtCode")
+
+  @@index([isVatType, isActive])
+  @@map("tax_codes")
+}
+
+// ─── BusinessPartner ──────────────────────────────────────────────────────────
+//
+// Clinic-owned, tenant-scoped. Thai enterprise-grade structure.
+// Soft-delete ONLY via isActive = false. Hard deletes are FORBIDDEN.
+// VAT status is INFERRED from defaultVatCodeId → TaxCode.isVatType (not stored).
+// Runtime invoice VAT is driven by ItemMaster — not by this BP default.
+
+model BusinessPartner {
+  id               String   @id @default(uuid())
+  clinicId         String
+  type             BpType
+  name             String
+  // Thai compliance core fields
+  taxId            String?  // 13-digit Thai TIN (taxpayer ID)
+  isHeadOffice     Boolean  @default(true)
+  branchCode       String?  // 5-digit branch code for non-HO locations
+  addressLine1     String?
+  subDistrict      String?
+  district         String?
+  province         String?
+  zipcode          String?
+  // BP hierarchy (same clinic only)
+  parentBpId       String?
+  // Tax defaults (FK to global TaxCode table)
+  defaultVatCodeId String?
+  defaultWhtCodeId String?
+  // Payment defaults
+  creditTermDays   Int      @default(0)
+  // ── Communication
+  phone            String?
+  email            String?
+  lineId           String?
+  // ── Commercial
+  creditLimit      Float?
+  creditHold       Boolean  @default(false)
+  discountGroupId  String?
+  // ── Bank account
+  bankAccountName   String?
+  bankAccountBranch String?
+  bankAccountNumber String?
+  // ── BpGroup & auto-code
+  groupId          String?
+  code             String?
+  // ── CRM
+  isMarketingOptIn Boolean  @default(false)
+  internalNotes    String?  @db.Text
+  alertMessage     String?
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  clinic         Clinic          @relation(fields: [clinicId], references: [id])
+  parentBp       BusinessPartner?  @relation("BpHierarchy", fields: [parentBpId], references: [id])
+  childBps       BusinessPartner[] @relation("BpHierarchy")
+  defaultVatCode TaxCode?        @relation("DefaultVatCode", fields: [defaultVatCodeId], references: [id])
+  defaultWhtCode TaxCode?        @relation("DefaultWhtCode", fields: [defaultWhtCodeId], references: [id])
+  user           User?
+  vetExt         BpVet?
+  suppExt        BpSupplier?
+  group          BpGroup?        @relation(fields: [groupId], references: [id])
+  activeRoles    BpRoleActive[]
+  contacts       BpContact[]
+
+  @@unique([clinicId, code])
+  @@index([clinicId])
+  @@index([clinicId, isActive])
+  @@index([clinicId, type, isActive])
+  @@index([clinicId, taxId])
+  @@map("business_partners")
+}
+
+// ─── BpRoleActive (junction — which LN roles this BP currently serves) ────────
+
+model BpRoleActive {
+  bpId String
+  role BpRole
+
+  bp BusinessPartner @relation(fields: [bpId], references: [id])
+
+  @@id([bpId, role])
+  @@map("bp_roles_active")
+}
+
+// ─── BpVet ────────────────────────────────────────────────────────────────────
+
+model BpVet {
+  bpId          String          @id
+  licenseNumber String          @unique
+  specialty     String?
+  defaultDfRate Decimal?        @db.Decimal(5,2)
+
+  bp BusinessPartner @relation(fields: [bpId], references: [id])
+
+  @@map("bp_vets")
+}
+
+// ─── BpSupplier ───────────────────────────────────────────────────────────────
+// Extension-only. taxId and creditTermDays have moved to BusinessPartner core.
+
+model BpSupplier {
+  bpId          String  @id
+  vendorGroupId String?
+
+  bp BusinessPartner @relation(fields: [bpId], references: [id])
+
+  @@map("bp_suppliers")
+}
+
+// ─── BpGroup ─────────────────────────────────────────────────────────────────
+
+model BpGroup {
+  id              String   @id @default(uuid())
+  clinicId        String
+  name            String
+  prefix          String
+  currentSequence Int      @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  clinic           Clinic            @relation(fields: [clinicId], references: [id])
+  businessPartners BusinessPartner[]
+
+  @@unique([clinicId, prefix])
+  @@index([clinicId])
+  @@map("bp_groups")
+}
+
+// ─── BpContact ────────────────────────────────────────────────────────────────
+
+model BpContact {
+  id        String           @id @default(uuid())
+  bpId      String
+  name      String
+  phone     String?
+  email     String?
+  lineId    String?
+  position  String?
+  isPrimary Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  bp BusinessPartner @relation(fields: [bpId], references: [id])
+
+  @@index([bpId])
+  @@map("bp_contacts")
 }
 
 // ─── Appointment ─────────────────────────────────────────────────────────────

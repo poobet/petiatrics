@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -20,9 +21,18 @@ export interface UpdateUserRoleDto {
   role: Role;
 }
 
+export interface CreateStaffInput {
+  usernamePrefix: string;
+  clinicSlug: string;
+  clinicId: string;
+  name: string;
+  temporaryPassword: string;
+  role: Role;
+  branchIds?: string[];
+}
+
 const BCRYPT_ROUNDS = 12;
 
-/** Minimum password policy — applied both on invite and on password reset */
 function assertPasswordPolicy(password: string): void {
   if (password.length < 8) throw new BadRequestException('Password must be at least 8 characters.');
   if (!/[A-Z]/.test(password)) throw new BadRequestException('Password must contain at least one uppercase letter.');
@@ -32,6 +42,47 @@ function assertPasswordPolicy(password: string): void {
 @Injectable()
 export class UserService {
   constructor(private readonly prisma: PrismaClient) {}
+
+  /**
+   * US4: Create a new staff member with username@clinicSlug identity.
+   * Sets mustChangePassword=true so they must change temporary password on first login.
+   */
+  async createStaff(input: CreateStaffInput): Promise<User & { username: string }> {
+    const username = `${input.usernamePrefix}@${input.clinicSlug}`;
+
+    const existing = await this.prisma.user.findUnique({ where: { username } });
+    if (existing) {
+      throw new ConflictException(`Username ${username} is already taken.`);
+    }
+
+    assertPasswordPolicy(input.temporaryPassword);
+    const passwordHash = await bcrypt.hash(input.temporaryPassword, BCRYPT_ROUNDS);
+
+    const user = await this.prisma.$transaction(async (tx) => {
+      const u = await tx.user.create({
+        data: {
+          username,
+          name: input.name,
+          passwordHash,
+          role: input.role as any,
+          clinicId: input.clinicId,
+          status: UserStatus.ACTIVE as any,
+          mustChangePassword: true,
+        },
+      });
+
+      if (input.branchIds && input.branchIds.length > 0) {
+        await tx.userBranch.createMany({
+          data: input.branchIds.map((branchId) => ({ userId: u.id, branchId })),
+          skipDuplicates: true,
+        });
+      }
+
+      return u;
+    });
+
+    return user as User & { username: string };
+  }
 
   /**
    * Invite a new staff member. Creates an INVITED user with a temporary
@@ -44,7 +95,6 @@ export class UserService {
       throw new ConflictException(`User ${emailNorm} already exists.`);
     }
 
-    // Generate a temporary password — in production this would be sent via email
     const temporaryPassword = uuidv4().slice(0, 12) + 'A1!';
     const passwordHash = await bcrypt.hash(temporaryPassword, BCRYPT_ROUNDS);
 
@@ -65,7 +115,7 @@ export class UserService {
   async findByClinic(clinicId: string): Promise<User[]> {
     return this.prisma.user.findMany({
       where: { clinicId },
-      orderBy: { email: 'asc' },
+      orderBy: { createdAt: 'asc' },
     });
   }
 
@@ -102,5 +152,31 @@ export class UserService {
     const user = await this.prisma.user.findFirst({ where: { id, clinicId } });
     if (!user) throw new NotFoundException(`User ${id} not found in clinic.`);
     return user;
+  }
+
+  /**
+   * Link a user to an existing Business Partner.
+   * Both must belong to the same clinic. The user must not already be linked to another BP.
+   */
+  async linkToBusinessPartner(userId: string, businessPartnerId: string, clinicId: string): Promise<User> {
+    const user = await this.findOneInClinic(userId, clinicId);
+    if (user.businessPartnerId && user.businessPartnerId !== businessPartnerId) {
+      throw new ConflictException('User is already linked to another Business Partner');
+    }
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { businessPartnerId },
+    });
+  }
+
+  /**
+   * Remove a user's Business Partner linkage.
+   */
+  async unlinkFromBusinessPartner(userId: string, clinicId: string): Promise<User> {
+    await this.findOneInClinic(userId, clinicId);
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { businessPartnerId: null },
+    });
   }
 }
