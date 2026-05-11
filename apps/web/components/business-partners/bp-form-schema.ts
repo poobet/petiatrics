@@ -4,7 +4,7 @@ import { BusinessPartnerType, BpRole } from '@petiatrics/types';
 // ── Sub-schemas ──────────────────────────────────────────────────────────────
 
 const bpContactSchema = z.object({
-  id: z.string().uuid().optional(),
+  id: z.preprocess((v) => (v === '' ? undefined : v), z.string().uuid().optional()),
   name: z.string().min(1, 'Name is required'),
   phone: z.string().nullable().optional(),
   email: z

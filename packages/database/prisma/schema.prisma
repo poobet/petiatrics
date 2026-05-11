@@ -107,6 +107,7 @@ model Clinic {
   phone            String?
   taxId            String           @unique
   address          Json             @default("{}")
+  currencyCode     String           @default("THB")
   subscriptionTier SubscriptionTier @default(FREE)
   status           ClinicStatus     @default(PENDING)
   // JSONB settings: max_login_attempts, lockout_duration_minutes,

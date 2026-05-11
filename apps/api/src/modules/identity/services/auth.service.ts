@@ -48,7 +48,7 @@ export class AuthService {
     const identifierNorm = identifier.toLowerCase().trim();
 
     const includeShape = {
-      clinic: { select: { id: true, name: true, slug: true, status: true, settings: true } },
+      clinic: { select: { id: true, name: true, slug: true, status: true, settings: true, currencyCode: true } },
       userBranches: {
         include: { branch: { select: { id: true, name: true } } },
       },
@@ -136,6 +136,7 @@ export class AuthService {
       preferredLocale: (user.preferredLocale as unknown as Locale) ?? Locale.TH,
       authorizedBranches,
       businessPartnerId: user.businessPartnerId ?? null,
+      currencyCode: user.clinic?.currencyCode ?? 'THB',
     };
 
     const sessionId = await this.sessions.createSession(userContext);
@@ -154,6 +155,7 @@ export class AuthService {
       branches: authorizedBranches,
       preferredLocale: (user.preferredLocale as unknown as Locale) ?? Locale.TH,
       businessPartnerId: user.businessPartnerId ?? null,
+      currencyCode: user.clinic?.currencyCode ?? 'THB',
     };
 
     return { sessionId, profile };

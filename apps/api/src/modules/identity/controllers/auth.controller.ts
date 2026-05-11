@@ -95,6 +95,7 @@ export class AuthController {
       clinicSlug: user.clinicSlug ?? null,
       branches: user.authorizedBranches ?? [],
       preferredLocale: user.preferredLocale,
+      currencyCode: user.currencyCode ?? null,
     };
   }
 

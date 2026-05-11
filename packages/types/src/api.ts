@@ -49,6 +49,8 @@ export interface UserContext {
   authorizedBranches: BranchSummary[];
   /** Optional linkage: the BP id of the logged-in user */
   businessPartnerId?: string | null;
+  /** Currency code for the clinic (e.g. "THB") */
+  currencyCode?: string | null;
   /** Epoch ms — used to enforce 12h absolute session expiry */
   issuedAt?: number;
 }
@@ -66,6 +68,8 @@ export interface AuthProfile {
   preferredLocale: Locale;
   /** Optional BP linkage for the authenticated user */
   businessPartnerId?: string | null;
+  /** Currency code for the clinic (e.g. "THB") */
+  currencyCode?: string | null;
 }
 
 // ─── Common Query Params ──────────────────────────────────────────────────────

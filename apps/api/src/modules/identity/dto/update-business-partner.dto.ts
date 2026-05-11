@@ -60,15 +60,18 @@ export class UpdateBusinessPartnerDto {
   zipcode?: string | null;
 
   // ── BP hierarchy ─────────────────────────────────────────────────────────
+  @ValidateIf((o: UpdateBusinessPartnerDto) => o.parentBpId != null)
   @IsOptional()
   @IsUUID()
   parentBpId?: string | null;
 
   // ── Tax defaults ─────────────────────────────────────────────────────────
+  @ValidateIf((o: UpdateBusinessPartnerDto) => o.defaultVatCodeId != null)
   @IsOptional()
   @IsUUID()
   defaultVatCodeId?: string | null;
 
+  @ValidateIf((o: UpdateBusinessPartnerDto) => o.defaultWhtCodeId != null)
   @IsOptional()
   @IsUUID()
   defaultWhtCodeId?: string | null;
@@ -152,6 +155,7 @@ export class UpdateBusinessPartnerDto {
   @IsEnum(BpRole, { each: true })
   activeRoles?: BpRole[];
 
+  @ValidateIf((o: UpdateBusinessPartnerDto) => o.linkUserId != null)
   @IsOptional()
   @IsUUID()
   linkUserId?: string | null;

@@ -36,7 +36,8 @@
     "success": "Success",
     "warning": "Warning",
     "info": "Info",
-    "clear": "Clear"
+    "clear": "Clear",
+    "currency": "Currency"
   },
   "auth": {
     "login": "Log In",
@@ -425,10 +426,10 @@
     "loading": "Loading…",
     "none": "— None —",
     "tabs": {
-      "contact": "Contact (ข้อมูลติดต่อ)",
-      "tax": "Tax & Address (ภาษีและที่อยู่)",
-      "roles": "Roles & Commercial (บทบาทและข้อตกลง)",
-      "financials": "Financials (การเงิน)"
+      "contact": "Contact Info",
+      "tax": "Tax & Address",
+      "roles": "Roles & Trade Terms",
+      "financials": "Financials"
     },
     "phone": "Phone",
     "email": "Email",
@@ -442,7 +443,11 @@
       "phone": "Phone",
       "email": "Email",
       "lineId": "LINE ID",
-      "isPrimary": "Primary contact"
+      "isPrimary": "Primary contact",
+      "primarySection": "Primary Contact Name",
+      "secondarySection": "Contact List",
+      "addRow": "Add Row",
+      "markAsPrimary": "Set as Primary"
     },
     "address": {
       "title": "Address",

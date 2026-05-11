@@ -86,13 +86,18 @@ export default function TaxAddressTab({ vatCodes, whtCodes }: TaxAddressTabProps
                   <SelectItem value="__none__">{t('none')}</SelectItem>
                   {vatCodes.map((tc) => (
                     <SelectItem key={tc.id} value={tc.id}>
-                      {tc.name} ({tc.rate}%)
+                      {tc.code} {tc.description ? `- ${tc.description}` : ''} ({tc.rate}%)
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             )}
           />
+          {errors.defaultVatCodeId && (
+            <p className="text-destructive text-sm">
+              {String(errors.defaultVatCodeId.message)}
+            </p>
+          )}
         </div>
 
         <div className="space-y-1.5">
@@ -109,13 +114,18 @@ export default function TaxAddressTab({ vatCodes, whtCodes }: TaxAddressTabProps
                   <SelectItem value="__none__">{t('none')}</SelectItem>
                   {whtCodes.map((tc) => (
                     <SelectItem key={tc.id} value={tc.id}>
-                      {tc.name} ({tc.rate}%)
+                      {tc.code} {tc.description ? `- ${tc.description}` : ''} ({tc.rate}%)
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             )}
           />
+          {errors.defaultWhtCodeId && (
+            <p className="text-destructive text-sm">
+              {String(errors.defaultWhtCodeId.message)}
+            </p>
+          )}
         </div>
       </div>
 

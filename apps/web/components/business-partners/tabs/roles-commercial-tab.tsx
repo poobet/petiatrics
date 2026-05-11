@@ -37,7 +37,12 @@ export default function RolesCommercialTab({
   existingCode,
 }: RolesCommercialTabProps) {
   const t = useTranslations('businessPartners');
-  const { control, register, watch } = useFormContext<CreateBpFormValues>();
+  const {
+    control,
+    register,
+    watch,
+    formState: { errors },
+  } = useFormContext<CreateBpFormValues>();
 
   const activeRoles = watch('activeRoles') ?? [];
   const watchedGroupId = watch('groupId');
@@ -128,6 +133,9 @@ export default function RolesCommercialTab({
                     </Select>
                   )}
                 />
+                {errors.groupId && (
+                  <p className="text-destructive text-sm">{String(errors.groupId.message)}</p>
+                )}
                 {previewCode && (
                   <p className="text-muted-foreground text-xs">
                     {t('nextCode', { code: previewCode })}

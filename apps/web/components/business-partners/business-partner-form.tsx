@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
-import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Separator, Tabs, TabsList, TabsTrigger, TabsContent } from '@petiatrics/ui';
+import { Button, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Separator, Tabs, TabsList, TabsTrigger, TabsContent } from '@petiatrics/ui';
 import { apiClient } from '../../lib/api-client';
 import ExtensionFields from './extension-fields';
 import BpAlertBanner from './bp-alert-banner';
@@ -31,10 +31,11 @@ import FinancialsTab from './tabs/financials-tab';
 
 interface BusinessPartnerFormProps {
   initial?: BusinessPartnerResponse;
+  currencyCode?: string;
 }
 
 const TAB_FIELDS: Record<string, (keyof CreateBpFormValues)[]> = {
-  contact: ['phone', 'email', 'lineId', 'contacts'],
+  contact: ['name', 'phone', 'email', 'lineId', 'contacts'],
   tax: ['taxId', 'isHeadOffice', 'branchCode', 'addressLine1', 'subDistrict', 'district', 'province', 'zipcode', 'defaultVatCodeId', 'defaultWhtCodeId'],
   roles: ['activeRoles', 'discountGroupId', 'groupId', 'isMarketingOptIn', 'internalNotes', 'alertMessage'],
   financials: ['creditLimit', 'creditTermDays', 'creditHold', 'bankAccountName', 'bankAccountBranch', 'bankAccountNumber'],
@@ -86,7 +87,7 @@ function buildDefaultValues(initial?: BusinessPartnerResponse): Partial<CreateBp
   };
 }
 
-export default function BusinessPartnerForm({ initial }: BusinessPartnerFormProps) {
+export default function BusinessPartnerForm({ initial, currencyCode }: BusinessPartnerFormProps) {
   const t = useTranslations('businessPartners');
   const tCommon = useTranslations('common');
   const router = useRouter();
@@ -102,7 +103,18 @@ export default function BusinessPartnerForm({ initial }: BusinessPartnerFormProp
   const schema: any = isEdit ? editBpSchema : createBpSchema;
 
   const methods = useForm<CreateBpFormValues>({
-    resolver: zodResolver(schema),
+    resolver: (values, ctx, opts) => {
+      // Strip contact IDs that are empty strings before Zod validation
+      // (new contacts have id="" from hidden inputs; server validates UUIDs)
+      const cleaned = {
+        ...values,
+        contacts: (values.contacts ?? []).map((c: any) => ({
+          ...c,
+          id: c.id || undefined,
+        })),
+      };
+      return zodResolver(schema)(cleaned, ctx, opts);
+    },
     defaultValues: {
       name: '',
       isHeadOffice: true,
@@ -115,6 +127,7 @@ export default function BusinessPartnerForm({ initial }: BusinessPartnerFormProp
 
   const { register, handleSubmit, watch, formState: { errors } } = methods;
   const type = watch('type') ?? (initial?.type as BusinessPartnerType | undefined);
+  const watchedName = watch('name');
 
   useEffect(() => {
     Promise.all([
@@ -142,19 +155,19 @@ export default function BusinessPartnerForm({ initial }: BusinessPartnerFormProp
       const payload: CreateBusinessPartnerPayload | UpdateBusinessPartnerPayload = {
         ...(!isEdit ? { type: (values as CreateBpFormValues).type } : {}),
         name: values.name,
-        taxId: values.taxId ?? null,
+        taxId: values.taxId || null,
         isHeadOffice: values.isHeadOffice,
-        branchCode: values.branchCode ?? null,
-        addressLine1: values.addressLine1 ?? null,
-        subDistrict: values.subDistrict ?? null,
-        district: values.district ?? null,
-        province: values.province ?? null,
-        zipcode: values.zipcode ?? null,
-        defaultVatCodeId: values.defaultVatCodeId ?? null,
-        defaultWhtCodeId: values.defaultWhtCodeId ?? null,
-        phone: values.phone ?? null,
-        email: values.email ?? null,
-        lineId: values.lineId ?? null,
+        branchCode: values.branchCode || null,
+        addressLine1: values.addressLine1 || null,
+        subDistrict: values.subDistrict || null,
+        district: values.district || null,
+        province: values.province || null,
+        zipcode: values.zipcode || null,
+        defaultVatCodeId: values.defaultVatCodeId || null,
+        defaultWhtCodeId: values.defaultWhtCodeId || null,
+        phone: values.phone || null,
+        email: values.email || null,
+        lineId: values.lineId || null,
         creditTermDays: values.creditTermDays ?? undefined,
         creditLimit: values.creditLimit ?? null,
         creditHold: values.creditHold ?? false,
@@ -171,7 +184,7 @@ export default function BusinessPartnerForm({ initial }: BusinessPartnerFormProp
             }
           : null,
         contacts: (values.contacts ?? []).map((c) => ({
-          id: c.id,
+          id: c.id || undefined,
           name: c.name,
           phone: c.phone ?? null,
           email: c.email ?? null,
@@ -193,7 +206,6 @@ export default function BusinessPartnerForm({ initial }: BusinessPartnerFormProp
       }
 
       router.push('/clinic/business-partners');
-      router.refresh();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'An error occurred';
       setServerError(msg);
@@ -206,44 +218,81 @@ export default function BusinessPartnerForm({ initial }: BusinessPartnerFormProp
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={handleSubmit(onSubmit as Parameters<typeof handleSubmit>[0])} className="mx-auto max-w-3xl space-y-6 px-4 py-8">
-        <div className="flex items-center gap-3">
-          <Button type="button" variant="ghost" size="icon" onClick={() => router.back()} disabled={submitting} aria-label={tCommon('back')}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {isEdit ? t('edit') : t('new')}
-          </h1>
-        </div>
+      <form onSubmit={handleSubmit(onSubmit as Parameters<typeof handleSubmit>[0])} className="mx-auto max-w-3xl space-y-4 px-4 py-6">
 
-        <div className="rounded-lg border bg-card p-6 space-y-5">
-          <div className="space-y-1.5">
-            <Label>{t('name')}</Label>
-            <Input {...register('name')} placeholder="Business Partner Name" />
-            {errors.name && <p className="text-destructive text-sm">{errors.name.message}</p>}
-          </div>
-
-          {!isEdit && (
-            <div className="space-y-1.5">
-              <Label>{t('type')}</Label>
-              <Select
-                onValueChange={(v) => methods.setValue('type', v as BusinessPartnerType, { shouldValidate: true })}
-                defaultValue={''}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={tCommon('filter')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {allTypes.map((bpType) => (
-                    <SelectItem key={bpType} value={bpType}>{t(`types.${bpType}`)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.type && <p className="text-destructive text-sm">{errors.type.message}</p>}
+        {/* ─── EDIT mode: 2-row header card ─── */}
+        {isEdit ? (
+          <div className="rounded-lg border bg-card px-6 py-4 space-y-2">
+            {/* Row 1: title + info chips */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">{t('edit')}</span>
+              <div className="flex items-center gap-6">
+                {initial!.code && (
+                  <div className="text-right">
+                    <p className="text-[11px] leading-none text-muted-foreground">{t('code')}</p>
+                    <p className="text-sm font-semibold">{initial!.code}</p>
+                  </div>
+                )}
+                <div className="text-right">
+                  <p className="text-[11px] leading-none text-muted-foreground">{t('type')}</p>
+                  <p className="text-sm font-semibold">{t(`types.${initial!.type}`)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[11px] leading-none text-muted-foreground">{tCommon('currency')}</p>
+                  <p className="text-sm font-semibold">{currencyCode ?? 'THB'}</p>
+                </div>
+              </div>
             </div>
-          )}
+            {/* Row 2: BP name (reactive) + action buttons */}
+            <div className="flex items-center justify-between">
+              <h1 className="text-xl font-bold">BP: {watchedName || initial!.name}</h1>
+              <div className="flex gap-2">
+                <Button type="submit" disabled={submitting}>
+                  {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {tCommon('save')}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => router.back()} disabled={submitting}>
+                  {tCommon('cancel')}
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* ─── CREATE mode: back button + title ─── */
+          <div className="flex items-center gap-3">
+            <Button type="button" variant="ghost" size="icon" onClick={() => router.back()} disabled={submitting} aria-label={tCommon('back')}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-2xl font-bold text-gray-900">{t('new')}</h1>
+          </div>
+        )}
 
-          <Separator />
+        {/* ─── Main card ─── */}
+        <div className="rounded-lg border bg-card p-6 space-y-5">
+
+          {/* Type selector — create mode only */}
+          {!isEdit && (
+            <>
+              <div className="space-y-1.5">
+                <Label>{t('type')}</Label>
+                <Select
+                  onValueChange={(v) => methods.setValue('type', v as BusinessPartnerType, { shouldValidate: true })}
+                  defaultValue={''}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={tCommon('filter')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allTypes.map((bpType) => (
+                      <SelectItem key={bpType} value={bpType}>{t(`types.${bpType}`)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.type && <p className="text-destructive text-sm">{errors.type.message}</p>}
+              </div>
+              <Separator />
+            </>
+          )}
 
           {initial?.alertMessage && (
             <BpAlertBanner message={initial.alertMessage} />
@@ -298,15 +347,18 @@ export default function BusinessPartnerForm({ initial }: BusinessPartnerFormProp
 
           {serverError && <p className="text-destructive text-sm">{serverError}</p>}
 
-          <div className="flex gap-2 pt-2">
-            <Button type="submit" className="flex-1" disabled={submitting}>
-              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {tCommon('save')}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => router.back()} disabled={submitting}>
-              {tCommon('cancel')}
-            </Button>
-          </div>
+          {/* Save/cancel — create mode only (edit mode buttons are in the header) */}
+          {!isEdit && (
+            <div className="flex gap-2 pt-2">
+              <Button type="submit" className="flex-1" disabled={submitting}>
+                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {tCommon('save')}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => router.back()} disabled={submitting}>
+                {tCommon('cancel')}
+              </Button>
+            </div>
+          )}
         </div>
       </form>
     </FormProvider>
