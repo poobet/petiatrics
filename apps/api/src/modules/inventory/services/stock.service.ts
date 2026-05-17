@@ -29,6 +29,9 @@ export class StockService {
     const db = scopedPrisma(this.prisma, clinicId);
     const product = await db.product.findUnique({ where: { id: dto.productId } });
     if (!product) throw new NotFoundException(`Product ${dto.productId} not found.`);
+    if (product.itemType === 'SERVICE') {
+      throw new BadRequestException(`Cannot modify stock for service item "${product.name}".`);
+    }
 
     const qBefore = Number(product.quantity);
     const qAfter = qBefore + dto.quantity;
@@ -60,6 +63,9 @@ export class StockService {
     const db = scopedPrisma(this.prisma, clinicId);
     const product = await db.product.findUnique({ where: { id: dto.productId } });
     if (!product) throw new NotFoundException(`Product ${dto.productId} not found.`);
+    if (product.itemType === 'SERVICE') {
+      throw new BadRequestException(`Cannot modify stock for service item "${product.name}".`);
+    }
 
     const qBefore = Number(product.quantity);
     if (qBefore < dto.quantity) {

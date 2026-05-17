@@ -43,6 +43,12 @@ export function scopedPrisma(prisma: PrismaClient, clinicId: string) {
             'StockMovement',
             'Invoice',
             'InvoiceLineItem',
+            'BusinessPartner',
+            'BpGroup',
+            'BpContact',
+            'BpRoleActive',
+            'BpVet',
+            'BpSupplier',
           ];
 
           if (!clinicScopedModels.includes(model)) {

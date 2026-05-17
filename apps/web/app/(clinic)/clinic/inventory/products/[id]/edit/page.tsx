@@ -1,8 +1,8 @@
 import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import ItemForm from '@/components/inventory/item-form';
 import ItemFormHeader from '@/components/inventory/item-form-header';
-import type { ItemCategoryResponse, UnitOfMeasureResponse, ReferenceSelectorItem } from '@petiatrics/types';
+import type { ItemDetailResponse, ItemCategoryResponse, UnitOfMeasureResponse, ReferenceSelectorItem } from '@petiatrics/types';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
@@ -10,6 +10,20 @@ async function sessionHeaders(): Promise<HeadersInit> {
   const cookieStore = await cookies();
   const sid = cookieStore.get('petiatrics_sid')?.value;
   return { Cookie: sid ? `petiatrics_sid=${sid}` : '', Accept: 'application/json' };
+}
+
+async function getItem(id: string): Promise<ItemDetailResponse | null> {
+  try {
+    const res = await fetch(`${API}/api/v1/inventory/products/${id}`, {
+      headers: await sessionHeaders(),
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json?.data ?? json ?? null;
+  } catch {
+    return null;
+  }
 }
 
 async function getReferenceData() {
@@ -52,17 +66,27 @@ async function ensureOwnerAccess() {
   }
 }
 
-export default async function NewItemPage() {
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function EditItemPage({ params }: PageProps) {
   await ensureOwnerAccess();
-  const refs = await getReferenceData();
+  const { id } = await params;
+  const [item, refs] = await Promise.all([getItem(id), getReferenceData()]);
+
+  if (!item) notFound();
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
-      <ItemFormHeader title="Add Item" backHref="/clinic/inventory" />
+      <ItemFormHeader
+        title="Edit Item"
+        backHref="/clinic/inventory"
+        code={item.code}
+      />
       <div className="bg-white rounded-lg border p-6">
-        <ItemForm refs={refs} />
+        <ItemForm refs={refs} initial={item} />
       </div>
     </div>
   );
 }
-

@@ -117,23 +117,47 @@ async function main() {
     console.log(`✓ TaxCode: ${tc.code} (${tc.description})`);
   }
 
-  // ── 1b. ContactPosition — global reference, no clinic scoping ────────────
-  const contactPositions = [
-    { name: 'ผู้จัดการ / Manager' },
-    { name: 'ฝ่ายจัดซื้อ / Purchasing' },
-    { name: 'ฝ่ายบัญชี / Accounting' },
-    { name: 'พนักงานขาย / Sales' },
-    { name: 'กรรมการ / Director' },
+  // ── 1b. ItemCategory — global reference, no clinicId (006-item-master) ──
+  const itemCategories = [
+    { code: 'MEDICINE',    name: 'Medicine' },
+    { code: 'RETAIL',      name: 'Retail' },
+    { code: 'SERVICE',     name: 'Service' },
+    { code: 'LABORATORY',  name: 'Laboratory' },
+    { code: 'PROCEDURE',   name: 'Procedure' },
+    { code: 'CONSULTATION', name: 'Consultation' },
   ];
 
-  for (const cp of contactPositions) {
-    await prisma.contactPosition.upsert({
-      where: { name: cp.name },
-      update: { isActive: true },
-      create: { name: cp.name, isActive: true },
+  const categoryIds: Record<string, string> = {};
+  for (const cat of itemCategories) {
+    const record = await prisma.itemCategory.upsert({
+      where: { code: cat.code },
+      update: { name: cat.name, isActive: true },
+      create: { code: cat.code, name: cat.name, isActive: true },
     });
+    categoryIds[cat.code] = record.id;
+    console.log(`✓ ItemCategory: ${cat.code} → ${record.id}`);
   }
-  console.log('✓ ContactPositions seeded');
+
+  // ── 1c. UnitOfMeasure — global reference, no clinicId (006-item-master) ──
+  const unitsOfMeasure = [
+    { name: 'Piece',   symbol: 'pc' },
+    { name: 'Box',     symbol: 'bx' },
+    { name: 'Bottle',  symbol: 'btl' },
+    { name: 'Vial',    symbol: 'vl' },
+    { name: 'Visit',   symbol: 'visit' },
+    { name: 'Session', symbol: 'sess' },
+  ];
+
+  const unitIds: Record<string, string> = {};
+  for (const uom of unitsOfMeasure) {
+    const record = await prisma.unitOfMeasure.upsert({
+      where: { name: uom.name },
+      update: { symbol: uom.symbol, isActive: true },
+      create: { name: uom.name, symbol: uom.symbol, isActive: true },
+    });
+    unitIds[uom.name] = record.id;
+    console.log(`✓ UnitOfMeasure: ${uom.name} → ${record.id}`);
+  }
 
   // ── 1. Super Admin (no clinicId) ──────────────────────────────────────────
   const platformAdmin = await prisma.user.upsert({
@@ -362,26 +386,30 @@ async function main() {
     }
   }
 
-  // ── 7. Inventory Products ─────────────────────────────────────────────────
+  // ── 7. Inventory Products (006-item-master expanded schema) ─────────────
   const productSeed = [
-    { sku: 'MED-001', name: 'Metronidazole 125mg (50 tabs)', category: 'Medication', unit: 'box', quantity: 15, reorderThreshold: 5 },
-    { sku: 'MED-002', name: 'Amoxicillin 250mg (30 caps)', category: 'Medication', unit: 'box', quantity: 3, reorderThreshold: 5 },
-    { sku: 'VAX-001', name: 'Rabies Vaccine', category: 'Vaccine', unit: 'vial', quantity: 20, reorderThreshold: 8 },
-    { sku: 'VAX-002', name: 'DHPPiL Combo Vaccine', category: 'Vaccine', unit: 'vial', quantity: 2, reorderThreshold: 5 },
-    { sku: 'SUP-001', name: 'Surgical Gloves (100 pcs)', category: 'Supplies', unit: 'box', quantity: 12, reorderThreshold: 3 },
+    { code: 'MED-001', name: 'Metronidazole 125mg (50 tabs)', itemType: 'STOCKED_GOOD' as const, categoryKey: 'MEDICINE',    unitName: 'Box',   stdCost: 120, sellPrice: 180, quantity: 15, reorderThreshold: 5 },
+    { code: 'MED-002', name: 'Amoxicillin 250mg (30 caps)',   itemType: 'STOCKED_GOOD' as const, categoryKey: 'MEDICINE',    unitName: 'Box',   stdCost: 95,  sellPrice: 150, quantity: 3,  reorderThreshold: 5 },
+    { code: 'VAX-001', name: 'Rabies Vaccine',                itemType: 'STOCKED_GOOD' as const, categoryKey: 'MEDICINE',    unitName: 'Vial',  stdCost: 200, sellPrice: 350, quantity: 20, reorderThreshold: 8 },
+    { code: 'VAX-002', name: 'DHPPiL Combo Vaccine',          itemType: 'STOCKED_GOOD' as const, categoryKey: 'MEDICINE',    unitName: 'Vial',  stdCost: 180, sellPrice: 320, quantity: 2,  reorderThreshold: 5 },
+    { code: 'SUP-001', name: 'Surgical Gloves (100 pcs)',     itemType: 'STOCKED_GOOD' as const, categoryKey: 'RETAIL',      unitName: 'Box',   stdCost: 80,  sellPrice: 120, quantity: 12, reorderThreshold: 3 },
+    { code: 'SVC-001', name: 'Standard Consultation',         itemType: 'SERVICE'       as const, categoryKey: 'CONSULTATION', unitName: 'Visit', stdCost: 0,   sellPrice: 500, quantity: 0,  reorderThreshold: 0 },
   ];
 
   const productIds: string[] = [];
   for (const p of productSeed) {
     const product = await prisma.product.upsert({
-      where: { clinicId_sku: { clinicId: clinic.id, sku: p.sku } },
+      where: { clinicId_code: { clinicId: clinic.id, code: p.code } },
       update: {},
       create: {
         clinicId: clinic.id,
+        code: p.code,
         name: p.name,
-        sku: p.sku,
-        category: p.category,
-        unit: p.unit,
+        itemType: p.itemType,
+        categoryId: categoryIds[p.categoryKey],
+        baseUnitId: unitIds[p.unitName],
+        standardCost: p.stdCost,
+        baseSellingPrice: p.sellPrice,
         quantity: p.quantity,
         reorderThreshold: p.reorderThreshold,
       },

@@ -73,6 +73,11 @@ enum StockMovementRefType {
   MANUAL
 }
 
+enum ItemType {
+  STOCKED_GOOD
+  SERVICE
+}
+
 enum BpType {
   CUSTOMER
   STAFF
@@ -208,6 +213,7 @@ model TaxCode {
 
   defaultVatBps BusinessPartner[] @relation("DefaultVatCode")
   defaultWhtBps BusinessPartner[] @relation("DefaultWhtCode")
+  products      Product[]         @relation("ProductDefaultTax")
 
   @@index([isVatType, isActive])
   @@map("tax_codes")
@@ -275,6 +281,7 @@ model BusinessPartner {
   group          BpGroup?        @relation(fields: [groupId], references: [id])
   activeRoles    BpRoleActive[]
   contacts       BpContact[]
+  defaultForProducts Product[]   @relation("ProductDefaultSupplier")
 
   @@unique([clinicId, code])
   @@index([clinicId])
@@ -389,28 +396,95 @@ model Appointment {
   @@map("appointments")
 }
 
+// ─── ItemCategory (globally seeded reference — no clinicId) ─────────────────
+
+model ItemCategory {
+  id            String   @id @default(uuid())
+  name          String   @unique
+  code          String   @unique
+  revenueGlCode String?
+  expenseGlCode String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  products Product[]
+
+  @@map("item_categories")
+}
+
+// ─── UnitOfMeasure (globally seeded reference — no clinicId) ─────────────────
+
+model UnitOfMeasure {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  symbol    String?  @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  baseUnitProducts   Product[]            @relation("BaseUnit")
+  itemUnitConversions ItemUnitConversion[]
+
+  @@map("units_of_measure")
+}
+
+// ─── ItemUnitConversion (per-item alternate unit) ────────────────────────────
+
+model ItemUnitConversion {
+  id          String        @id @default(uuid())
+  productId   String
+  unitId      String
+  ratioToBase Decimal       @db.Decimal(12, 6)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  product Product       @relation(fields: [productId], references: [id])
+  unit    UnitOfMeasure @relation(fields: [unitId], references: [id])
+
+  @@unique([productId, unitId])
+  @@index([productId])
+  @@map("item_unit_conversions")
+}
+
 // ─── Product (Inventory Item) ────────────────────────────────────────────────
 
 model Product {
-  id               String   @id @default(uuid())
-  clinicId         String
-  name             String
-  sku              String
-  category         String
-  unit             String
-  quantity         Decimal  @default(0) @db.Decimal(10, 3)
-  reorderThreshold Decimal  @default(0) @db.Decimal(10, 3)
-  isActive         Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                            String    @id @default(uuid())
+  clinicId                      String
+  code                          String
+  name                          String
+  itemType                      ItemType  @default(STOCKED_GOOD)
+  categoryId                    String?
+  baseUnitId                    String?
+  standardCost                  Decimal   @default(0) @db.Decimal(14, 4)
+  baseSellingPrice              Decimal   @default(0) @db.Decimal(14, 4)
+  isTaxInclusive                Boolean   @default(false)
+  defaultTaxCodeId              String?
+  genericName                   String?
+  isControlledSubstance         Boolean   @default(false)
+  requiresBatchAndExpiryTracking Boolean  @default(false)
+  defaultSupplierId             String?
+  defaultDoctorFee              Decimal?  @db.Decimal(14, 4)
+  quantity                      Decimal   @default(0) @db.Decimal(10, 3)
+  reorderThreshold              Decimal   @default(0) @db.Decimal(10, 3)
+  isActive                      Boolean   @default(true)
+  createdAt                     DateTime  @default(now())
+  updatedAt                     DateTime  @updatedAt
 
-  clinic         Clinic          @relation(fields: [clinicId], references: [id])
-  stockMovements StockMovement[]
+  clinic          Clinic              @relation(fields: [clinicId], references: [id])
+  category        ItemCategory?       @relation(fields: [categoryId], references: [id])
+  baseUnit        UnitOfMeasure?      @relation("BaseUnit", fields: [baseUnitId], references: [id])
+  defaultTaxCode  TaxCode?            @relation("ProductDefaultTax", fields: [defaultTaxCodeId], references: [id])
+  defaultSupplier BusinessPartner?    @relation("ProductDefaultSupplier", fields: [defaultSupplierId], references: [id])
+  stockMovements  StockMovement[]
+  unitConversions ItemUnitConversion[]
 
-  @@unique([clinicId, sku])
+  @@unique([clinicId, code])
   @@index([clinicId])
   @@index([clinicId, name])
-  @@index([clinicId, category])
+  @@index([clinicId, itemType])
+  @@index([clinicId, categoryId])
   @@index([clinicId, isActive])
   @@map("products")
 }

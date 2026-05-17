@@ -221,7 +221,7 @@
   },
   "inventory": {
     "title": "คลังสินค้า",
-    "new": "สินค้าใหม่",
+    "new": "เพิ่มรายการ",
     "productName": "ชื่อสินค้า",
     "sku": "รหัสสินค้า",
     "category": "หมวดหมู่",
@@ -238,13 +238,75 @@
     "adjustQuantity": "จำนวนที่เปลี่ยนแปลง",
     "lowStock": "สินค้าใกล้หมด",
     "outOfStock": "สินค้าหมด",
-    "noProducts": "ไม่พบสินค้า",
+    "noProducts": "ไม่พบรายการ",
     "movement_reason": {
       "purchase": "ซื้อเข้า",
       "sale": "ขาย (ผ่านใบแจ้งหนี้)",
       "manual_adjust": "ปรับด้วยมือ",
       "waste": "ของเสีย / หมดอายุ",
       "return": "คืนสินค้า"
+    },
+    "items": {
+      "newItem": "เพิ่มรายการใหม่",
+      "editItem": "แก้ไขรายการ",
+      "itemCode": "รหัสรายการ",
+      "itemCodeHint": "รหัสเฉพาะสำหรับคลินิก ตัวพิมพ์ใหญ่อัตโนมัติ",
+      "itemName": "ชื่อรายการ",
+      "genericName": "ชื่อสามัญ",
+      "itemType": "ประเภทรายการ",
+      "stockedGood": "สินค้าคงคลัง",
+      "service": "บริการ",
+      "categoryLabel": "หมวดหมู่",
+      "baseUnit": "หน่วยหลัก",
+      "isControlledSubstance": "ยาควบคุม",
+      "requiresBatchTracking": "ต้องติดตาม Batch และวันหมดอายุ",
+      "inactive": "ไม่ใช้งาน",
+      "active": "ใช้งาน",
+      "deactivate": "ปิดใช้งาน",
+      "deactivateConfirm": "ปิดใช้งานรายการนี้? จะไม่ปรากฏในผลการค้นหา",
+      "noItems": "ไม่พบรายการ กรุณาเพิ่มรายการแรก",
+      "lowStockAlert": "แจ้งเตือนสต็อกใกล้หมด",
+      "tabs": {
+        "general": "ทั่วไป",
+        "units": "หน่วยและการแปลง",
+        "pricing": "ราคาและภาษี",
+        "clinicDetails": "ข้อมูลคลินิก"
+      },
+      "units": {
+        "title": "หน่วยและการแปลง",
+        "baseUnit": "หน่วยหลัก",
+        "addConversion": "เพิ่มหน่วยทางเลือก",
+        "altUnit": "หน่วยทางเลือก",
+        "ratio": "อัตราส่วนต่อหน่วยหลัก",
+        "ratioHint": "เช่น 1 กล่อง = 12 ชิ้น → อัตราส่วน = 12",
+        "remove": "ลบ"
+      },
+      "pricing": {
+        "title": "ราคาและภาษี",
+        "standardCost": "ราคาต้นทุนมาตรฐาน",
+        "sellingPrice": "ราคาขายพื้นฐาน",
+        "isTaxInclusive": "ราคารวมภาษีแล้ว",
+        "defaultTaxCode": "รหัสภาษีเริ่มต้น",
+        "noTaxCode": "ไม่มีรหัสภาษี"
+      },
+      "clinicDetails": {
+        "title": "ข้อมูลเฉพาะคลินิก",
+        "defaultSupplier": "ผู้จำหน่ายที่ต้องการ",
+        "noSupplier": "ไม่มีผู้จำหน่ายที่ต้องการ",
+        "reorderThreshold": "จุดสั่งซื้อ",
+        "defaultDoctorFee": "ค่าธรรมเนียมแพทย์เริ่มต้น"
+      },
+      "validation": {
+        "codeRequired": "กรุณาระบุรหัสรายการ",
+        "nameRequired": "กรุณาระบุชื่อรายการ",
+        "categoryRequired": "กรุณาเลือกหมวดหมู่",
+        "baseUnitRequired": "กรุณาเลือกหน่วยหลัก",
+        "costNegative": "ราคาต้นทุนต้องไม่ติดลบ",
+        "priceNegative": "ราคาขายต้องไม่ติดลบ",
+        "conversionUnitRequired": "กรุณาเลือกหน่วยทางเลือก",
+        "conversionRatioPositive": "อัตราส่วนต้องมากกว่า 0",
+        "codeDuplicate": "รหัสรายการนี้มีอยู่แล้วในคลินิกของคุณ"
+      }
     }
   },
   "billing": {
