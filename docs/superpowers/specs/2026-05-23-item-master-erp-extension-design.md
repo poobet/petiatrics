@@ -88,17 +88,16 @@ Approximately 20 globally seeded GL accounts covering all six types, suited for 
 ### Backend Rules
 
 - When updating `ItemCategory`, if `revenueGlAccountId` or `expenseGlAccountId` references an inactive GL account, reject with `400`.
-- Migration strategy for existing data: match existing string codes to seeded GL account codes where possible; set FK to `null` for unmatched codes; log mismatches (not a hard error).
+- All existing `ItemCategory` rows will have `revenueGlAccountId` and `expenseGlAccountId` set to `null` after migration (the original string codes are discarded because GL accounts are seeded after migration runs; re-assignment is done via future UI).
 
 ### Frontend
 
-- Add a GL Account selector (combobox showing `code — name`) to the Category creation/edit form.
-- Two selectors per category: Revenue GL Account and Expense GL Account. Both optional.
-- The category form lives in the reference management surface (future admin UI). In this phase, the selectors are exposed in the seeded category management if one exists; otherwise the endpoint is the primary interface.
+- GL Account selectors on `ItemCategory` forms are **deferred** to a future Admin UI module. No frontend work for Feature 1 is in scope for this phase.
+- The `GET /inventory/reference/gl-accounts` endpoint is the only deliverable; it is consumed by the future category management screen.
 
-### Event Hook (future readiness)
+### Event Hook (future readiness — deferred)
 
-- Emit `product.sold` event stub in `visit.service.ts` after a visit is finalized. Payload: `{ clinicId, productId, sku, quantity, unitPrice, glAccountCode }`. A future Accounting module subscribes; no accounting logic is implemented in this phase.
+- A `product.sold` event is intentionally **not** emitted in this phase. It will be introduced in the Accounting module spec when a consumer exists. No changes to `visit.service.ts` are required for this feature.
 
 ---
 
@@ -212,7 +211,7 @@ A `LowStockListener` in `apps/api/src/modules/inventory/listeners/` logs the eve
 
 | Method | Route | Notes |
 |--------|-------|-------|
-| `GET` | `/inventory/low-stock` | Returns `STOCKED_GOOD` items where `quantity <= reorderPoint`. Includes `sku`, `name`, `quantity`, `minimumStock`, `reorderPoint`. Clinic-scoped. |
+| `GET` | `/inventory/products/low-stock` | Returns `STOCKED_GOOD` items where `reorderPoint > 0 AND quantity <= reorderPoint`. The `reorderPoint > 0` guard excludes unconfigured items. Includes `sku`, `name`, `quantity`, `minimumStock`, `reorderPoint`. Clinic-scoped. Placed in `product.controller.ts` (base path `/inventory/products`). |
 
 ### Frontend
 
@@ -224,9 +223,10 @@ A `LowStockListener` in `apps/api/src/modules/inventory/listeners/` logs the eve
 
 **Low-Stock Dashboard Widget** (`apps/web/components/inventory/low-stock-widget.tsx`):
 
-- Fetches `GET /inventory/low-stock` on mount.
+- Fetches `GET /inventory/products/low-stock` on mount. No polling; a manual refresh button is sufficient if the user needs updated data within the same session.
 - Renders a compact table: SKU, Name, Current Stock, Min Stock, Reorder At, and a severity indicator (Critical = quantity ≤ minimumStock; Low = quantity ≤ reorderPoint).
 - "View all →" link navigates to a dedicated low-stock list page.
+- Severity logic: **Critical** = `quantity <= minimumStock`; **Low** = `quantity <= reorderPoint`. Critical takes precedence — an item that satisfies both conditions is shown as Critical only.
 - Placed on the inventory dashboard above the main item table.
 
 ---
@@ -265,7 +265,7 @@ Clinics migrating to Petiatrics must upload their existing item lists rather tha
 2. Validate each row: required fields, type values, numeric ranges, `categoryCode` / `baseUnitSymbol` existence, duplicate SKU within file, duplicate SKU/barcode in DB.
 3. Collect errors as `{ row: number, field: string, message: string }[]`.
 4. If any errors → return `400 { errors }`, nothing inserted.
-5. If all clean → `prisma.$transaction(createMany(...))` with auto-generated SKUs for rows that omit `sku`.
+5. If all clean → `prisma.$transaction(createMany(...))`. SKU auto-generation for rows that omit `sku` is delegated to the existing `product.service.ts` SKU generation logic (the `ClinicItemSequence` upsert) — `bulk-import.service.ts` does **not** duplicate this logic.
 6. Return `200 { imported: N, errors: [] }`.
 
 **Libraries:**
@@ -294,14 +294,14 @@ Clinics migrating to Petiatrics must upload their existing item lists rather tha
 One migration performs all schema changes in sequence:
 
 1. Create `gl_accounts` table with enum `GLAccountType`.
-2. Seed `gl_accounts` with ~20 standard accounts.
-3. Add `revenue_gl_account_id` / `expense_gl_account_id` FK columns to `item_categories`.
-4. Migrate existing string codes to FK values where code matches; set `null` otherwise.
-5. Drop `revenue_gl_code` and `expense_gl_code` columns from `item_categories`.
-6. Add `sku`, `barcode`, `minimum_stock` columns to `products`.
-7. Rename `reorder_threshold` → `reorder_point` on `products`.
-8. Add `@@unique([clinic_id, sku])` index to `products`.
-9. Create `clinic_item_sequences` table.
+2. Add `revenue_gl_account_id` / `expense_gl_account_id` FK columns to `item_categories`; set both to `null` for all existing rows (matching to GL accounts is not possible at migration time — GL accounts are seeded via `seed.ts` which runs after migration).
+3. Drop `revenue_gl_code` and `expense_gl_code` columns from `item_categories`.
+4. Add `sku`, `barcode`, `minimum_stock` columns to `products`.
+5. Rename `reorder_threshold` → `reorder_point` on `products`.
+6. Add `@@unique([clinic_id, sku])` index to `products`.
+7. Create `clinic_item_sequences` table.
+
+**GL account seed data** is loaded exclusively via `packages/database/prisma/seed.ts` (re-runnable with `prisma db seed`), **not** embedded in migration SQL. This keeps the migration reversible and the seed idempotent via upsert.
 
 ---
 
@@ -312,6 +312,7 @@ One migration performs all schema changes in sequence:
 | Path | Purpose |
 |------|---------|
 | `apps/api/src/modules/inventory/listeners/low-stock.listener.ts` | Handles `stock.low_stock_warning` event |
+| `apps/web/public/templates/items-template.xlsx` | Download template for bulk import. **Created manually and committed to the repo; column headers must exactly match the Template columns table in Feature 4.** |
 | `apps/api/src/modules/inventory/services/bulk-import.service.ts` | File parsing, row validation, batch insert |
 | `apps/api/src/modules/inventory/controllers/bulk-import.controller.ts` | `POST /inventory/products/bulk-import` |
 | `apps/web/components/inventory/bulk-import-modal.tsx` | Drag-and-drop import UI |
@@ -362,7 +363,7 @@ One migration performs all schema changes in sequence:
 | SC-001 | A new item created without a SKU receives an auto-generated `ITM-NNNNN` that is unique within the clinic. |
 | SC-002 | A barcode search via `GET /inventory/products/by-barcode/:barcode` returns the correct item in under 100ms. |
 | SC-003 | After a stock deduction that brings quantity to or below `reorderPoint`, the `stock.low_stock_warning` event is emitted within the same request. |
-| SC-004 | `GET /inventory/low-stock` returns only `STOCKED_GOOD` items with `quantity <= reorderPoint`. |
+| SC-004 | `GET /inventory/products/low-stock` returns only `STOCKED_GOOD` items with `quantity <= reorderPoint`. |
 | SC-005 | A valid 100-row XLSX import completes in under 5 seconds and inserts exactly 100 items. |
 | SC-006 | A bulk import containing even one invalid row returns `400` with row-level errors and inserts nothing. |
-| SC-007 | `ItemCategory` GL dropdowns display the seeded GL account list and persist FK references correctly. |
+| SC-007 | `GET /inventory/reference/gl-accounts` returns the full seeded GL account list with correct `code`, `name`, and `accountType` fields. |
