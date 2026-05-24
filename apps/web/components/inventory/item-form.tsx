@@ -43,7 +43,10 @@ function itemDetailToFormValues(item: ItemDetailResponse): ItemFormValues {
     defaultTaxCodeId: item.defaultTaxCodeId ?? '',
     defaultSupplierId: item.defaultSupplierId ?? '',
     defaultDoctorFee: item.defaultDoctorFee ?? '',
-    reorderThreshold: item.reorderThreshold,
+    reorderPoint: item.reorderPoint,
+    minimumStock: item.minimumStock,
+    sku: item.sku ?? '',
+    barcode: item.barcode ?? '',
     conversions: (item.conversions ?? []).map((c) => ({
       unitId: c.unitId,
       ratioToBase: c.ratioToBase,

@@ -229,7 +229,7 @@
     "unit": "หน่วย",
     "costPrice": "ราคาต้นทุน",
     "sellPrice": "ราคาขาย",
-    "reorderThreshold": "จุดสั่งซื้อ",
+    "reorderPoint": "จุดสั่งซื้อ",
     "supplier": "ผู้จำหน่าย",
     "expiryDate": "วันหมดอายุ",
     "stockMovements": "ประวัติการเคลื่อนไหวสินค้า",
@@ -293,10 +293,30 @@
         "title": "ข้อมูลเฉพาะคลินิก",
         "defaultSupplier": "ผู้จำหน่ายที่ต้องการ",
         "noSupplier": "ไม่มีผู้จำหน่ายที่ต้องการ",
-        "reorderThreshold": "จุดสั่งซื้อ",
+        "reorderPoint": "จุดสั่งซื้อ",
+        "minimumStock": "สต็อกขั้นต่ำ",
         "defaultDoctorFee": "ค่าธรรมเนียมแพทย์เริ่มต้น"
       },
-      "validation": {
+      "identifiers": {
+        "title": "รหัสระบุ",
+        "sku": "SKU",
+        "skuHint": "กำหนดอัตโนมัติ ไม่สามารถเปลี่ยนได้หลังสร้าง",
+        "barcode": "บาร์โค้ด",
+        "barcodeHint": "ไม่จำเป็น ต้องไม่ซ้ำกันในทุกรายการ"
+      },
+      "bulkImport": {
+        "title": "นำเข้ารายการสินค้าจำนวนมาก",
+        "description": "อัปโหลดไฟล์ CSV หรือ XLSX สูงสุด 500 แถว รายการที่มีอยู่แล้วจะถูกข้ามไป",
+        "import": "นำเข้า",
+        "importing": "กำลังนำเข้า…",
+        "cancel": "ยกเลิก",
+        "resultTitle": "นำเข้าเสร็จสิ้น",
+        "created": "สร้าง {count} รายการ",
+        "skipped": "ข้าม {count} รายการ (มีอยู่แล้ว)",
+        "errors": "พบ {count} ข้อผิดพลาด:",
+        "errorRow": "แถว {row} [{code}]: {message}",
+        "genericError": "การนำเข้าล้มเหลว กรุณาลองอีกครั้ง"
+      },
         "codeRequired": "กรุณาระบุรหัสรายการ",
         "nameRequired": "กรุณาระบุชื่อรายการ",
         "categoryRequired": "กรุณาเลือกหมวดหมู่",

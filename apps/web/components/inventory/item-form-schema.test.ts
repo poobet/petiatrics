@@ -144,9 +144,9 @@ describe('toApiPayload()', () => {
     expect(payload.defaultDoctorFee).toBeNull();
   });
 
-  it('sets reorderThreshold=0 for SERVICE items', () => {
-    const payload = toApiPayload(validServiceItem({ reorderThreshold: 10 }));
-    expect(payload.reorderThreshold).toBe(0);
+  it('sets reorderPoint=0 for SERVICE items', () => {
+    const payload = toApiPayload(validServiceItem({ reorderPoint: 10 }));
+    expect(payload.reorderPoint).toBe(0);
   });
 
   it('filters out incomplete conversion rows', () => {

@@ -36,7 +36,10 @@ export interface ItemFormValues {
   defaultTaxCodeId: string;
   defaultSupplierId: string;
   defaultDoctorFee: number | '';
-  reorderThreshold: number | '';
+  reorderPoint: number | '';
+  minimumStock: number | '';
+  sku: string;
+  barcode: string;
   conversions: ItemConversionFormValue[];
 }
 
@@ -55,6 +58,9 @@ export const ITEM_FORM_DEFAULTS: ItemFormValues = {
   defaultTaxCodeId: '',
   defaultSupplierId: '',
   defaultDoctorFee: '',
-  reorderThreshold: 0,
+  reorderPoint: 0,
+  minimumStock: 0,
+  sku: '',
+  barcode: '',
   conversions: [],
 };

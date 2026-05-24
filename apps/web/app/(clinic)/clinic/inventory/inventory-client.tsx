@@ -10,6 +10,7 @@ import ItemFilterBar from '@/components/inventory/item-filter-bar';
 import type { ItemFilters } from '@/components/inventory/item-filter-bar';
 import { apiClient } from '@/lib/api-client';
 import { useSessionStore } from '@/lib/session-store';
+import { BulkImportModal } from '@/components/inventory/bulk-import-modal';
 
 interface Props {
   categories: ItemCategoryResponse[];
@@ -34,6 +35,7 @@ export default function InventoryClient({ categories }: Props) {
   const [activeTab, setActiveTab] = useState<'items' | 'movements'>('items');
   const [movements, setMovements] = useState<unknown[]>([]);
   const [loadingMovements, setLoadingMovements] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const lowStockIds = useMemo(() => new Set(lowStockItems.map((p) => p.id)), [lowStockItems]);
 
@@ -132,6 +134,12 @@ export default function InventoryClient({ categories }: Props) {
           >
             Replenish Stock
           </Link>
+          <button
+            onClick={() => setImportOpen(true)}
+            className="px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
+          >
+            Import CSV / XLSX
+          </button>
           <Link
             href="/clinic/inventory/products/new"
             className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
@@ -140,6 +148,12 @@ export default function InventoryClient({ categories }: Props) {
           </Link>
         </div>
       </div>
+
+      <BulkImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onSuccess={() => { void loadBranchInventory(); }}
+      />
 
       {/* Tabs */}
       <div className="border-b mb-4 flex gap-6">

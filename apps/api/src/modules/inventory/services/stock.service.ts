@@ -155,16 +155,18 @@ export class StockService {
         },
       });
 
-      if (qAfter <= Number(product.reorderThreshold)) {
+      if (qAfter <= Number(product.reorderPoint)) {
         this.events.emit(
-          'inventory.low_stock',
+          'stock.low_stock_warning',
           new LowStockEvent(
             clinicId,
             dto.branchId,
             product.id,
             product.name,
             qAfter,
-            Number(product.reorderThreshold),
+            Number(product.reorderPoint),
+            product.sku ?? null,
+            Number(product.minimumStock),
           ),
         );
       }

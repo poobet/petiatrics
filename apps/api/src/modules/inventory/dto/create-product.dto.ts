@@ -86,5 +86,18 @@ export class CreateProductDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
-  reorderThreshold?: number;
+  reorderPoint?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  minimumStock?: number;
+
+  @IsOptional()
+  @IsString()
+  sku?: string;
+
+  @IsOptional()
+  @IsString()
+  barcode?: string | null;
 }

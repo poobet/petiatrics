@@ -16,6 +16,10 @@ export class ListProductsDto {
   categoryId?: string;
 
   @IsOptional()
+  @IsString()
+  barcode?: string;
+
+  @IsOptional()
   @Transform(({ value }: { value: unknown }) => value === 'true' || value === true)
   @IsBoolean()
   includeInactive?: boolean;

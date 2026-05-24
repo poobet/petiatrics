@@ -10,6 +10,7 @@ import { ItemType } from '@petiatrics/types';
 import { CreateProductDto } from '../dto/create-product.dto';
 import { UpdateProductDto } from '../dto/update-product.dto';
 import { ListProductsDto } from '../dto/list-products.dto';
+import { SkuSequenceService } from './sku-sequence.service';
 
 /** Fields to include for every product query — category, unit, taxCode, supplier. */
 const PRODUCT_INCLUDE = {
@@ -29,7 +30,10 @@ const PRODUCT_INCLUDE_DETAIL = {
 
 @Injectable()
 export class ProductService {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(
+    private readonly prisma: PrismaClient,
+    private readonly skuSequence: SkuSequenceService,
+  ) {}
 
   /** Normalize item codes: trim whitespace and uppercase. */
   normalizeCode(code: string): string {
@@ -55,6 +59,13 @@ export class ProductService {
     if (!unit) throw new BadRequestException(`Unit of measure "${unitId}" not found or inactive.`);
   }
 
+  private async assertBarcodeUnique(barcode: string, excludeId?: string) {
+    const existing = await this.prisma.product.findFirst({
+      where: { barcode, id: excludeId ? { not: excludeId } : undefined },
+    });
+    if (existing) throw new ConflictException(`Barcode "${barcode}" is already assigned to another item.`);
+  }
+
   // ─── CRUD ──────────────────────────────────────────────────────────────────
 
   async create(clinicId: string, dto: CreateProductDto) {
@@ -71,6 +82,12 @@ export class ProductService {
       const bp = await this.prisma.businessPartner.findFirst({ where: { id: dto.defaultSupplierId, clinicId } });
       if (!bp) throw new BadRequestException(`Supplier "${dto.defaultSupplierId}" not found.`);
     }
+    if (dto.barcode) {
+      await this.assertBarcodeUnique(dto.barcode);
+    }
+
+    // Auto-assign SKU if not supplied
+    const sku = dto.sku ?? (await this.skuSequence.nextSku(clinicId));
 
     const { conversions, ...rest } = dto;
     const db = scopedPrisma(this.prisma, clinicId);
@@ -80,6 +97,7 @@ export class ProductService {
         clinicId,
         ...rest,
         code,
+        sku,
         unitConversions: conversions?.length
           ? { create: conversions.map((c) => ({ unitId: c.unitId, ratioToBase: c.ratioToBase })) }
           : undefined,
@@ -125,7 +143,8 @@ export class ProductService {
     const mappedItems = items.map((item) => ({
       ...item,
       quantity: item.itemType === ItemType.SERVICE ? null : (byProductId.get(item.id) ?? 0),
-      reorderThreshold: Number(item.reorderThreshold),
+      reorderPoint: Number(item.reorderPoint),
+      minimumStock: Number(item.minimumStock),
     }));
 
     return { items: mappedItems, total, page, perPage };
@@ -154,6 +173,9 @@ export class ProductService {
       const bp = await this.prisma.businessPartner.findFirst({ where: { id: dto.defaultSupplierId, clinicId } });
       if (!bp) throw new BadRequestException(`Supplier "${dto.defaultSupplierId}" not found.`);
     }
+    if (dto.barcode !== undefined && dto.barcode !== null) {
+      await this.assertBarcodeUnique(dto.barcode, id);
+    }
 
     const { conversions, ...rest } = dto;
     const db = scopedPrisma(this.prisma, clinicId);
@@ -181,7 +203,16 @@ export class ProductService {
     return db.product.update({ where: { id }, data: { isActive: false }, include: PRODUCT_INCLUDE });
   }
 
-  /** Returns stocked goods with branch quantity \u2264 reorderThreshold (reorderThreshold > 0 only). */
+  async findByBarcode(clinicId: string, barcode: string) {
+    const product = await this.prisma.product.findFirst({
+      where: { clinicId, barcode, isActive: true },
+      include: PRODUCT_INCLUDE_DETAIL,
+    });
+    if (!product) throw new NotFoundException(`No active item found with barcode "${barcode}".`);
+    return product;
+  }
+
+  /** Returns stocked goods with branch quantity \u2264 reorderPoint (reorderPoint > 0 only). */
   async getLowStock(clinicId: string, branchId: string) {
     const db = scopedPrisma(this.prisma, clinicId);
     const balances = await db.branchStockBalance.findMany({
@@ -196,13 +227,14 @@ export class ProductService {
     return balances
       .filter(
         (row) =>
-          Number(row.product.reorderThreshold) > 0 &&
-          Number(row.quantity) <= Number(row.product.reorderThreshold),
+          Number(row.product.reorderPoint) > 0 &&
+          Number(row.quantity) <= Number(row.product.reorderPoint),
       )
       .map((row) => ({
         ...row.product,
         quantity: Number(row.quantity),
-        reorderThreshold: Number(row.product.reorderThreshold),
+        reorderPoint: Number(row.product.reorderPoint),
+        minimumStock: Number(row.product.minimumStock),
       }));
   }
 }

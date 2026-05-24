@@ -9,20 +9,21 @@ import type { ItemSummaryResponse } from '@petiatrics/types';
 function makeItem(overrides: Partial<ItemSummaryResponse> = {}): ItemSummaryResponse {
   return {
     id: 'prod-001',
-    clinicId: 'clinic-001',
     code: 'MED-001',
+    sku: 'SKU-00001',
+    barcode: null,
     name: 'Test Medication',
     itemType: ItemType.STOCKED_GOOD,
     isActive: true,
-    categoryId: 'cat-001',
-    baseUnitId: 'unit-001',
     standardCost: 80,
     baseSellingPrice: 150,
     isTaxInclusive: false,
     isControlledSubstance: false,
     requiresBatchAndExpiryTracking: false,
-    category: { id: 'cat-001', name: 'Medicine', code: 'MEDICINE', isActive: true },
-    baseUnit: { id: 'unit-001', name: 'Box', symbol: 'bx', isActive: true },
+    category: { id: 'cat-001', name: 'Medicine' },
+    baseUnit: { id: 'unit-001', name: 'Box', symbol: 'bx' },
+    defaultTaxCode: null,
+    defaultSupplier: null,
     ...overrides,
   };
 }

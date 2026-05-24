@@ -19,7 +19,7 @@ export class VisitFinalizedEvent {
   ) {}
 }
 
-/** Emitted when a product's stock falls at or below its reorder threshold */
+/** Emitted when a product's stock falls at or below its reorder point */
 export class LowStockEvent {
   constructor(
     public readonly clinicId: string,
@@ -27,7 +27,9 @@ export class LowStockEvent {
     public readonly productId: string,
     public readonly productName: string,
     public readonly currentQuantity: number,
-    public readonly reorderThreshold: number,
+    public readonly reorderPoint: number,
+    public readonly sku: string | null = null,
+    public readonly minimumStock: number = 0,
   ) {}
 }
 

@@ -22,4 +22,9 @@ export class ReferenceController {
   getTaxCodes() {
     return this.referenceService.getTaxCodes();
   }
+
+  @Get('gl-accounts')
+  getGLAccounts() {
+    return this.referenceService.getGLAccounts();
+  }
 }

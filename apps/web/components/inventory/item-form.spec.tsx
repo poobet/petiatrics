@@ -23,9 +23,9 @@ import { apiClient } from '../../lib/api-client';
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 const REFS: ItemFormReferenceData = {
-  categories: [{ id: 'cat-001', name: 'Medicine', code: 'MEDICINE', isActive: true }],
+  categories: [{ id: 'cat-001', name: 'Medicine', code: 'MEDICINE', isActive: true, revenueGlAccountId: null, expenseGlAccountId: null, revenueGlAccount: null, expenseGlAccount: null }],
   units: [{ id: 'unit-001', name: 'Piece', symbol: 'pc', isActive: true }],
-  taxCodes: [{ id: 'tc-001', label: 'VAT 7%', value: 'tc-001' }],
+  taxCodes: [{ id: 'tc-001', name: 'VAT 7%', code: 'VAT7' }],
   suppliers: [],
 };
 
@@ -141,7 +141,10 @@ describe('ItemForm', () => {
       defaultSupplierId: null,
       defaultDoctorFee: null,
       quantity: 50,
-      reorderThreshold: 10,
+      reorderPoint: 10,
+      minimumStock: 5,
+      sku: 'SKU-00001',
+      barcode: null,
       conversions: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

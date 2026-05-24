@@ -8,8 +8,8 @@ import { ItemType } from '@petiatrics/types';
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 const CATEGORIES: ItemCategoryResponse[] = [
-  { id: 'cat-001', name: 'Medicine', code: 'MEDICINE', isActive: true },
-  { id: 'cat-002', name: 'Service', code: 'SERVICE', isActive: true },
+  { id: 'cat-001', name: 'Medicine', code: 'MEDICINE', isActive: true, revenueGlAccountId: null, expenseGlAccountId: null, revenueGlAccount: null, expenseGlAccount: null },
+  { id: 'cat-002', name: 'Service', code: 'SERVICE', isActive: true, revenueGlAccountId: null, expenseGlAccountId: null, revenueGlAccount: null, expenseGlAccount: null },
 ];
 
 const DEFAULT_FILTERS: ItemFilters = {

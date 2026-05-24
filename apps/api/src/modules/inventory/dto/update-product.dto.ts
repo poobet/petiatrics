@@ -72,7 +72,16 @@ export class UpdateProductDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
-  reorderThreshold?: number;
+  reorderPoint?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  minimumStock?: number;
+
+  @IsOptional()
+  @IsString()
+  barcode?: string | null;
 
   @IsOptional()
   @IsBoolean()

@@ -129,6 +129,43 @@ export default function GeneralTab({ values, errors, refs, onChange, isEdit }: P
           </label>
         )}
       </div>
+
+      {/* Identifiers: SKU & Barcode */}
+      <div className="border-t pt-4 mt-2">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Identifiers</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="sku" className="block text-sm font-medium text-gray-700 mb-1">
+              SKU
+            </label>
+            <input
+              id="sku"
+              name="sku"
+              value={values.sku}
+              disabled={isEdit}
+              readOnly={isEdit}
+              onChange={(e) => onChange('sku', e.target.value)}
+              placeholder="Auto-assigned on save"
+              className="w-full border rounded-md px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+            />
+            {isEdit && <p className="text-xs text-gray-400 mt-0.5">SKU is assigned on creation and cannot be changed.</p>}
+          </div>
+          <div>
+            <label htmlFor="barcode" className="block text-sm font-medium text-gray-700 mb-1">
+              Barcode
+            </label>
+            <input
+              id="barcode"
+              name="barcode"
+              value={values.barcode}
+              onChange={(e) => onChange('barcode', e.target.value)}
+              placeholder="Scan or enter barcode"
+              className="w-full border rounded-md px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {errors.barcode && <p className="text-xs text-red-600 mt-0.5">{errors.barcode}</p>}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
