@@ -78,6 +78,15 @@ enum ItemType {
   SERVICE
 }
 
+enum GLAccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+  COGS
+}
+
 enum BpType {
   CUSTOMER
   STAFF
@@ -130,6 +139,7 @@ model Clinic {
   invoices            Invoice[]
   businessPartners    BusinessPartner[]
   bpGroups            BpGroup[]
+  clinicItemSequence  ClinicItemSequence?
 
   @@map("clinics")
 }
@@ -399,19 +409,38 @@ model Appointment {
   @@map("appointments")
 }
 
+// ─── GLAccount (globally seeded chart of accounts) ───────────────────────────
+
+model GLAccount {
+  id        String        @id @default(uuid())
+  code      String        @unique
+  name      String
+  type      GLAccountType
+  isActive  Boolean       @default(true)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  revenueForCategories ItemCategory[] @relation("RevenueGLAccount")
+  expenseForCategories ItemCategory[] @relation("ExpenseGLAccount")
+
+  @@map("gl_accounts")
+}
+
 // ─── ItemCategory (globally seeded reference — no clinicId) ─────────────────
 
 model ItemCategory {
-  id            String   @id @default(uuid())
-  name          String   @unique
-  code          String   @unique
-  revenueGlCode String?
-  expenseGlCode String?
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                 String    @id @default(uuid())
+  name               String    @unique
+  code               String    @unique
+  revenueGlAccountId String?
+  expenseGlAccountId String?
+  isActive           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  products Product[]
+  products         Product[]
+  revenueGlAccount GLAccount? @relation("RevenueGLAccount", fields: [revenueGlAccountId], references: [id])
+  expenseGlAccount GLAccount? @relation("ExpenseGLAccount", fields: [expenseGlAccountId], references: [id])
 
   @@map("item_categories")
 }
@@ -453,27 +482,30 @@ model ItemUnitConversion {
 // ─── Product (Inventory Item) ────────────────────────────────────────────────
 
 model Product {
-  id                            String    @id @default(uuid())
-  clinicId                      String
-  code                          String
-  name                          String
-  itemType                      ItemType  @default(STOCKED_GOOD)
-  categoryId                    String?
-  baseUnitId                    String?
-  standardCost                  Decimal   @default(0) @db.Decimal(14, 4)
-  baseSellingPrice              Decimal   @default(0) @db.Decimal(14, 4)
-  isTaxInclusive                Boolean   @default(false)
-  defaultTaxCodeId              String?
-  genericName                   String?
-  isControlledSubstance         Boolean   @default(false)
-  requiresBatchAndExpiryTracking Boolean  @default(false)
-  defaultSupplierId             String?
-  defaultDoctorFee              Decimal?  @db.Decimal(14, 4)
-  quantity                      Decimal   @default(0) @db.Decimal(10, 3)
-  reorderThreshold              Decimal   @default(0) @db.Decimal(10, 3)
-  isActive                      Boolean   @default(true)
-  createdAt                     DateTime  @default(now())
-  updatedAt                     DateTime  @updatedAt
+  id                             String    @id @default(uuid())
+  clinicId                       String
+  code                           String
+  sku                            String?
+  barcode                        String?   @unique
+  name                           String
+  itemType                       ItemType  @default(STOCKED_GOOD)
+  categoryId                     String?
+  baseUnitId                     String?
+  standardCost                   Decimal   @default(0) @db.Decimal(14, 4)
+  baseSellingPrice               Decimal   @default(0) @db.Decimal(14, 4)
+  isTaxInclusive                 Boolean   @default(false)
+  defaultTaxCodeId               String?
+  genericName                    String?
+  isControlledSubstance          Boolean   @default(false)
+  requiresBatchAndExpiryTracking Boolean   @default(false)
+  defaultSupplierId              String?
+  defaultDoctorFee               Decimal?  @db.Decimal(14, 4)
+  quantity                       Decimal   @default(0) @db.Decimal(10, 3)
+  reorderPoint                   Decimal   @default(0) @db.Decimal(10, 3)
+  minimumStock                   Decimal   @default(0) @db.Decimal(10, 3)
+  isActive                       Boolean   @default(true)
+  createdAt                      DateTime  @default(now())
+  updatedAt                      DateTime  @updatedAt
 
   clinic          Clinic              @relation(fields: [clinicId], references: [id])
   category        ItemCategory?       @relation(fields: [categoryId], references: [id])
@@ -485,6 +517,7 @@ model Product {
   unitConversions     ItemUnitConversion[]
 
   @@unique([clinicId, code])
+  @@unique([clinicId, sku])
   @@index([clinicId])
   @@index([clinicId, name])
   @@index([clinicId, itemType])
@@ -512,6 +545,18 @@ model BranchStockBalance {
   @@index([clinicId, branchId])
   @@index([productId])
   @@map("branch_stock_balances")
+}
+
+// ─── ClinicItemSequence (per-clinic SKU counter) ─────────────────────────────
+
+model ClinicItemSequence {
+  clinicId  String   @id
+  nextVal   Int      @default(1)
+  updatedAt DateTime @updatedAt
+
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@map("clinic_item_sequences")
 }
 
 // ─── StockMovement (Immutable Ledger) ────────────────────────────────────────
