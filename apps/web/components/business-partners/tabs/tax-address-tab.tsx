@@ -36,8 +36,8 @@ export default function TaxAddressTab({ vatCodes, whtCodes }: TaxAddressTabProps
       {/* Tax ID */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label>{t('taxId')}</Label>
-          <Input {...register('taxId')} placeholder="0000000000000" maxLength={13} />
+          <Label htmlFor="bp-taxId">{t('taxId')}</Label>
+          <Input id="bp-taxId" {...register('taxId')} placeholder="0000000000000" maxLength={13} />
           {errors.taxId && (
             <p className="text-destructive text-sm">{String(errors.taxId.message)}</p>
           )}

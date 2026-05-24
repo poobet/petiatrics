@@ -16,10 +16,14 @@ const bpContactSchema = z.object({
   isPrimary: z.boolean().optional().default(false),
 });
 
+// Convert NaN (produced by empty number inputs with valueAsNumber:true) to null/undefined
+const nanToNull = (v: unknown) => (typeof v === 'number' && Number.isNaN(v) ? null : v);
+const nanToUndefined = (v: unknown) => (typeof v === 'number' && Number.isNaN(v) ? undefined : v);
+
 const vetSchema = z.object({
   licenseNumber: z.string().min(1, 'License number is required'),
   specialty: z.string().nullable().optional(),
-  defaultDfRate: z.number().min(0, 'Must be ≥ 0').max(100, 'Must be ≤ 100').nullable().optional(),
+  defaultDfRate: z.preprocess(nanToNull, z.number().min(0, 'Must be ≥ 0').max(100, 'Must be ≤ 100').nullable().optional()),
 });
 
 // ── Base schema (shared between create and edit) ─────────────────────────────
@@ -53,12 +57,11 @@ const baseBpSchema = z.object({
       .transform((v) => (v === '' || v === undefined ? null : v)),
     lineId: z.string().nullable().optional(),
     // Commercial
-    creditTermDays: z
-      .number()
-      .int('Must be a whole number')
-      .min(0, 'Must be 0 or more')
-      .optional(),
-    creditLimit: z.number().min(0, 'Must be 0 or more').nullable().optional(),
+    creditTermDays: z.preprocess(
+      nanToUndefined,
+      z.number().int('Must be a whole number').min(0, 'Must be 0 or more').optional()
+    ),
+    creditLimit: z.preprocess(nanToNull, z.number().min(0, 'Must be 0 or more').nullable().optional()),
     creditHold: z.boolean().optional().default(false),
     discountGroupId: z.string().nullable().optional(),
     // ERP group & CRM
