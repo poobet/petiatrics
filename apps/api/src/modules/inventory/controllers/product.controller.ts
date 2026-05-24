@@ -8,8 +8,10 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { Roles } from '../../../common/guards/roles.decorator';
+import { BranchContextGuard } from '../../../common/guards/branch-context.guard';
 import { ActiveBranch, TenantId } from '../../../common/decorators/tenant.decorator';
 import { Role } from '@petiatrics/types';
 import { Audit } from '../../../common/interceptors/audit.interceptor';
@@ -35,6 +37,7 @@ export class ProductController {
 
   @Get()
   @Roles(...READ_ROLES)
+  @UseGuards(BranchContextGuard)
   findAll(
     @TenantId() clinicId: string,
     @ActiveBranch() branchId: string,
@@ -45,6 +48,7 @@ export class ProductController {
 
   @Get('low-stock')
   @Roles(...READ_ROLES)
+  @UseGuards(BranchContextGuard)
   getLowStock(
     @TenantId() clinicId: string,
     @ActiveBranch() branchId: string,

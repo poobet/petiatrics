@@ -4,8 +4,10 @@ import {
   Get,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { Roles } from '../../../common/guards/roles.decorator';
+import { BranchContextGuard } from '../../../common/guards/branch-context.guard';
 import { ActiveBranch, CurrentUser, TenantId } from '../../../common/decorators/tenant.decorator';
 import { Role } from '@petiatrics/types';
 import { UserContext } from '@petiatrics/types';
@@ -18,6 +20,7 @@ export class StockController {
 
   @Post('replenish')
   @Roles(Role.CLINIC_OWNER)
+  @UseGuards(BranchContextGuard)
   @Audit({ entity: 'StockMovement', operation: 'create' })
   replenish(
     @TenantId() clinicId: string,
@@ -34,6 +37,7 @@ export class StockController {
 
   @Get('movements')
   @Roles(Role.CLINIC_OWNER, Role.VET)
+  @UseGuards(BranchContextGuard)
   getMovements(
     @TenantId() clinicId: string,
     @ActiveBranch() branchId: string,
