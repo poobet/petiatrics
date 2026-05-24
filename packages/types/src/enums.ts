@@ -69,6 +69,15 @@ export enum InvoiceLineItemType {
   PRODUCT = 'PRODUCT',
 }
 
+export enum GLAccountType {
+  ASSET = 'ASSET',
+  LIABILITY = 'LIABILITY',
+  EQUITY = 'EQUITY',
+  REVENUE = 'REVENUE',
+  EXPENSE = 'EXPENSE',
+  COGS = 'COGS',
+}
+
 export enum ItemType {
   STOCKED_GOOD = 'STOCKED_GOOD',
   SERVICE = 'SERVICE',
