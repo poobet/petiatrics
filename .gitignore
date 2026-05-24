@@ -42,6 +42,13 @@ packages/*/src/**/*.d.ts
 packages/database/mongo/*.js
 packages/database/mongo/*.d.ts
 
+# Stale compiled JS alongside TS/TSX sources in web app (tsc artifacts that shadow sources)
+apps/web/app/**/*-client.js
+apps/web/components/**/*.js
+apps/web/i18n.js
+apps/web/playwright.config.js
+apps/web/vitest.config.js
+
 # Turborepo
 .turbo/
 
