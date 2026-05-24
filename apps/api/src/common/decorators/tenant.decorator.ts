@@ -37,3 +37,23 @@ export const CurrentUser = createParamDecorator(
     return userContext;
   },
 );
+
+/**
+ * Extracts the active branchId from the request context.
+ * Requires BranchContextGuard or middleware that resolves activeBranchId on the request.
+ *
+ * @example
+ *   @Get('stock')
+ *   list(@ActiveBranch() branchId: string) { ... }
+ */
+export const ActiveBranch = createParamDecorator(
+  (_data: unknown, ctx: ExecutionContext): string => {
+    const request = ctx
+      .switchToHttp()
+      .getRequest<Request & { activeBranchId?: string }>();
+    if (!request.activeBranchId) {
+      throw new Error('ActiveBranch decorator used on a route without a resolved branch context.');
+    }
+    return request.activeBranchId;
+  },
+);

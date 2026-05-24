@@ -10,7 +10,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { Roles } from '../../../common/guards/roles.decorator';
-import { TenantId } from '../../../common/decorators/tenant.decorator';
+import { ActiveBranch, TenantId } from '../../../common/decorators/tenant.decorator';
 import { Role } from '@petiatrics/types';
 import { Audit } from '../../../common/interceptors/audit.interceptor';
 import { ProductService } from '../services/product.service';
@@ -35,14 +35,21 @@ export class ProductController {
 
   @Get()
   @Roles(...READ_ROLES)
-  findAll(@TenantId() clinicId: string, @Query() query: ListProductsDto) {
-    return this.productService.findAll(clinicId, query);
+  findAll(
+    @TenantId() clinicId: string,
+    @ActiveBranch() branchId: string,
+    @Query() query: ListProductsDto,
+  ) {
+    return this.productService.findAll(clinicId, branchId, query);
   }
 
   @Get('low-stock')
   @Roles(...READ_ROLES)
-  getLowStock(@TenantId() clinicId: string) {
-    return this.productService.getLowStock(clinicId);
+  getLowStock(
+    @TenantId() clinicId: string,
+    @ActiveBranch() branchId: string,
+  ) {
+    return this.productService.getLowStock(clinicId, branchId);
   }
 
   @Get(':id')

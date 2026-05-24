@@ -98,9 +98,9 @@ describe('ProductController', () => {
   // ─── findAll() ───────────────────────────────────────────────────────────
 
   describe('findAll()', () => {
-    it('returns paginated result from service', async () => {
-      const result = await controller.findAll(CLINIC_ID, {});
-      expect(service.findAll).toHaveBeenCalledWith(CLINIC_ID, {});
+    it('passes active branch to service', async () => {
+      const result = await controller.findAll(CLINIC_ID, 'branch-1', {});
+      expect(service.findAll).toHaveBeenCalledWith(CLINIC_ID, 'branch-1', {});
       expect(result).toMatchObject({ items: [], total: 0 });
     });
   });
@@ -139,9 +139,9 @@ describe('ProductController', () => {
   // ─── getLowStock() ───────────────────────────────────────────────────────
 
   describe('getLowStock()', () => {
-    it('delegates to service.getLowStock', async () => {
-      await controller.getLowStock(CLINIC_ID);
-      expect(service.getLowStock).toHaveBeenCalledWith(CLINIC_ID);
+    it('passes active branch to service', async () => {
+      await controller.getLowStock(CLINIC_ID, 'branch-1');
+      expect(service.getLowStock).toHaveBeenCalledWith(CLINIC_ID, 'branch-1');
     });
   });
 });

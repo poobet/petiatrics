@@ -6,7 +6,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { Roles } from '../../../common/guards/roles.decorator';
-import { CurrentUser, TenantId } from '../../../common/decorators/tenant.decorator';
+import { ActiveBranch, CurrentUser, TenantId } from '../../../common/decorators/tenant.decorator';
 import { Role } from '@petiatrics/types';
 import { UserContext } from '@petiatrics/types';
 import { Audit } from '../../../common/interceptors/audit.interceptor';
@@ -21,11 +21,13 @@ export class StockController {
   @Audit({ entity: 'StockMovement', operation: 'create' })
   replenish(
     @TenantId() clinicId: string,
+    @ActiveBranch() branchId: string,
     @CurrentUser() user: UserContext,
     @Body() body: { productId: string; quantity: number; referenceId: string },
   ) {
     return this.stockService.replenish(clinicId, {
       ...body,
+      branchId,
       actorId: user.userId,
     });
   }
@@ -34,8 +36,9 @@ export class StockController {
   @Roles(Role.CLINIC_OWNER, Role.VET)
   getMovements(
     @TenantId() clinicId: string,
+    @ActiveBranch() branchId: string,
     @Query('productId') productId?: string,
   ) {
-    return this.stockService.getMovements(clinicId, productId);
+    return this.stockService.getMovements(clinicId, branchId, productId);
   }
 }

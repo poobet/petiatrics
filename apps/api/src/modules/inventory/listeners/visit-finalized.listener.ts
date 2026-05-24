@@ -25,6 +25,7 @@ export class VisitFinalizedListener {
     for (const productId of event.productIds) {
       try {
         await this.stockService.deduct(event.clinicId, {
+          branchId: event.branchId,
           productId,
           quantity: 1, // default: 1 unit per dispense; pharmacist quantity override in future
           visitRecordId: event.visitId,

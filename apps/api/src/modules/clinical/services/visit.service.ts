@@ -105,6 +105,7 @@ export class VisitService {
         visitId,
         visit.patientId.toString(),
         vetId,
+        visit.branchId ?? '',
         saved.finalizedAt!,
         productIds,
       ),
