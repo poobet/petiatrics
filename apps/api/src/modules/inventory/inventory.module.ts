@@ -4,7 +4,7 @@ import { ProductService } from './services/product.service';
 import { StockService } from './services/stock.service';
 import { ReferenceService } from './services/reference.service';
 import { UnlinkedItemsService } from './services/unlinked-items.service';
-import { VisitFinalizedListener } from './listeners/visit-finalized.listener';
+import { InventoryWriteGuardService } from './services/inventory-write-guard.service';
 import { ProductController } from './controllers/product.controller';
 import { StockController } from './controllers/stock.controller';
 import { ReferenceController } from './controllers/reference.controller';
@@ -29,10 +29,10 @@ import { BranchContextGuard } from '../../common/guards/branch-context.guard';
     StockService,
     ReferenceService,
     UnlinkedItemsService,
-    VisitFinalizedListener,
+    InventoryWriteGuardService,
     BranchContextGuard,
   ],
-  exports: [UnlinkedItemsService, ReferenceService],
+  exports: [UnlinkedItemsService, ReferenceService, StockService, InventoryWriteGuardService],
 })
 export class InventoryModule {}
 

@@ -22,6 +22,9 @@ function buildPrismaMock() {
       create: jest.fn(),
       update: jest.fn(),
     },
+    branchStockBalance: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
     itemCategory: { findUnique: jest.fn() },
     unitOfMeasure: { findUnique: jest.fn() },
     taxCode: { findUnique: jest.fn() },
@@ -127,14 +130,14 @@ describe('ProductService', () => {
     });
 
     it('returns paginated results with default page=1', async () => {
-      const result = await service.findAll(CLINIC_ID, {});
+      const result = await service.findAll(CLINIC_ID, 'branch-1', {});
       expect(result.items).toHaveLength(2);
       expect(result.total).toBe(2);
       expect(result.page).toBe(1);
     });
 
     it('applies itemType filter to query', async () => {
-      await service.findAll(CLINIC_ID, { itemType: ItemType.SERVICE });
+      await service.findAll(CLINIC_ID, 'branch-1', { itemType: ItemType.SERVICE });
       expect(prisma.product.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ itemType: ItemType.SERVICE }),
@@ -143,7 +146,7 @@ describe('ProductService', () => {
     });
 
     it('applies search filter across code and name', async () => {
-      await service.findAll(CLINIC_ID, { search: 'med' });
+      await service.findAll(CLINIC_ID, 'branch-1', { search: 'med' });
       expect(prisma.product.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ OR: expect.any(Array) }),
@@ -152,7 +155,7 @@ describe('ProductService', () => {
     });
 
     it('excludes inactive items by default', async () => {
-      await service.findAll(CLINIC_ID, {});
+      await service.findAll(CLINIC_ID, 'branch-1', {});
       expect(prisma.product.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ isActive: true }),
@@ -161,7 +164,7 @@ describe('ProductService', () => {
     });
 
     it('includes inactive items when includeInactive=true', async () => {
-      await service.findAll(CLINIC_ID, { includeInactive: true });
+      await service.findAll(CLINIC_ID, 'branch-1', { includeInactive: true });
       const call = (prisma.product.findMany as jest.Mock).mock.calls[0][0];
       expect(call.where.isActive).toBeUndefined();
     });
@@ -206,12 +209,12 @@ describe('ProductService', () => {
   // ─── getLowStock() ─────────────────────────────────────────────────────────
 
   describe('getLowStock()', () => {
-    it('returns only stocked goods at or below threshold', async () => {
-      prisma.product.findMany.mockResolvedValue([
-        { id: 'p1', quantity: 3, reorderThreshold: 5, itemType: 'STOCKED_GOOD' },
-        { id: 'p2', quantity: 10, reorderThreshold: 5, itemType: 'STOCKED_GOOD' },
+    it('returns only stocked goods at or below threshold via branch balance', async () => {
+      prisma.branchStockBalance.findMany.mockResolvedValue([
+        { productId: 'p1', quantity: 3, product: { id: 'p1', reorderThreshold: 5, itemType: 'STOCKED_GOOD', isActive: true } },
+        { productId: 'p2', quantity: 10, product: { id: 'p2', reorderThreshold: 5, itemType: 'STOCKED_GOOD', isActive: true } },
       ]);
-      const result = await service.getLowStock(CLINIC_ID);
+      const result = await service.getLowStock(CLINIC_ID, 'branch-1');
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('p1');
     });

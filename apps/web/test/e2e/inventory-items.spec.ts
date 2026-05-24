@@ -135,7 +135,9 @@ test.describe('Inventory Items — CLINIC_OWNER', () => {
   });
 
   test('deactivates an item', async ({ page }) => {
+    const responsePromise = page.waitForResponse('**/api/v1/inventory/products');
     await page.goto('/clinic/inventory');
+    await responsePromise;
     const rows = page.locator('tbody tr');
     const before = await rows.count();
     page.once('dialog', (dialog) => dialog.accept());

@@ -45,6 +45,9 @@ test.describe('Inventory Workspace — ERP-style filter and edit flow', () => {
     await loginViaApi(page, request, OWNER_EMAIL, OWNER_PASSWORD);
     await page.goto('/clinic/inventory');
     await expect(page.getByRole('heading', { name: /inventory/i })).toBeVisible();
+    // Items now load client-side after branch context is resolved; wait for them
+    await page.waitForResponse('**/api/v1/inventory/products');
+    await expect(page.getByText(/loading/i)).toHaveCount(0);
   });
 
   test('filter by item type — SERVICE only', async ({ page }) => {

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -9,10 +10,12 @@ import { Model, Types } from 'mongoose';
 import { IVisitRecord, MODEL_NAMES } from '@petiatrics/database';
 import { withClinic } from '@petiatrics/database';
 import { VisitFinalizedEvent } from '../../../common/events/domain-events';
+import { StockService } from '../../inventory/services/stock.service';
 
 export interface CreateVisitDto {
   patientId: string;
   vetId: string;
+  branchId: string;
   chiefComplaint: string;
   soap?: {
     subjective?: string;
@@ -49,15 +52,19 @@ export interface AmendVisitDto {
 
 @Injectable()
 export class VisitService {
+  private readonly logger = new Logger(VisitService.name);
+
   constructor(
     @InjectModel(MODEL_NAMES.VISIT_RECORD)
     private readonly visitModel: Model<IVisitRecord>,
     private readonly events: EventEmitter2,
+    private readonly stockService: StockService,
   ) {}
 
   async create(clinicId: string, dto: CreateVisitDto): Promise<IVisitRecord> {
     const doc = new this.visitModel({
       clinicId,
+      branchId: dto.branchId,
       patientId: dto.patientId,
       vetId: dto.vetId,
       chiefComplaint: dto.chiefComplaint,
@@ -83,7 +90,7 @@ export class VisitService {
     return visit.save();
   }
 
-  async finalize(clinicId: string, visitId: string, vetId: string): Promise<IVisitRecord> {
+  async finalize(clinicId: string, visitId: string, vetId: string, branchId: string): Promise<IVisitRecord> {
     const visit = await this.getOne(clinicId, visitId);
     if (visit.status !== 'draft') {
       throw new BadRequestException('Visit is not in draft status.');
@@ -93,11 +100,39 @@ export class VisitService {
     visit.finalizedAt = new Date();
     const saved = await visit.save();
 
-    // Collect product IDs from inventory-linked prescriptions
-    const productIds = (visit.prescriptions ?? [])
+    // Synchronously deduct inventory for each inventory-linked prescription
+    const linkedPrescriptions = (visit.prescriptions ?? [])
       .filter((p) => p.inventoryLinked && p.productId)
-      .map((p) => p.productId!);
+      .map((p) => ({ productId: p.productId!, quantity: (p as { quantity?: number }).quantity ?? 1 }));
 
+    const deducted: string[] = [];
+    try {
+      for (const item of linkedPrescriptions) {
+        await this.stockService.deduct(clinicId, {
+          branchId,
+          productId: item.productId,
+          quantity: item.quantity,
+          visitRecordId: visitId,
+          actorId: vetId,
+          idempotencyKey: `visit:${visitId}:${item.productId}`,
+        });
+        deducted.push(item.productId);
+      }
+    } catch (err: unknown) {
+      // Compensate already-deducted items, then rethrow
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Stock deduction failed during visit finalization ${visitId}: ${msg}. Compensating ${deducted.length} item(s).`);
+      for (const productId of deducted) {
+        try {
+          await this.stockService.replenish(clinicId, { branchId, productId, quantity: 1, referenceId: `compensation:visit:${visitId}`, actorId: vetId });
+        } catch (compErr) {
+          this.logger.error(`Failed to compensate stock for product ${productId}: ${String(compErr)}`);
+        }
+      }
+      throw new BadRequestException(`Failed to deduct stock during finalization: ${msg}`);
+    }
+
+    const productIds = linkedPrescriptions.map((p) => p.productId);
     this.events.emit(
       'visit.finalized',
       new VisitFinalizedEvent(
@@ -105,6 +140,7 @@ export class VisitService {
         visitId,
         visit.patientId.toString(),
         vetId,
+        branchId,
         saved.finalizedAt!,
         productIds,
       ),

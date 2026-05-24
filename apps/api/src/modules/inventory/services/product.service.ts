@@ -88,7 +88,7 @@ export class ProductService {
     });
   }
 
-  async findAll(clinicId: string, query: ListProductsDto = {}) {
+  async findAll(clinicId: string, branchId: string, query: ListProductsDto = {}) {
     const db = scopedPrisma(this.prisma, clinicId);
     const { search, itemType, categoryId, includeInactive, controlledSubstance, page = 1, perPage = 50 } = query;
 
@@ -106,7 +106,7 @@ export class ProductService {
     }
 
     const skip = (page - 1) * perPage;
-    const [total, items] = await Promise.all([
+    const [total, items, balances] = await Promise.all([
       db.product.count({ where }),
       db.product.findMany({
         where,
@@ -115,9 +115,20 @@ export class ProductService {
         skip,
         take: perPage,
       }),
+      db.branchStockBalance.findMany({
+        where: { clinicId, branchId },
+        select: { productId: true, quantity: true },
+      }),
     ]);
 
-    return { items, total, page, perPage };
+    const byProductId = new Map(balances.map((row) => [row.productId, Number(row.quantity)]));
+    const mappedItems = items.map((item) => ({
+      ...item,
+      quantity: item.itemType === ItemType.SERVICE ? null : (byProductId.get(item.id) ?? 0),
+      reorderThreshold: Number(item.reorderThreshold),
+    }));
+
+    return { items: mappedItems, total, page, perPage };
   }
 
   async findById(clinicId: string, id: string) {
@@ -170,13 +181,28 @@ export class ProductService {
     return db.product.update({ where: { id }, data: { isActive: false }, include: PRODUCT_INCLUDE });
   }
 
-  /** Returns stocked goods with quantity ≤ reorderThreshold. */
-  async getLowStock(clinicId: string) {
+  /** Returns stocked goods with branch quantity \u2264 reorderThreshold (reorderThreshold > 0 only). */
+  async getLowStock(clinicId: string, branchId: string) {
     const db = scopedPrisma(this.prisma, clinicId);
-    const products = await db.product.findMany({
-      where: { isActive: true, itemType: ItemType.STOCKED_GOOD },
-      include: PRODUCT_INCLUDE,
+    const balances = await db.branchStockBalance.findMany({
+      where: {
+        clinicId,
+        branchId,
+        product: { isActive: true, itemType: ItemType.STOCKED_GOOD },
+      },
+      include: { product: { include: PRODUCT_INCLUDE } },
     });
-    return products.filter((p) => Number(p.quantity) <= Number(p.reorderThreshold));
+
+    return balances
+      .filter(
+        (row) =>
+          Number(row.product.reorderThreshold) > 0 &&
+          Number(row.quantity) <= Number(row.product.reorderThreshold),
+      )
+      .map((row) => ({
+        ...row.product,
+        quantity: Number(row.quantity),
+        reorderThreshold: Number(row.product.reorderThreshold),
+      }));
   }
 }

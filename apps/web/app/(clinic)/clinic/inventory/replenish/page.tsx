@@ -2,28 +2,49 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiClient } from '@/lib/api-client';
+import { useSessionStore } from '@/lib/session-store';
+import type { ItemSummaryResponse } from '@petiatrics/types';
 
-interface Product {
-  id: string;
-  name: string;
-  sku: string;
-  quantity: number;
-  unit: string;
-}
+type ReplenishProduct = ItemSummaryResponse & { quantity: number | null };
 
 export default function ReplenishPage() {
   const router = useRouter();
-  const [products, setProducts] = useState<Product[]>([]);
+  const activeBranch = useSessionStore((s) => s.activeBranch);
+  const [products, setProducts] = useState<ReplenishProduct[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const selectedProduct = products.find((p) => p.id === selectedProductId) ?? null;
+
   useEffect(() => {
-    fetch('/api/v1/inventory/products')
-      .then((r) => r.json())
-      .then((json) => setProducts(json.data ?? []))
+    if (!activeBranch) return;
+    apiClient
+      .get<{ items: ReplenishProduct[] }>('/inventory/products')
+      .then((result) => {
+        const stocked = (result?.items ?? []).filter((p) => p.itemType !== 'SERVICE');
+        setProducts(stocked);
+      })
       .catch(() => {});
-  }, []);
+  }, [activeBranch]);
+
+  if (!activeBranch) {
+    return (
+      <div className="p-6 max-w-lg mx-auto">
+        <div className="mb-6">
+          <button type="button" onClick={() => router.back()} className="text-sm text-gray-500 hover:text-gray-700 mb-2">
+            ← Back to Inventory
+          </button>
+          <h1 className="text-2xl font-bold">Replenish Stock</h1>
+        </div>
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          Select a branch from the top navigation to replenish stock.
+        </div>
+      </div>
+    );
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -37,20 +58,13 @@ export default function ReplenishPage() {
     const referenceId = (form.elements.namedItem('referenceId') as HTMLInputElement).value.trim();
 
     try {
-      const res = await fetch('/api/v1/inventory/stock/replenish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId, quantity, referenceId }),
-      });
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        throw new Error(json.message ?? 'Failed to replenish stock');
-      }
+      await apiClient.post('/inventory/stock/replenish', { productId, quantity, referenceId });
       setSuccess('Stock replenished successfully.');
       form.reset();
+      setSelectedProductId('');
       // Refresh product list to show updated quantities
-      const updated = await fetch('/api/v1/inventory/products').then((r) => r.json());
-      setProducts(updated.data ?? []);
+      const updated = await apiClient.get<{ items: ReplenishProduct[] }>('/inventory/products');
+      setProducts((updated?.items ?? []).filter((p) => p.itemType !== 'SERVICE'));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -69,6 +83,7 @@ export default function ReplenishPage() {
           ← Back to Inventory
         </button>
         <h1 className="text-2xl font-bold">Replenish Stock</h1>
+        <p className="text-xs text-gray-500 mt-0.5">Branch: {activeBranch.name}</p>
         <p className="text-sm text-gray-500 mt-1">Record incoming stock for a product</p>
       </div>
 
@@ -92,15 +107,35 @@ export default function ReplenishPage() {
             id="productId"
             name="productId"
             required
+            value={selectedProductId}
+            onChange={(e) => setSelectedProductId(e.target.value)}
             className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Select a product…</option>
             {products.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name} ({p.sku}) — current: {p.quantity} {p.unit}
+                {p.name} ({p.code})
               </option>
             ))}
           </select>
+          {selectedProduct && (
+            <div className="mt-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 grid grid-cols-2 gap-x-4 gap-y-1">
+              <span className="text-gray-500">Category</span>
+              <span>{selectedProduct.category?.name ?? '—'}</span>
+              <span className="text-gray-500">Unit</span>
+              <span>{selectedProduct.baseUnit ? `${selectedProduct.baseUnit.name}${selectedProduct.baseUnit.symbol ? ` (${selectedProduct.baseUnit.symbol})` : ''}` : '—'}</span>
+              {selectedProduct.quantity !== null && (
+                <>
+                  <span className="text-gray-500">Current Stock</span>
+                  <span className={selectedProduct.quantity === 0 ? 'text-red-600 font-medium' : ''}>
+                    {selectedProduct.quantity} {selectedProduct.baseUnit?.symbol ?? ''}
+                  </span>
+                </>
+              )}
+              <span className="text-gray-500">Cost</span>
+              <span>฿{selectedProduct.standardCost.toLocaleString()}</span>
+            </div>
+          )}
         </div>
 
         <div>

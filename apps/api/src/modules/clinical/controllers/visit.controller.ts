@@ -7,7 +7,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { Roles } from '../../../common/guards/roles.decorator';
-import { CurrentUser, TenantId } from '../../../common/decorators/tenant.decorator';
+import { ActiveBranch, CurrentUser, TenantId } from '../../../common/decorators/tenant.decorator';
 import { Role } from '@petiatrics/types';
 import { UserContext } from '@petiatrics/types';
 import { Audit } from '../../../common/interceptors/audit.interceptor';
@@ -27,11 +27,12 @@ export class VisitController {
   @Audit({ entity: 'VisitRecord', operation: 'create' })
   create(
     @TenantId() clinicId: string,
+    @ActiveBranch() branchId: string,
     @CurrentUser() user: UserContext,
     @Param('patientId') patientId: string,
-    @Body() dto: Omit<CreateVisitDto, 'patientId'>,
+    @Body() dto: Omit<CreateVisitDto, 'patientId' | 'branchId'>,
   ) {
-    return this.visitService.create(clinicId, { ...dto, patientId });
+    return this.visitService.create(clinicId, { ...dto, patientId, branchId });
   }
 
   @Get()
@@ -64,10 +65,11 @@ export class VisitController {
   @Audit({ entity: 'VisitRecord', operation: 'status_change' })
   finalize(
     @TenantId() clinicId: string,
+    @ActiveBranch() branchId: string,
     @CurrentUser() user: UserContext,
     @Param('visitId') visitId: string,
   ) {
-    return this.visitService.finalize(clinicId, visitId, user.userId);
+    return this.visitService.finalize(clinicId, visitId, user.userId, branchId);
   }
 
   @Post(':visitId/amend')

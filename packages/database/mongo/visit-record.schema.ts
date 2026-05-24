@@ -25,6 +25,7 @@ export interface ISOAP {
 
 export interface IVisitRecord extends Document {
   clinicId: string;
+  branchId: string;
   patientId: Types.ObjectId;
   appointmentId?: string | null; // UUID of Appointment in PostgreSQL
   vetId: string; // UUID of User in PostgreSQL
@@ -74,6 +75,7 @@ const SOAPSchema = new Schema<ISOAP>(
 const VisitRecordSchema = new Schema<IVisitRecord>(
   {
     clinicId: { type: String, required: true, index: true },
+    branchId: { type: String, required: true, index: true },
     patientId: { type: Schema.Types.ObjectId, required: true, ref: 'PetProfile' },
     appointmentId: { type: String, default: null },
     vetId: { type: String, required: true },

@@ -269,6 +269,88 @@ Return active clinic-scoped units of measure.
 
 ---
 
+## Stock Endpoints
+
+### POST /inventory/stock/replenish
+
+Record incoming stock for a stocked-good item at the active branch.
+
+**Headers required**: `x-active-branch`
+
+**Request body**:
+
+```json
+{
+  "productId": "uuid",
+  "quantity": 50,
+  "referenceId": "PO-2024-001"
+}
+```
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `productId` | `string (uuid)` | yes | Must belong to the same clinic |
+| `quantity` | `number` | yes | Must be > 0 |
+| `referenceId` | `string` | yes | Supplier order number or internal reference for audit trail |
+
+**Response 200**:
+
+```json
+{
+  "branchId": "uuid",
+  "productId": "uuid",
+  "quantity": 75
+}
+```
+
+Returns the updated branch stock balance after replenishment.
+
+**Business rules**:
+
+- `itemType = SERVICE` items **cannot be replenished**. Returns `400 VALIDATION_ERROR`.
+- `quantity` must be a positive number greater than zero.
+- Creates a `StockMovement` record with `type = REPLENISH` for audit trail.
+- If the product's stock falls at or below `reorderThreshold` after any later deduction, a `LowStock` domain event is emitted.
+- Idempotency is not guaranteed on this endpoint; duplicate submissions will stack.
+
+**Error responses**:
+
+| Status | Code | Trigger |
+|--------|------|---------|
+| 400 | `VALIDATION_ERROR` | `itemType = SERVICE`, quantity ≤ 0, missing fields |
+| 404 | `NOT_FOUND` | Product not found in clinic |
+| 403 | `FORBIDDEN` | Missing or invalid `x-active-branch` header |
+
+---
+
+### GET /inventory/stock/movements
+
+Return stock movement history for a product at the active branch.
+
+**Headers required**: `x-active-branch`
+
+**Query parameters**:
+
+| Name | Type | Notes |
+|------|------|-------|
+| `productId` | `string (uuid)` | Required — filter by product |
+
+**Response 200**:
+
+```json
+[
+  {
+    "id": "uuid",
+    "type": "REPLENISH",
+    "quantity": 50,
+    "referenceId": "PO-2024-001",
+    "createdAt": "2026-05-17T10:00:00Z"
+  }
+]
+```
+
+---
+
 ## Downstream Billing Rule Documentation
 
 The item master persists pricing strategy but does not calculate invoice tax.
