@@ -1,0 +1,367 @@
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; }
+
+  .section-divider {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #94a3b8;
+    padding: 12px 0 8px;
+    border-bottom: 1px dashed #e5e7eb;
+    margin-bottom: 16px;
+  }
+
+  /* ── Modal ── */
+  .modal-shell {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+    max-width: 580px;
+    margin: 0 auto;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+  }
+  .modal-header h3 { margin: 0; font-size: 14px; font-weight: 600; color: #1e293b; }
+  .modal-header .close { color: #94a3b8; font-size: 16px; cursor: default; }
+  .modal-body { padding: 20px; }
+
+  /* ── Drop Zone ── */
+  .dropzone {
+    border: 2px dashed #cbd5e1;
+    border-radius: 8px;
+    padding: 28px 20px;
+    text-align: center;
+    background: #f8fafc;
+    color: #64748b;
+  }
+  .dropzone .icon { font-size: 28px; margin-bottom: 8px; }
+  .dropzone .primary { font-size: 13px; font-weight: 600; color: #334155; }
+  .dropzone .secondary { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+  .dropzone .formats {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-top: 10px;
+  }
+  .dropzone .fmt-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: #e2e8f0;
+    color: #475569;
+  }
+  .upload-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+  }
+  .btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: default;
+    border: none;
+  }
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-ghost { background: transparent; color: #2563eb; border: 1px solid #bfdbfe; }
+  .btn-sm { padding: 4px 10px; font-size: 11px; }
+
+  /* ── Error preview table ── */
+  .preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    margin-top: 12px;
+  }
+  .preview-table th {
+    background: #f1f5f9;
+    padding: 5px 8px;
+    text-align: left;
+    font-weight: 600;
+    color: #475569;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .preview-table td {
+    padding: 5px 8px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #374151;
+  }
+  .preview-table tr.err td { background: #fef2f2; }
+  .preview-table tr.ok td { background: #f0fdf4; }
+  .tag {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  .tag.error { background: #fee2e2; color: #b91c1c; }
+  .tag.ok { background: #dcfce7; color: #15803d; }
+  .tag.warn { background: #fef9c3; color: #854d0e; }
+
+  .summary-bar {
+    display: flex;
+    gap: 12px;
+    padding: 8px 12px;
+    background: #f8fafc;
+    border-radius: 6px;
+    font-size: 11px;
+    margin-bottom: 10px;
+    border: 1px solid #e2e8f0;
+  }
+  .summary-bar .stat { display: flex; align-items: center; gap: 4px; }
+  .summary-bar .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-green { background: #22c55e; }
+  .dot-red { background: #ef4444; }
+  .dot-yellow { background: #f59e0b; }
+
+  /* ── Low-Stock Widget ── */
+  .widget {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+    max-width: 640px;
+    margin: 0 auto;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #fff;
+  }
+  .widget-header h3 { margin: 0; font-size: 13px; font-weight: 600; color: #1e293b; }
+  .widget-header .badge-count {
+    background: #fee2e2;
+    color: #b91c1c;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  .stock-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+  .stock-table th {
+    background: #f8fafc;
+    padding: 6px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #64748b;
+    border-bottom: 1px solid #e2e8f0;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 10px;
+  }
+  .stock-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #374151;
+    vertical-align: middle;
+  }
+  .stock-level {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .stock-bar-bg {
+    height: 4px;
+    background: #e2e8f0;
+    border-radius: 2px;
+    width: 60px;
+    overflow: hidden;
+  }
+  .stock-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+  }
+  .fill-critical { background: #ef4444; }
+  .fill-warn { background: #f59e0b; }
+  .sku-mono { font-family: monospace; font-size: 10px; color: #6366f1; }
+  .widget-footer {
+    padding: 8px 16px;
+    text-align: right;
+    border-top: 1px solid #f1f5f9;
+  }
+  .link-btn { font-size: 11px; color: #2563eb; cursor: default; }
+</style>
+
+<h2>Section 3 (cont.) — Bulk Import Modal &amp; Low-Stock Widget</h2>
+<p class="subtitle">These are the two new UI surfaces. Review and let me know if the layout feels right.</p>
+
+<div class="section-divider">Bulk Import Modal — state: file parsed with 2 errors</div>
+
+<div class="modal-shell">
+  <div class="modal-header">
+    <h3>📥 Import Items from File</h3>
+    <span class="close">✕</span>
+  </div>
+  <div class="modal-body">
+    <!-- Drop zone (idle state shown for context) -->
+    <div class="dropzone" style="margin-bottom:12px; opacity:0.5;">
+      <div class="icon">📂</div>
+      <div class="primary">Drop file here or click to browse</div>
+      <div class="secondary">items-template.xlsx already loaded — re-upload to change</div>
+      <div class="formats">
+        <span class="fmt-badge">XLSX</span>
+        <span class="fmt-badge">CSV</span>
+        <span style="font-size:10px;color:#94a3b8;align-self:center">· max 5 MB</span>
+      </div>
+    </div>
+
+    <!-- Actions row -->
+    <div class="upload-actions" style="margin-bottom:14px;">
+      <button class="btn btn-ghost btn-sm">⬇ Download Template</button>
+      <span style="font-size:11px;color:#64748b;">items-template.xlsx · 3 rows parsed</span>
+    </div>
+
+    <!-- Summary bar -->
+    <div class="summary-bar">
+      <div class="stat"><span class="dot dot-green"></span> 1 row ready</div>
+      <div class="stat"><span class="dot dot-red"></span> 2 rows have errors</div>
+      <div class="stat" style="margin-left:auto;color:#64748b;">Fix errors before importing</div>
+    </div>
+
+    <!-- Preview table -->
+    <table class="preview-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th>Type</th>
+          <th>SKU</th>
+          <th>Price</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="ok">
+          <td>1</td>
+          <td>Amoxicillin 500mg</td>
+          <td>STOCKED_GOOD</td>
+          <td class="sku-mono">auto</td>
+          <td>120.00</td>
+          <td><span class="tag ok">✓ Ready</span></td>
+        </tr>
+        <tr class="err">
+          <td>2</td>
+          <td style="color:#b91c1c">—</td>
+          <td>SERVICE</td>
+          <td class="sku-mono">SVC-001</td>
+          <td>0.00</td>
+          <td><span class="tag error">Missing name</span></td>
+        </tr>
+        <tr class="err">
+          <td>3</td>
+          <td>IV Fluid 500ml</td>
+          <td>STOCKED_GOOD</td>
+          <td class="sku-mono" style="color:#b91c1c">ITM-00003</td>
+          <td>-50.00</td>
+          <td><span class="tag error">Duplicate SKU · Price &lt; 0</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Footer actions -->
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button class="btn btn-ghost">Cancel</button>
+      <button class="btn btn-primary" style="opacity:0.4;cursor:default;">Import 1 Item</button>
+    </div>
+  </div>
+</div>
+
+<div class="section-divider" style="margin-top:28px;">Low-Stock Widget — Inventory Dashboard</div>
+
+<div class="widget">
+  <div class="widget-header">
+    <h3>⚠️ Items to Replenish</h3>
+    <span class="badge-count">4 items</span>
+  </div>
+  <table class="stock-table">
+    <thead>
+      <tr>
+        <th>SKU</th>
+        <th>Name</th>
+        <th>Current</th>
+        <th>Min Stock</th>
+        <th>Reorder At</th>
+        <th>Level</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="sku-mono">ITM-00003</td>
+        <td>IV Fluid 500ml</td>
+        <td style="font-weight:700;color:#ef4444">0</td>
+        <td>10</td>
+        <td>20</td>
+        <td>
+          <div class="stock-level">
+            <div class="stock-bar-bg"><div class="stock-bar-fill fill-critical" style="width:0%"></div></div>
+            <span class="tag error">Critical</span>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td class="sku-mono">ITM-00007</td>
+        <td>Amoxicillin 250mg</td>
+        <td style="font-weight:700;color:#f59e0b">5</td>
+        <td>10</td>
+        <td>15</td>
+        <td>
+          <div class="stock-level">
+            <div class="stock-bar-bg"><div class="stock-bar-fill fill-warn" style="width:25%"></div></div>
+            <span class="tag warn">Low</span>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td class="sku-mono">ITM-00012</td>
+        <td>Syringes 10ml (box)</td>
+        <td style="font-weight:700;color:#f59e0b">8</td>
+        <td>5</td>
+        <td>10</td>
+        <td>
+          <div class="stock-level">
+            <div class="stock-bar-bg"><div class="stock-bar-fill fill-warn" style="width:40%"></div></div>
+            <span class="tag warn">Low</span>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td class="sku-mono">ITM-00019</td>
+        <td>Elizabethan Collar S</td>
+        <td style="font-weight:700;color:#ef4444">2</td>
+        <td>5</td>
+        <td>8</td>
+        <td>
+          <div class="stock-level">
+            <div class="stock-bar-bg"><div class="stock-bar-fill fill-critical" style="width:15%"></div></div>
+            <span class="tag error">Critical</span>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="widget-footer">
+    <span class="link-btn">View all low-stock items →</span>
+  </div>
+</div>

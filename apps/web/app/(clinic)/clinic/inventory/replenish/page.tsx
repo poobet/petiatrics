@@ -6,19 +6,27 @@ import { apiClient } from '@/lib/api-client';
 import { useSessionStore } from '@/lib/session-store';
 import type { ItemSummaryResponse } from '@petiatrics/types';
 
+type ReplenishProduct = ItemSummaryResponse & { quantity: number | null };
+
 export default function ReplenishPage() {
   const router = useRouter();
   const activeBranch = useSessionStore((s) => s.activeBranch);
-  const [products, setProducts] = useState<ItemSummaryResponse[]>([]);
+  const [products, setProducts] = useState<ReplenishProduct[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const selectedProduct = products.find((p) => p.id === selectedProductId) ?? null;
+
   useEffect(() => {
     if (!activeBranch) return;
     apiClient
-      .get<{ items: ItemSummaryResponse[] }>('/inventory/products')
-      .then((result) => setProducts(result?.items ?? []))
+      .get<{ items: ReplenishProduct[] }>('/inventory/products')
+      .then((result) => {
+        const stocked = (result?.items ?? []).filter((p) => p.itemType !== 'SERVICE');
+        setProducts(stocked);
+      })
       .catch(() => {});
   }, [activeBranch]);
 
@@ -53,9 +61,10 @@ export default function ReplenishPage() {
       await apiClient.post('/inventory/stock/replenish', { productId, quantity, referenceId });
       setSuccess('Stock replenished successfully.');
       form.reset();
+      setSelectedProductId('');
       // Refresh product list to show updated quantities
-      const updated = await apiClient.get<{ items: ItemSummaryResponse[] }>('/inventory/products');
-      setProducts(updated?.items ?? []);
+      const updated = await apiClient.get<{ items: ReplenishProduct[] }>('/inventory/products');
+      setProducts((updated?.items ?? []).filter((p) => p.itemType !== 'SERVICE'));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -98,6 +107,8 @@ export default function ReplenishPage() {
             id="productId"
             name="productId"
             required
+            value={selectedProductId}
+            onChange={(e) => setSelectedProductId(e.target.value)}
             className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Select a product…</option>
@@ -107,6 +118,24 @@ export default function ReplenishPage() {
               </option>
             ))}
           </select>
+          {selectedProduct && (
+            <div className="mt-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 grid grid-cols-2 gap-x-4 gap-y-1">
+              <span className="text-gray-500">Category</span>
+              <span>{selectedProduct.category?.name ?? '—'}</span>
+              <span className="text-gray-500">Unit</span>
+              <span>{selectedProduct.baseUnit ? `${selectedProduct.baseUnit.name}${selectedProduct.baseUnit.symbol ? ` (${selectedProduct.baseUnit.symbol})` : ''}` : '—'}</span>
+              {selectedProduct.quantity !== null && (
+                <>
+                  <span className="text-gray-500">Current Stock</span>
+                  <span className={selectedProduct.quantity === 0 ? 'text-red-600 font-medium' : ''}>
+                    {selectedProduct.quantity} {selectedProduct.baseUnit?.symbol ?? ''}
+                  </span>
+                </>
+              )}
+              <span className="text-gray-500">Cost</span>
+              <span>฿{selectedProduct.standardCost.toLocaleString()}</span>
+            </div>
+          )}
         </div>
 
         <div>
