@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import type { ItemSummaryResponse, ItemCategoryResponse } from '@petiatrics/types';
@@ -9,10 +9,9 @@ import ItemTable from '@/components/inventory/item-table';
 import ItemFilterBar from '@/components/inventory/item-filter-bar';
 import type { ItemFilters } from '@/components/inventory/item-filter-bar';
 import { apiClient } from '@/lib/api-client';
+import { useSessionStore } from '@/lib/session-store';
 
 interface Props {
-  initialItems: ItemSummaryResponse[];
-  lowStockItems: ItemSummaryResponse[];
   categories: ItemCategoryResponse[];
 }
 
@@ -24,9 +23,13 @@ const DEFAULT_FILTERS: ItemFilters = {
   controlledSubstance: false,
 };
 
-export default function InventoryClient({ initialItems, lowStockItems, categories }: Props) {
+export default function InventoryClient({ categories }: Props) {
   const t = useTranslations('inventory');
-  const [items, setItems] = useState<ItemSummaryResponse[]>(initialItems);
+  const activeBranch = useSessionStore((s) => s.activeBranch);
+
+  const [items, setItems] = useState<ItemSummaryResponse[]>([]);
+  const [lowStockItems, setLowStockItems] = useState<ItemSummaryResponse[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
   const [filters, setFilters] = useState<ItemFilters>(DEFAULT_FILTERS);
   const [activeTab, setActiveTab] = useState<'items' | 'movements'>('items');
   const [movements, setMovements] = useState<unknown[]>([]);
@@ -48,6 +51,29 @@ export default function InventoryClient({ initialItems, lowStockItems, categorie
     });
   }, [items, filters]);
 
+  const loadBranchInventory = useCallback(async () => {
+    if (!activeBranch) return;
+    setLoadingItems(true);
+    try {
+      const [productsResult, lowStockResult] = await Promise.allSettled([
+        apiClient.get<{ items: ItemSummaryResponse[] }>('/inventory/products'),
+        apiClient.get<ItemSummaryResponse[]>('/inventory/products/low-stock'),
+      ]);
+      setItems(productsResult.status === 'fulfilled' ? (productsResult.value?.items ?? []) : []);
+      setLowStockItems(lowStockResult.status === 'fulfilled' ? (lowStockResult.value ?? []) : []);
+    } finally {
+      setLoadingItems(false);
+    }
+  }, [activeBranch]);
+
+  // Reload items + low-stock whenever the active branch changes
+  useEffect(() => {
+    setItems([]);
+    setLowStockItems([]);
+    setMovements([]);
+    void loadBranchInventory();
+  }, [loadBranchInventory]);
+
   async function handleDeactivate(id: string) {
     if (!confirm('Deactivate this item? It will no longer be selectable on invoices.')) return;
     try {
@@ -59,7 +85,7 @@ export default function InventoryClient({ initialItems, lowStockItems, categorie
   }
 
   async function loadMovements() {
-    if (movements.length > 0) return;
+    if (movements.length > 0 || !activeBranch) return;
     setLoadingMovements(true);
     try {
       const data = await apiClient.get<unknown[]>('/inventory/stock/movements');
@@ -71,16 +97,28 @@ export default function InventoryClient({ initialItems, lowStockItems, categorie
 
   function handleTabChange(tab: 'items' | 'movements') {
     setActiveTab(tab);
-    if (tab === 'movements') loadMovements();
+    if (tab === 'movements') void loadMovements();
   }
 
   const lowStockCount = lowStockItems.filter((p) => p.itemType === ItemType.STOCKED_GOOD).length;
+
+  if (!activeBranch) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto">
+        <h1 className="text-2xl font-bold mb-4">{t('title')}</h1>
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          Select a branch from the top navigation to view inventory.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">{t('title')}</h1>
+          <p className="text-xs text-gray-500 mt-0.5">Branch: {activeBranch.name}</p>
           {lowStockCount > 0 && (
             <p className="text-sm text-red-600 mt-1">
               ⚠ {lowStockCount} item{lowStockCount !== 1 ? 's' : ''} below reorder threshold
@@ -122,13 +160,18 @@ export default function InventoryClient({ initialItems, lowStockItems, categorie
 
       {activeTab === 'items' && (
         <>
-          <ItemFilterBar filters={filters} categories={categories} onChange={setFilters} />
-          <ItemTable
-            items={filteredItems}
-            lowStockIds={lowStockIds}
-            onDeactivate={handleDeactivate}
-          />
-          <p className="text-xs text-gray-400 mt-2">{filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''} shown</p>
+          {loadingItems && <p className="text-sm text-gray-500 py-4">Loading…</p>}
+          {!loadingItems && (
+            <>
+              <ItemFilterBar filters={filters} categories={categories} onChange={setFilters} />
+              <ItemTable
+                items={filteredItems}
+                lowStockIds={lowStockIds}
+                onDeactivate={handleDeactivate}
+              />
+              <p className="text-xs text-gray-400 mt-2">{filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''} shown</p>
+            </>
+          )}
         </>
       )}
 
