@@ -121,14 +121,15 @@ model Clinic {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
-  users            User[]
-  branches         Branch[]
-  appointments     Appointment[]
-  products         Product[]
-  stockMovements   StockMovement[]
-  invoices         Invoice[]
-  businessPartners BusinessPartner[]
-  bpGroups         BpGroup[]
+  users               User[]
+  branches            Branch[]
+  appointments        Appointment[]
+  products            Product[]
+  stockMovements      StockMovement[]
+  branchStockBalances BranchStockBalance[]
+  invoices            Invoice[]
+  businessPartners    BusinessPartner[]
+  bpGroups            BpGroup[]
 
   @@map("clinics")
 }
@@ -142,8 +143,10 @@ model Branch {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  clinic      Clinic       @relation(fields: [clinicId], references: [id])
-  userBranches UserBranch[]
+  clinic            Clinic              @relation(fields: [clinicId], references: [id])
+  userBranches      UserBranch[]
+  branchStockBalances BranchStockBalance[]
+  stockMovements    StockMovement[]
 
   @@index([clinicId])
   @@map("branches")
@@ -477,8 +480,9 @@ model Product {
   baseUnit        UnitOfMeasure?      @relation("BaseUnit", fields: [baseUnitId], references: [id])
   defaultTaxCode  TaxCode?            @relation("ProductDefaultTax", fields: [defaultTaxCodeId], references: [id])
   defaultSupplier BusinessPartner?    @relation("ProductDefaultSupplier", fields: [defaultSupplierId], references: [id])
-  stockMovements  StockMovement[]
-  unitConversions ItemUnitConversion[]
+  stockMovements      StockMovement[]
+  branchStockBalances BranchStockBalance[]
+  unitConversions     ItemUnitConversion[]
 
   @@unique([clinicId, code])
   @@index([clinicId])
@@ -489,12 +493,35 @@ model Product {
   @@map("products")
 }
 
+// ─── BranchStockBalance ──────────────────────────────────────────────────────
+
+model BranchStockBalance {
+  id        String   @id @default(uuid())
+  clinicId  String
+  branchId  String
+  productId String
+  quantity  Decimal  @default(0) @db.Decimal(10, 3)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clinic  Clinic  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([clinicId, branchId, productId])
+  @@index([clinicId, branchId])
+  @@index([productId])
+  @@map("branch_stock_balances")
+}
+
 // ─── StockMovement (Immutable Ledger) ────────────────────────────────────────
 
 model StockMovement {
   id             String               @id @default(uuid())
   clinicId       String
+  branchId       String?
   productId      String
+  idempotencyKey String?
   delta          Decimal              @db.Decimal(10, 3)
   quantityBefore Decimal              @db.Decimal(10, 3)
   quantityAfter  Decimal              @db.Decimal(10, 3)
@@ -505,9 +532,12 @@ model StockMovement {
   createdAt      DateTime             @default(now())
 
   clinic  Clinic  @relation(fields: [clinicId], references: [id])
+  branch  Branch? @relation(fields: [branchId], references: [id])
   product Product @relation(fields: [productId], references: [id])
 
+  @@unique([clinicId, idempotencyKey])
   @@index([clinicId])
+  @@index([clinicId, branchId, createdAt])
   @@index([clinicId, productId])
   @@map("stock_movements")
 }
