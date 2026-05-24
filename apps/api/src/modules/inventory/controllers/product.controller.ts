@@ -2,50 +2,68 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
+  Query,
+  UseGuards,
 } from '@nestjs/common';
 import { Roles } from '../../../common/guards/roles.decorator';
-import { TenantId } from '../../../common/decorators/tenant.decorator';
+import { BranchContextGuard } from '../../../common/guards/branch-context.guard';
+import { ActiveBranch, TenantId } from '../../../common/decorators/tenant.decorator';
 import { Role } from '@petiatrics/types';
 import { Audit } from '../../../common/interceptors/audit.interceptor';
-import {
-  ProductService,
-  CreateProductDto,
-  UpdateProductDto,
-} from '../services/product.service';
+import { ProductService } from '../services/product.service';
+import { CreateProductDto } from '../dto/create-product.dto';
+import { UpdateProductDto } from '../dto/update-product.dto';
+import { ListProductsDto } from '../dto/list-products.dto';
+
+const READ_ROLES = [Role.CLINIC_OWNER, Role.VET, Role.ASSISTANT, Role.CASHIER, Role.STAFF];
+const WRITE_ROLES = [Role.CLINIC_OWNER];
 
 @Controller('inventory/products')
-@Roles(Role.CLINIC_OWNER)
 export class ProductController {
   constructor(private readonly productService: ProductService) {}
 
   @Post()
+  @Roles(...WRITE_ROLES)
+  @HttpCode(HttpStatus.CREATED)
   @Audit({ entity: 'Product', operation: 'create' })
   create(@TenantId() clinicId: string, @Body() dto: CreateProductDto) {
     return this.productService.create(clinicId, dto);
   }
 
   @Get()
-  @Roles(Role.CLINIC_OWNER, Role.VET, Role.ASSISTANT)
-  findAll(@TenantId() clinicId: string) {
-    return this.productService.findAll(clinicId);
+  @Roles(...READ_ROLES)
+  @UseGuards(BranchContextGuard)
+  findAll(
+    @TenantId() clinicId: string,
+    @ActiveBranch() branchId: string,
+    @Query() query: ListProductsDto,
+  ) {
+    return this.productService.findAll(clinicId, branchId, query);
   }
 
   @Get('low-stock')
-  @Roles(Role.CLINIC_OWNER, Role.VET)
-  getLowStock(@TenantId() clinicId: string) {
-    return this.productService.getLowStock(clinicId);
+  @Roles(...READ_ROLES)
+  @UseGuards(BranchContextGuard)
+  getLowStock(
+    @TenantId() clinicId: string,
+    @ActiveBranch() branchId: string,
+  ) {
+    return this.productService.getLowStock(clinicId, branchId);
   }
 
   @Get(':id')
-  @Roles(Role.CLINIC_OWNER, Role.VET)
+  @Roles(...READ_ROLES)
   findOne(@TenantId() clinicId: string, @Param('id') id: string) {
     return this.productService.findById(clinicId, id);
   }
 
   @Patch(':id')
+  @Roles(...WRITE_ROLES)
   @Audit({ entity: 'Product', operation: 'update' })
   update(
     @TenantId() clinicId: string,
@@ -53,5 +71,12 @@ export class ProductController {
     @Body() dto: UpdateProductDto,
   ) {
     return this.productService.update(clinicId, id, dto);
+  }
+
+  @Patch(':id/deactivate')
+  @Roles(...WRITE_ROLES)
+  @Audit({ entity: 'Product', operation: 'status_change' })
+  deactivate(@TenantId() clinicId: string, @Param('id') id: string) {
+    return this.productService.deactivate(clinicId, id);
   }
 }

@@ -20,9 +20,9 @@ const VET_PASSWORD = process.env.E2E_VET_PASSWORD ?? 'VetP@ss1';
 test.describe('Business Partners — CLINIC_OWNER', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/login');
-    await page.getByLabel(/email or username/i).fill(OWNER_EMAIL);
-    await page.getByLabel(/password/i).fill(OWNER_PASSWORD);
-    await page.getByRole('button', { name: /log in/i }).click();
+    await page.locator('#identifier').fill(OWNER_EMAIL);
+    await page.locator('#password').fill(OWNER_PASSWORD);
+    await page.locator('button[type="submit"]').click();
     await expect(page).toHaveURL(/\/clinic\/dashboard/);
   });
 
@@ -85,9 +85,9 @@ test.describe('Business Partners — CLINIC_OWNER', () => {
 test.describe('Business Partners — VET (read-only)', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/login');
-    await page.getByLabel(/email or username/i).fill(VET_EMAIL);
-    await page.getByLabel(/password/i).fill(VET_PASSWORD);
-    await page.getByRole('button', { name: /log in/i }).click();
+    await page.locator('#identifier').fill(VET_EMAIL);
+    await page.locator('#password').fill(VET_PASSWORD);
+    await page.locator('button[type="submit"]').click();
     await expect(page).toHaveURL(/\/clinic\/dashboard/);
   });
 

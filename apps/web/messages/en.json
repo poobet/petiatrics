@@ -221,7 +221,7 @@
   },
   "inventory": {
     "title": "Inventory",
-    "new": "New Product",
+    "new": "New Item",
     "productName": "Product Name",
     "sku": "SKU",
     "category": "Category",
@@ -238,13 +238,75 @@
     "adjustQuantity": "Quantity Change",
     "lowStock": "Low Stock",
     "outOfStock": "Out of Stock",
-    "noProducts": "No products found.",
+    "noProducts": "No items found.",
     "movement_reason": {
       "purchase": "Purchase",
       "sale": "Sale (via invoice)",
       "manual_adjust": "Manual Adjustment",
       "waste": "Waste / Expired",
       "return": "Return"
+    },
+    "items": {
+      "newItem": "New Item",
+      "editItem": "Edit Item",
+      "itemCode": "Item Code",
+      "itemCodeHint": "Unique code per clinic. Auto-uppercased.",
+      "itemName": "Item Name",
+      "genericName": "Generic Name",
+      "itemType": "Item Type",
+      "stockedGood": "Stocked Good",
+      "service": "Service",
+      "categoryLabel": "Category",
+      "baseUnit": "Base Unit",
+      "isControlledSubstance": "Controlled Substance",
+      "requiresBatchTracking": "Requires Batch & Expiry Tracking",
+      "inactive": "Inactive",
+      "active": "Active",
+      "deactivate": "Deactivate",
+      "deactivateConfirm": "Deactivate this item? It will no longer appear in search results.",
+      "noItems": "No items found. Add your first item.",
+      "lowStockAlert": "Low Stock Alert",
+      "tabs": {
+        "general": "General",
+        "units": "Units & Conversions",
+        "pricing": "Pricing & Tax",
+        "clinicDetails": "Clinic Details"
+      },
+      "units": {
+        "title": "Units & Conversions",
+        "baseUnit": "Base Unit",
+        "addConversion": "Add Alternate Unit",
+        "altUnit": "Alternate Unit",
+        "ratio": "Ratio to Base",
+        "ratioHint": "e.g. 1 Box = 12 Pieces → ratio = 12",
+        "remove": "Remove"
+      },
+      "pricing": {
+        "title": "Pricing & Tax",
+        "standardCost": "Standard Cost",
+        "sellingPrice": "Base Selling Price",
+        "isTaxInclusive": "Price is tax-inclusive",
+        "defaultTaxCode": "Default Tax Code",
+        "noTaxCode": "No tax code"
+      },
+      "clinicDetails": {
+        "title": "Clinic-Specific Details",
+        "defaultSupplier": "Preferred Supplier",
+        "noSupplier": "No preferred supplier",
+        "reorderThreshold": "Reorder Threshold",
+        "defaultDoctorFee": "Default Doctor Fee"
+      },
+      "validation": {
+        "codeRequired": "Item code is required.",
+        "nameRequired": "Item name is required.",
+        "categoryRequired": "Category is required.",
+        "baseUnitRequired": "Base unit is required.",
+        "costNegative": "Standard cost must be ≥ 0.",
+        "priceNegative": "Selling price must be ≥ 0.",
+        "conversionUnitRequired": "Alternate unit is required.",
+        "conversionRatioPositive": "Ratio must be greater than 0.",
+        "codeDuplicate": "This item code already exists in your clinic."
+      }
     }
   },
   "billing": {

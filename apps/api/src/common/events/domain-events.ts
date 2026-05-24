@@ -12,6 +12,7 @@ export class VisitFinalizedEvent {
     public readonly visitId: string,
     public readonly patientId: string,
     public readonly vetId: string,
+    public readonly branchId: string,
     public readonly finalizedAt: Date,
     /** IDs of products consumed during the visit (for inventory deduction) */
     public readonly productIds: string[],
@@ -22,6 +23,7 @@ export class VisitFinalizedEvent {
 export class LowStockEvent {
   constructor(
     public readonly clinicId: string,
+    public readonly branchId: string,
     public readonly productId: string,
     public readonly productName: string,
     public readonly currentQuantity: number,

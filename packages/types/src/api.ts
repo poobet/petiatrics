@@ -1,4 +1,4 @@
-import { Role, Locale, BusinessPartnerType, BpRole } from './enums';
+import { Role, Locale, BusinessPartnerType, BpRole, ItemType } from './enums';
 
 // ─── Response Envelope ───────────────────────────────────────────────────────
 
@@ -307,3 +307,117 @@ export interface BusinessPartnerResponse {
   updatedAt: string;
 }
 
+// ─── Item Master (006-item-master) ────────────────────────────────────────────
+
+export interface ItemCategoryResponse {
+  id: string;
+  name: string;
+  code: string;
+  revenueGlCode: string | null;
+  expenseGlCode: string | null;
+  isActive: boolean;
+}
+
+export interface UnitOfMeasureResponse {
+  id: string;
+  name: string;
+  symbol: string | null;
+  isActive: boolean;
+}
+
+export interface ItemUnitConversionResponse {
+  id: string;
+  unitId: string;
+  unit: UnitOfMeasureResponse;
+  ratioToBase: number;
+}
+
+export interface ItemUnitConversionPayload {
+  unitId: string;
+  ratioToBase: number;
+}
+
+export interface ItemSummaryResponse {
+  id: string;
+  code: string;
+  name: string;
+  itemType: ItemType;
+  category: { id: string; name: string } | null;
+  baseUnit: { id: string; name: string; symbol: string | null } | null;
+  standardCost: number;
+  baseSellingPrice: number;
+  isTaxInclusive: boolean;
+  defaultTaxCode: { id: string; code: string; rate: number; type: string } | null;
+  isControlledSubstance: boolean;
+  requiresBatchAndExpiryTracking: boolean;
+  defaultSupplier: { id: string; name: string } | null;
+  isActive: boolean;
+}
+
+export interface ItemDetailResponse extends ItemSummaryResponse {
+  conversions: ItemUnitConversionResponse[];
+  genericName: string | null;
+  defaultDoctorFee: number | null;
+  defaultSupplierId: string | null;
+  defaultTaxCodeId: string | null;
+  categoryId: string | null;
+  baseUnitId: string | null;
+  quantity: number;
+  reorderThreshold: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateItemPayload {
+  code: string;
+  name: string;
+  itemType: ItemType;
+  categoryId: string;
+  baseUnitId: string;
+  conversions?: ItemUnitConversionPayload[];
+  standardCost: number;
+  baseSellingPrice: number;
+  isTaxInclusive?: boolean;
+  defaultTaxCodeId?: string | null;
+  genericName?: string | null;
+  isControlledSubstance?: boolean;
+  requiresBatchAndExpiryTracking?: boolean;
+  defaultSupplierId?: string | null;
+  defaultDoctorFee?: number | null;
+  reorderThreshold?: number;
+}
+
+export interface UpdateItemPayload {
+  name?: string;
+  categoryId?: string;
+  baseUnitId?: string;
+  conversions?: ItemUnitConversionPayload[];
+  standardCost?: number;
+  baseSellingPrice?: number;
+  isTaxInclusive?: boolean;
+  defaultTaxCodeId?: string | null;
+  genericName?: string | null;
+  isControlledSubstance?: boolean;
+  requiresBatchAndExpiryTracking?: boolean;
+  defaultSupplierId?: string | null;
+  defaultDoctorFee?: number | null;
+  reorderThreshold?: number;
+  isActive?: boolean;
+}
+
+export interface ListItemsQuery {
+  search?: string;
+  itemType?: ItemType;
+  categoryId?: string;
+  includeInactive?: boolean;
+  controlledSubstance?: boolean;
+  page?: number;
+  perPage?: number;
+}
+
+export interface ReferenceSelectorItem {
+  id: string;
+  name: string;
+  code?: string;
+  symbol?: string | null;
+}

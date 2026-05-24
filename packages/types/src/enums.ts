@@ -69,6 +69,11 @@ export enum InvoiceLineItemType {
   PRODUCT = 'PRODUCT',
 }
 
+export enum ItemType {
+  STOCKED_GOOD = 'STOCKED_GOOD',
+  SERVICE = 'SERVICE',
+}
+
 export enum AuditOperation {
   CREATE = 'create',
   UPDATE = 'update',
