@@ -7,6 +7,7 @@ import {
   VaccinationRecordSchema,
 } from '@petiatrics/database';
 import { EventsModule } from '../../common/events/events.module';
+import { InventoryModule } from '../inventory/inventory.module';
 import { PatientService } from './services/patient.service';
 import { VisitService } from './services/visit.service';
 import { VaccinationService } from './services/vaccination.service';
@@ -21,6 +22,8 @@ import { OwnerController } from './controllers/owner.controller';
  * Handles: patient profiles (MongoDB PetProfile), visit records (SOAP notes),
  * vaccination records, visit lifecycle (draft → finalized → amended),
  * prescription attachments, VisitFinalizedEvent emission.
+ * Stock deduction for inventory-linked prescriptions is performed synchronously
+ * during visit finalization (no listener required).
  */
 @Module({
   imports: [
@@ -30,6 +33,7 @@ import { OwnerController } from './controllers/owner.controller';
       { name: MODEL_NAMES.VACCINATION_RECORD, schema: VaccinationRecordSchema },
     ]),
     EventsModule,
+    InventoryModule,
   ],
   controllers: [PatientController, VisitController, VaccinationController, OwnerController],
   providers: [PatientService, VisitService, VaccinationService],
