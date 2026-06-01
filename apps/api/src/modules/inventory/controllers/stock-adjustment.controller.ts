@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { Roles } from '../../../common/guards/roles.decorator';
 import { BranchContextGuard } from '../../../common/guards/branch-context.guard';
-import { CurrentUser, TenantId } from '../../../common/decorators/tenant.decorator';
+import { ActiveBranch, CurrentUser, TenantId } from '../../../common/decorators/tenant.decorator';
 import { Role } from '@petiatrics/types';
 import { UserContext } from '@petiatrics/types';
 import { Audit } from '../../../common/interceptors/audit.interceptor';
@@ -38,9 +38,11 @@ export class StockAdjustmentController {
   @Audit({ entity: 'StockMovement', operation: 'create' })
   submit(
     @TenantId() clinicId: string,
+    @ActiveBranch() branchId: string,
     @CurrentUser() user: UserContext,
     @Body() dto: SubmitAdjustmentDto,
   ) {
+    dto.branchId = branchId;
     return this.adjustmentService.submitAdjustment(clinicId, user.userId, dto);
   }
 
