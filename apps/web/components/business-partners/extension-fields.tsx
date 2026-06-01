@@ -43,11 +43,11 @@ export default function ExtensionFields({ type }: ExtensionFieldsProps) {
         <div className="space-y-1.5">
           <Label>{t('vet.defaultDfRate')}</Label>
           <Input
+            {...register('vet.defaultDfRate', { setValueAs: (v) => v === '' ? undefined : Number(v) })}
             type="number"
             step="0.01"
             min={0}
             max={100}
-            {...register('vet.defaultDfRate', { valueAsNumber: true })}
             placeholder="e.g. 35.00"
           />
           {errors.vet?.defaultDfRate && (

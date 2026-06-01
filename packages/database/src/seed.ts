@@ -117,22 +117,62 @@ async function main() {
     console.log(`✓ TaxCode: ${tc.code} (${tc.description})`);
   }
 
-  // ── 1b. ItemCategory — global reference, no clinicId (006-item-master) ──
+  // ── 1b. GLAccount — global chart of accounts (006-item-master ERP) ─────────
+  const glAccounts = [
+    // Revenue accounts
+    { code: '4000', name: 'Medicine Revenue',      type: 'REVENUE' as const },
+    { code: '4001', name: 'Retail Revenue',         type: 'REVENUE' as const },
+    { code: '4002', name: 'Service Revenue',         type: 'REVENUE' as const },
+    { code: '4003', name: 'Laboratory Revenue',      type: 'REVENUE' as const },
+    { code: '4004', name: 'Procedure Revenue',       type: 'REVENUE' as const },
+    { code: '4005', name: 'Consultation Revenue',    type: 'REVENUE' as const },
+    // COGS accounts
+    { code: '5000', name: 'Medicine COGS',           type: 'COGS' as const },
+    { code: '5001', name: 'Retail COGS',             type: 'COGS' as const },
+    // Asset accounts
+    { code: '1100', name: 'Inventory Asset',         type: 'ASSET' as const },
+    // Expense accounts
+    { code: '6000', name: 'General Operating Expense', type: 'EXPENSE' as const },
+  ];
+
+  const glIds: Record<string, string> = {};
+  for (const gl of glAccounts) {
+    const record = await prisma.gLAccount.upsert({
+      where: { code: gl.code },
+      update: { name: gl.name, type: gl.type, isActive: true },
+      create: { code: gl.code, name: gl.name, type: gl.type, isActive: true },
+    });
+    glIds[gl.code] = record.id;
+    console.log(`✓ GLAccount: ${gl.code} (${gl.name})`);
+  }
+
+  // ── 1c. ItemCategory — global reference, no clinicId (006-item-master) ──
   const itemCategories = [
-    { code: 'MEDICINE',    name: 'Medicine' },
-    { code: 'RETAIL',      name: 'Retail' },
-    { code: 'SERVICE',     name: 'Service' },
-    { code: 'LABORATORY',  name: 'Laboratory' },
-    { code: 'PROCEDURE',   name: 'Procedure' },
-    { code: 'CONSULTATION', name: 'Consultation' },
+    { code: 'MEDICINE',     name: 'Medicine',      revenueGlCode: '4000', expenseGlCode: '5000' },
+    { code: 'RETAIL',       name: 'Retail',         revenueGlCode: '4001', expenseGlCode: '5001' },
+    { code: 'SERVICE',      name: 'Service',         revenueGlCode: '4002', expenseGlCode: null },
+    { code: 'LABORATORY',   name: 'Laboratory',      revenueGlCode: '4003', expenseGlCode: null },
+    { code: 'PROCEDURE',    name: 'Procedure',       revenueGlCode: '4004', expenseGlCode: null },
+    { code: 'CONSULTATION', name: 'Consultation',    revenueGlCode: '4005', expenseGlCode: null },
   ];
 
   const categoryIds: Record<string, string> = {};
   for (const cat of itemCategories) {
     const record = await prisma.itemCategory.upsert({
       where: { code: cat.code },
-      update: { name: cat.name, isActive: true },
-      create: { code: cat.code, name: cat.name, isActive: true },
+      update: {
+        name: cat.name,
+        isActive: true,
+        revenueGlAccountId: cat.revenueGlCode ? glIds[cat.revenueGlCode] : null,
+        expenseGlAccountId: cat.expenseGlCode ? glIds[cat.expenseGlCode] : null,
+      },
+      create: {
+        code: cat.code,
+        name: cat.name,
+        isActive: true,
+        revenueGlAccountId: cat.revenueGlCode ? glIds[cat.revenueGlCode] : null,
+        expenseGlAccountId: cat.expenseGlCode ? glIds[cat.expenseGlCode] : null,
+      },
     });
     categoryIds[cat.code] = record.id;
     console.log(`✓ ItemCategory: ${cat.code} → ${record.id}`);
@@ -411,7 +451,7 @@ async function main() {
         standardCost: p.stdCost,
         baseSellingPrice: p.sellPrice,
         quantity: p.quantity,
-        reorderThreshold: p.reorderThreshold,
+        reorderPoint: p.reorderThreshold,
       },
     });
     productIds.push(product.id);

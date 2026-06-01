@@ -30,6 +30,18 @@ const nextConfig: NextConfig = {
       '.js': ['.ts', '.tsx', '.js', '.jsx'],
       '.jsx': ['.tsx', '.jsx'],
     };
+    // Exclude test-results and playwright-report from file watcher to prevent
+    // crash-inducing recompilation cascades when Playwright writes output files.
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: [
+        ...(Array.isArray(config.watchOptions?.ignored) ? config.watchOptions.ignored : []),
+        '**/test-results/**',
+        '**/playwright-report/**',
+        '**/.next/**',
+        '**/node_modules/**',
+      ],
+    };
     return config;
   },
 

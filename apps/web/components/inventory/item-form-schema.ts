@@ -53,8 +53,11 @@ export function toApiPayload(values: ItemFormValues) {
       values.itemType === ItemType.STOCKED_GOOD ? values.defaultSupplierId || null : null,
     defaultDoctorFee:
       values.itemType === ItemType.SERVICE ? (Number(values.defaultDoctorFee) || null) : null,
-    reorderThreshold:
-      values.itemType === ItemType.STOCKED_GOOD ? Number(values.reorderThreshold) || 0 : 0,
+    reorderPoint:
+      values.itemType === ItemType.STOCKED_GOOD ? Number(values.reorderPoint) || 0 : 0,
+    minimumStock:
+      values.itemType === ItemType.STOCKED_GOOD ? Number(values.minimumStock) || 0 : 0,
+    barcode: values.barcode.trim() || null,
     conversions: values.conversions
       .filter((c) => c.unitId && Number(c.ratioToBase) > 0)
       .map((c) => ({ unitId: c.unitId, ratioToBase: Number(c.ratioToBase) })),

@@ -9,7 +9,16 @@ export class ReferenceService {
     return this.prisma.itemCategory.findMany({
       where: { isActive: true },
       orderBy: { name: 'asc' },
-      select: { id: true, name: true, code: true, revenueGlCode: true, expenseGlCode: true, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        revenueGlAccountId: true,
+        expenseGlAccountId: true,
+        revenueGlAccount: { select: { id: true, code: true, name: true, type: true, isActive: true } },
+        expenseGlAccount: { select: { id: true, code: true, name: true, type: true, isActive: true } },
+        isActive: true,
+      },
     });
   }
 
@@ -26,6 +35,14 @@ export class ReferenceService {
       where: { isActive: true },
       orderBy: { code: 'asc' },
       select: { id: true, code: true, description: true, rate: true, isVatType: true, isZeroRated: true, type: true },
+    });
+  }
+
+  async getGLAccounts() {
+    return this.prisma.gLAccount.findMany({
+      where: { isActive: true },
+      orderBy: [{ type: 'asc' }, { code: 'asc' }],
+      select: { id: true, code: true, name: true, type: true, isActive: true },
     });
   }
 }

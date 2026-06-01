@@ -79,4 +79,10 @@ export class ProductController {
   deactivate(@TenantId() clinicId: string, @Param('id') id: string) {
     return this.productService.deactivate(clinicId, id);
   }
+
+  @Get('barcode/:barcode')
+  @Roles(...READ_ROLES)
+  findByBarcode(@TenantId() clinicId: string, @Param('barcode') barcode: string) {
+    return this.productService.findByBarcode(clinicId, barcode);
+  }
 }

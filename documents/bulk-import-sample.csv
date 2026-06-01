@@ -1,0 +1,11 @@
+code,name,itemType,category,unit,cost,price,reorderPoint,minimumStock,barcode,genericName,isControlledSubstance
+MED-001,Amoxicillin 250mg Capsule,STOCKED_GOOD,MEDICINE,Piece,12.50,35.00,50,20,8850001234567,Amoxicillin,false
+MED-002,Dexamethasone 5mg/ml Injection,STOCKED_GOOD,MEDICINE,Vial,45.00,120.00,30,10,8850009876543,Dexamethasone,false
+MED-003,Ketamine 500mg/10ml,STOCKED_GOOD,MEDICINE,Vial,280.00,650.00,10,5,8850005551234,Ketamine,true
+RETAIL-001,Pet Shampoo (250ml),STOCKED_GOOD,RETAIL,Bottle,80.00,195.00,20,10,8850002223334,
+RETAIL-002,Flea & Tick Collar,STOCKED_GOOD,RETAIL,Piece,120.00,290.00,15,5,8850006667778,
+LAB-001,Complete Blood Count (CBC),SERVICE,LABORATORY,Visit,0,450.00,,,, ,
+SVC-001,Vaccination - Rabies,SERVICE,PROCEDURE,Visit,0,350.00,,,,,
+SVC-002,Dental Cleaning (Basic),SERVICE,PROCEDURE,Session,0,1200.00,,,,,
+CONSULT-001,General Consultation,SERVICE,CONSULTATION,Visit,0,500.00,,,,,
+RETAIL-003,Premium Dry Food (2kg),STOCKED_GOOD,RETAIL,Box,350.00,750.00,10,5,8850003334445,

@@ -22,10 +22,10 @@ export class UnlinkedItemsService {
     const db = scopedPrisma(this.prisma, clinicId);
     const products = await db.product.findMany({
       where: { isActive: true },
-      select: { name: true, quantity: true, reorderThreshold: true },
+      select: { name: true, quantity: true, reorderPoint: true },
     });
     const low = products.filter(
-      (p) => Number(p.quantity) <= Number(p.reorderThreshold),
+      (p) => Number(p.quantity) <= Number(p.reorderPoint),
     );
     return {
       count: low.length,

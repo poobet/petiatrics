@@ -81,7 +81,7 @@ describe('StockService', () => {
     });
 
     it('increases branch balance on replenishment', async () => {
-      const product = { id: 'p1', name: 'Metronidazole', itemType: 'STOCKED_GOOD', quantity: 10, reorderThreshold: 5 };
+      const product = { id: 'p1', name: 'Metronidazole', itemType: 'STOCKED_GOOD', quantity: 10, reorderPoint: 5, minimumStock: 0 };
       prisma.product.findUnique.mockResolvedValue(product);
 
       await service.replenish(CLINIC_ID, { branchId: BRANCH_ID, productId: 'p1', quantity: 5, referenceId: 'PO-001', actorId: 'user-1' });
@@ -118,7 +118,7 @@ describe('StockService', () => {
     });
 
     it('deducts branch balance and creates movement record', async () => {
-      const product = { id: 'p1', name: 'Drug', itemType: 'STOCKED_GOOD', quantity: 10, reorderThreshold: 5 };
+      const product = { id: 'p1', name: 'Drug', itemType: 'STOCKED_GOOD', quantity: 10, reorderPoint: 5, minimumStock: 0 };
       prisma.product.findUnique.mockResolvedValue(product);
 
       await service.deduct(CLINIC_ID, { branchId: BRANCH_ID, productId: 'p1', quantity: 1, visitRecordId: 'v1', actorId: 'user-1' });
@@ -127,8 +127,8 @@ describe('StockService', () => {
       expect(prisma.product.update).not.toHaveBeenCalled();
     });
 
-    it('emits LowStockEvent when balance falls at or below reorderThreshold', async () => {
-      const product = { id: 'p1', name: 'Drug', itemType: 'STOCKED_GOOD', quantity: 6, reorderThreshold: 5 };
+    it('emits LowStockEvent when balance falls at or below reorderPoint', async () => {
+      const product = { id: 'p1', name: 'Drug', itemType: 'STOCKED_GOOD', quantity: 6, reorderPoint: 5, minimumStock: 0 };
       prisma.product.findUnique.mockResolvedValue(product);
       prisma.$transaction = jest.fn((fn: (tx: unknown) => unknown) =>
         fn({
@@ -143,7 +143,7 @@ describe('StockService', () => {
       await service.deduct(CLINIC_ID, { branchId: BRANCH_ID, productId: 'p1', quantity: 1, visitRecordId: 'v1', actorId: 'user-1' });
 
       expect(events.emit).toHaveBeenCalledWith(
-        'inventory.low_stock',
+        'stock.low_stock_warning',
         expect.objectContaining({ clinicId: CLINIC_ID, productId: 'p1', branchId: BRANCH_ID }),
       );
     });
@@ -157,7 +157,8 @@ describe('StockService', () => {
         id: 'p1',
         name: 'Drug',
         itemType: 'STOCKED_GOOD',
-        reorderThreshold: 5,
+        reorderPoint: 5,
+        minimumStock: 0,
       });
       (prisma as any).branchStockBalance = {
         upsert: jest.fn().mockResolvedValue({ id: 'bal-1', quantity: 10 }),
@@ -189,7 +190,8 @@ describe('StockService', () => {
         id: 'p1',
         name: 'Drug',
         itemType: 'STOCKED_GOOD',
-        reorderThreshold: 5,
+        reorderPoint: 5,
+        minimumStock: 0,
       });
       (prisma as any).branchStockBalance = {
         findUnique: jest.fn().mockResolvedValue(null),

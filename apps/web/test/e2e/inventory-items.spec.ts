@@ -138,6 +138,8 @@ test.describe('Inventory Items — CLINIC_OWNER', () => {
     const responsePromise = page.waitForResponse('**/api/v1/inventory/products');
     await page.goto('/clinic/inventory');
     await responsePromise;
+    // Wait for at least one row to render after the API response
+    await page.locator('tbody tr').first().waitFor({ state: 'visible', timeout: 10000 });
     const rows = page.locator('tbody tr');
     const before = await rows.count();
     page.once('dialog', (dialog) => dialog.accept());

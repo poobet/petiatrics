@@ -56,6 +56,8 @@ function isUnitOfMeasureShape(obj: unknown): boolean {
 const SUMMARY_FIXTURE: ItemSummaryResponse = {
   id: 'prod-001',
   code: 'MED-001',
+  sku: 'SKU-00001',
+  barcode: null,
   name: 'Metronidazole 250mg',
   itemType: ItemType.STOCKED_GOOD,
   isActive: true,
@@ -79,7 +81,8 @@ const DETAIL_FIXTURE: ItemDetailResponse = {
   defaultSupplierId: null,
   defaultDoctorFee: null,
   quantity: 100,
-  reorderThreshold: 10,
+  reorderPoint: 10,
+  minimumStock: 5,
   conversions: [],
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -90,8 +93,10 @@ const CATEGORY_FIXTURE: ItemCategoryResponse = {
   name: 'Medicine',
   code: 'MEDICINE',
   isActive: true,
-  revenueGlCode: null,
-  expenseGlCode: null,
+  revenueGlAccountId: null,
+  expenseGlAccountId: null,
+  revenueGlAccount: null,
+  expenseGlAccount: null,
 };
 
 const UNIT_FIXTURE: UnitOfMeasureResponse = {

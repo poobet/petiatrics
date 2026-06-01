@@ -1,4 +1,4 @@
-import { Role, Locale, BusinessPartnerType, BpRole, ItemType } from './enums';
+import { Role, Locale, BusinessPartnerType, BpRole, ItemType, GLAccountType } from './enums';
 
 // ─── Response Envelope ───────────────────────────────────────────────────────
 
@@ -309,12 +309,22 @@ export interface BusinessPartnerResponse {
 
 // ─── Item Master (006-item-master) ────────────────────────────────────────────
 
+export interface GLAccountResponse {
+  id: string;
+  code: string;
+  name: string;
+  type: GLAccountType;
+  isActive: boolean;
+}
+
 export interface ItemCategoryResponse {
   id: string;
   name: string;
   code: string;
-  revenueGlCode: string | null;
-  expenseGlCode: string | null;
+  revenueGlAccountId: string | null;
+  expenseGlAccountId: string | null;
+  revenueGlAccount: GLAccountResponse | null;
+  expenseGlAccount: GLAccountResponse | null;
   isActive: boolean;
 }
 
@@ -340,6 +350,8 @@ export interface ItemUnitConversionPayload {
 export interface ItemSummaryResponse {
   id: string;
   code: string;
+  sku: string | null;
+  barcode: string | null;
   name: string;
   itemType: ItemType;
   category: { id: string; name: string } | null;
@@ -363,7 +375,8 @@ export interface ItemDetailResponse extends ItemSummaryResponse {
   categoryId: string | null;
   baseUnitId: string | null;
   quantity: number;
-  reorderThreshold: number;
+  reorderPoint: number;
+  minimumStock: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -384,7 +397,9 @@ export interface CreateItemPayload {
   requiresBatchAndExpiryTracking?: boolean;
   defaultSupplierId?: string | null;
   defaultDoctorFee?: number | null;
-  reorderThreshold?: number;
+  reorderPoint?: number;
+  minimumStock?: number;
+  barcode?: string | null;
 }
 
 export interface UpdateItemPayload {
@@ -401,7 +416,9 @@ export interface UpdateItemPayload {
   requiresBatchAndExpiryTracking?: boolean;
   defaultSupplierId?: string | null;
   defaultDoctorFee?: number | null;
-  reorderThreshold?: number;
+  reorderPoint?: number;
+  minimumStock?: number;
+  barcode?: string | null;
   isActive?: boolean;
 }
 
@@ -409,6 +426,7 @@ export interface ListItemsQuery {
   search?: string;
   itemType?: ItemType;
   categoryId?: string;
+  barcode?: string;
   includeInactive?: boolean;
   controlledSubstance?: boolean;
   page?: number;

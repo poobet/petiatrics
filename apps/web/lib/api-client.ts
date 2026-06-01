@@ -51,15 +51,26 @@ async function request<T>(
     }
   }
 
+  const customHeaders = init.headers as Record<string, string> | undefined;
+  const isFormData = customHeaders?.['x-no-content-type'] === '1';
+  const filteredHeaders: Record<string, string> = {};
+  if (customHeaders) {
+    for (const [k, v] of Object.entries(customHeaders)) {
+      if (k !== 'x-no-content-type') filteredHeaders[k] = v;
+    }
+  }
+
   const response = await fetch(url, {
     ...init,
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      ...branchHeaders,
-      ...(init.headers ?? {}),
-    },
+    headers: isFormData
+      ? { Accept: 'application/json', ...branchHeaders, ...filteredHeaders }
+      : {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          ...branchHeaders,
+          ...filteredHeaders,
+        },
   });
 
   // Handle 204 No Content
@@ -125,6 +136,17 @@ export const apiClient = {
 
   delete<T = void>(path: string, init?: RequestInit): Promise<T> {
     return request<T>(path, { ...init, method: 'DELETE' });
+  },
+
+  /** POST with a FormData body (no Content-Type header so the browser sets multipart boundary). */
+  postForm<T>(path: string, form: FormData, init?: RequestInit): Promise<T> {
+    // Pass a sentinel header to signal the request fn to skip Content-Type
+    return request<T>(path, {
+      ...init,
+      method: 'POST',
+      body: form,
+      headers: { 'x-no-content-type': '1', ...(init?.headers as Record<string, string> ?? {}) },
+    });
   },
 };
 

@@ -229,7 +229,7 @@
     "unit": "Unit",
     "costPrice": "Cost Price",
     "sellPrice": "Sell Price",
-    "reorderThreshold": "Reorder Threshold",
+    "reorderPoint": "Reorder Point",
     "supplier": "Supplier",
     "expiryDate": "Expiry Date",
     "stockMovements": "Stock Movements",
@@ -293,8 +293,29 @@
         "title": "Clinic-Specific Details",
         "defaultSupplier": "Preferred Supplier",
         "noSupplier": "No preferred supplier",
-        "reorderThreshold": "Reorder Threshold",
+        "reorderPoint": "Reorder Point",
+        "minimumStock": "Minimum Stock",
         "defaultDoctorFee": "Default Doctor Fee"
+      },
+      "identifiers": {
+        "title": "Identifiers",
+        "sku": "SKU",
+        "skuHint": "Auto-assigned. Cannot be changed after creation.",
+        "barcode": "Barcode",
+        "barcodeHint": "Optional. Must be unique across all items."
+      },
+      "bulkImport": {
+        "title": "Bulk Import Items",
+        "description": "Upload a CSV or XLSX file to import items. Maximum 500 rows. Existing item codes will be skipped.",
+        "import": "Import",
+        "importing": "Importing…",
+        "cancel": "Cancel",
+        "resultTitle": "Import complete",
+        "created": "{count} item(s) created",
+        "skipped": "{count} item(s) skipped (already exist)",
+        "errors": "{count} error(s):",
+        "errorRow": "Row {row} [{code}]: {message}",
+        "genericError": "Import failed. Please try again."
       },
       "validation": {
         "codeRequired": "Item code is required.",

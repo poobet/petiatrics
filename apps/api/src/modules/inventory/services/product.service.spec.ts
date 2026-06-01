@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { ProductService } from './product.service';
+import { SkuSequenceService } from './sku-sequence.service';
 import type { CreateProductDto } from '../dto/create-product.dto';
 import { ItemType } from '@petiatrics/types';
 
@@ -61,6 +62,7 @@ describe('ProductService', () => {
       providers: [
         ProductService,
         { provide: PrismaClient, useValue: prisma },
+        { provide: SkuSequenceService, useValue: { nextSku: jest.fn().mockResolvedValue('SKU-00001') } },
       ],
     }).compile();
 
@@ -211,8 +213,8 @@ describe('ProductService', () => {
   describe('getLowStock()', () => {
     it('returns only stocked goods at or below threshold via branch balance', async () => {
       prisma.branchStockBalance.findMany.mockResolvedValue([
-        { productId: 'p1', quantity: 3, product: { id: 'p1', reorderThreshold: 5, itemType: 'STOCKED_GOOD', isActive: true } },
-        { productId: 'p2', quantity: 10, product: { id: 'p2', reorderThreshold: 5, itemType: 'STOCKED_GOOD', isActive: true } },
+        { productId: 'p1', quantity: 3, product: { id: 'p1', reorderPoint: 5, minimumStock: 0, itemType: 'STOCKED_GOOD', isActive: true } },
+        { productId: 'p2', quantity: 10, product: { id: 'p2', reorderPoint: 5, minimumStock: 0, itemType: 'STOCKED_GOOD', isActive: true } },
       ]);
       const result = await service.getLowStock(CLINIC_ID, 'branch-1');
       expect(result).toHaveLength(1);

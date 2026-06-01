@@ -22,7 +22,7 @@ export default function FinancialsTab() {
           <div className="space-y-1.5">
             <Label>{t('creditLimit')}</Label>
             <Input
-              {...register('creditLimit', { valueAsNumber: true })}
+              {...register('creditLimit', { setValueAs: (v) => v === '' ? undefined : Number(v) })}
               type="number"
               min={0}
               step={0.01}
@@ -34,8 +34,9 @@ export default function FinancialsTab() {
           </div>
 
           <div className="space-y-1.5">
-            <Label>{t('creditTermDays')}</Label>
+            <Label htmlFor="bp-creditTermDays">{t('creditTermDays')}</Label>
             <Input
+              id="bp-creditTermDays"
               {...register('creditTermDays', { valueAsNumber: true })}
               type="number"
               min={0}
