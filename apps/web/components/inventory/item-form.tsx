@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { ItemFormValues, ItemFormReferenceData } from './item-form-types';
 import { ITEM_FORM_DEFAULTS } from './item-form-types';
@@ -57,7 +57,7 @@ function itemDetailToFormValues(item: ItemDetailResponse): ItemFormValues {
 export default function ItemForm({ refs, initial }: Props) {
   const router = useRouter();
   const isEdit = !!initial;
-
+  const [mounted, setMounted] = useState(false);
   const [values, setValues] = useState<ItemFormValues>(
     initial ? itemDetailToFormValues(initial) : ITEM_FORM_DEFAULTS,
   );
@@ -65,6 +65,8 @@ export default function ItemForm({ refs, initial }: Props) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState('');
   const [saving, setSaving] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
 
   function handleChange(field: keyof ItemFormValues, value: unknown) {
     setValues((prev) => ({ ...prev, [field]: value }));

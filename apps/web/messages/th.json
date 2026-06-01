@@ -317,6 +317,7 @@
         "errorRow": "แถว {row} [{code}]: {message}",
         "genericError": "การนำเข้าล้มเหลว กรุณาลองอีกครั้ง"
       },
+      "validation": {
         "codeRequired": "กรุณาระบุรหัสรายการ",
         "nameRequired": "กรุณาระบุชื่อรายการ",
         "categoryRequired": "กรุณาเลือกหมวดหมู่",
