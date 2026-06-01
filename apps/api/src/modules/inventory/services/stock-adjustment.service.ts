@@ -66,8 +66,20 @@ export class StockAdjustmentService {
 
     const movement = await db.stockMovement.findFirst({
       where: { id: movementId, clinicId, status: 'PENDING_APPROVAL' },
+      select: {
+        id: true,
+        branchId: true,
+        productId: true,
+        delta: true,
+        lotNumber: true,
+        quantityAfter: true,
+      },
     });
     if (!movement) throw new NotFoundException(`Pending adjustment ${movementId} not found.`);
+    if (!movement.branchId) {
+      throw new BadRequestException('Adjustment record is missing branch information.');
+    }
+    const branchId = movement.branchId;
 
     const product = await db.product.findUnique({ where: { id: movement.productId } });
 
@@ -76,7 +88,7 @@ export class StockAdjustmentService {
       const existing = await tx.branchStockBalance.findFirst({
         where: {
           clinicId,
-          branchId: movement.branchId,
+          branchId,
           productId: movement.productId,
           lotNumber: movement.lotNumber,
         },
@@ -94,7 +106,7 @@ export class StockAdjustmentService {
         const created = await tx.branchStockBalance.create({
           data: {
             clinicId,
-            branchId: movement.branchId,
+            branchId,
             productId: movement.productId,
             lotNumber: movement.lotNumber,
             quantity: Number(movement.quantityAfter),
@@ -117,7 +129,7 @@ export class StockAdjustmentService {
             'stock.low_stock_warning',
             new LowStockEvent(
               clinicId,
-              movement.branchId!,
+              branchId,
               movement.productId,
               product.name,
               newQty,
