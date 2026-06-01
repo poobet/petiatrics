@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { Button } from '@petiatrics/ui';
 import ItemSearchCombobox from '@/components/inventory/item-search-combobox';
+import { useSessionStore } from '@/lib/session-store';
 
 interface SelectedItem {
   id: string;
@@ -27,6 +28,7 @@ interface GoodsReceiptPayload {
 export default function GoodsReceiptForm() {
   const t = useTranslations('inventory.stock.receipt');
   const router = useRouter();
+  const activeBranchId = useSessionStore((state) => state.activeBranch?.id);
 
   const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
   const [quantity, setQuantity] = useState<string>('');
@@ -60,7 +62,7 @@ export default function GoodsReceiptForm() {
     try {
       const payload: GoodsReceiptPayload = {
         movementType: 'GOODS_RECEIPT',
-        branchId: '',  // Will be injected by BranchContextGuard from session header
+        branchId: activeBranchId as string,
         productId: selectedItem.id,
         quantity: Number(quantity),
         ...(lotNumber ? { lotNumber } : {}),

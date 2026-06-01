@@ -8,6 +8,7 @@ import { Button } from '@petiatrics/ui';
 import ItemSearchCombobox from '@/components/inventory/item-search-combobox';
 import FefoOverrideDialog from '@/components/inventory/fefo-override-dialog';
 import { format } from 'date-fns';
+import { useSessionStore } from '@/lib/session-store';
 
 interface SelectedItem {
   id: string;
@@ -26,6 +27,7 @@ interface LotInfo {
 export default function GoodsIssueForm() {
   const t = useTranslations('inventory.stock.issue');
   const router = useRouter();
+  const activeBranchId = useSessionStore((state) => state.activeBranch?.id);
 
   const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
   const [quantity, setQuantity] = useState('');
@@ -54,7 +56,7 @@ export default function GoodsIssueForm() {
     try {
       await apiClient.post('/inventory/stock-movements', {
         movementType: 'GOODS_ISSUE',
-        branchId: '',
+        branchId: activeBranchId as string,
         productId: selectedItem.id,
         quantity: Number(quantity),
         ...(selectedLot?.lotNumber ? { lotNumber: selectedLot.lotNumber } : {}),

@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { Button } from '@petiatrics/ui';
 import ItemSearchCombobox from '@/components/inventory/item-search-combobox';
+import { useSessionStore } from '@/lib/session-store';
 
 interface PendingAdjustment {
   id: string;
@@ -24,6 +25,8 @@ interface SelectedItem {
 
 export default function AdjustmentsClient() {
   const t = useTranslations('inventory.stock.adjustment');
+
+  const activeBranchId = useSessionStore((state) => state.activeBranch?.id);
 
   // Pending list
   const [adjustments, setAdjustments] = useState<PendingAdjustment[]>([]);
@@ -61,7 +64,7 @@ export default function AdjustmentsClient() {
     setSubmitting(true);
     try {
       await apiClient.post('/inventory/stock-adjustments', {
-        branchId: '',
+        branchId: activeBranchId,
         productId: selectedItem.id,
         physicalCount: Number(physicalCount),
         notes: notes || undefined,
