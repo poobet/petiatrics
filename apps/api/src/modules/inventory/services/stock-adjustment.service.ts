@@ -77,6 +77,7 @@ export class StockAdjustmentService {
     });
     if (!movement) throw new NotFoundException(`Pending adjustment ${movementId} not found.`);
     if (!movement.branchId) {
+      console.log('Fetched Adjustment:', movement);
       throw new BadRequestException('Adjustment record is missing branch information.');
     }
     const branchId = movement.branchId;
