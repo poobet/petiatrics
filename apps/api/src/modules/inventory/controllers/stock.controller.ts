@@ -93,9 +93,13 @@ export class StockController {
   @Audit({ entity: 'StockMovement', operation: 'create' })
   createMovement(
     @TenantId() clinicId: string,
+    @ActiveBranch() branchId: string,
     @CurrentUser() user: UserContext,
     @Body() body: (GoodsReceiptDto | GoodsIssueDto) & { movementType: 'GOODS_RECEIPT' | 'GOODS_ISSUE' },
   ) {
+    
+    body.branchId = branchId;
+
     if (body.movementType === 'GOODS_RECEIPT') {
       return this.stockService.goodsReceipt(clinicId, user.userId, body as GoodsReceiptDto);
     }

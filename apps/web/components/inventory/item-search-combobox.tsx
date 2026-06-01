@@ -27,8 +27,8 @@ export default function ItemSearchCombobox({ onSelect, placeholder = 'Search ite
     if (q.length < 2) { setResults([]); return; }
     try {
       const res = await apiClient.get<{ data?: Item[]; items?: Item[] }>(
-        `/inventory/products?search=${encodeURIComponent(q)}&itemType=STOCKED_GOOD&limit=20`,
-      );
+        `/inventory/products?search=${encodeURIComponent(q)}&itemType=STOCKED_GOOD&perPage=20`,
+        );
       setResults((res as any)?.data ?? (res as any)?.items ?? []);
     } catch {
       setResults([]);
