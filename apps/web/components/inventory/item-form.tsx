@@ -9,15 +9,17 @@ import type { ItemDetailResponse } from '@petiatrics/types';
 import GeneralTab from './tabs/general-tab';
 import UnitsTab from './tabs/units-tab';
 import PricingTab from './tabs/pricing-tab';
+import ItemStockTab from '@/components/inventory/tabs/item-stock-tab';
 import ClinicDetailsTab from './tabs/clinic-details-tab';
 import { apiClient, ApiError } from '../../lib/api-client';
 
-type TabKey = 'general' | 'units' | 'pricing' | 'clinic';
+type TabKey = 'general' | 'units' | 'pricing' | 'stock' | 'clinic';
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'general', label: 'General' },
   { key: 'units', label: 'Units' },
   { key: 'pricing', label: 'Pricing' },
+  { key: 'stock', label: 'Stock' },
   { key: 'clinic', label: 'Clinic Details' },
 ];
 
@@ -112,7 +114,7 @@ export default function ItemForm({ refs, initial }: Props) {
     <form onSubmit={handleSubmit} noValidate>
       {/* Tab navigation */}
       <div className="border-b mb-6 flex gap-6">
-        {TABS.map((t) => (
+        {TABS.filter((t) => t.key !== 'stock' || isEdit).map((t) => (
           <button
             key={t.key}
             type="button"
@@ -129,7 +131,7 @@ export default function ItemForm({ refs, initial }: Props) {
       </div>
 
       {/* Tab content */}
-      <div className="min-h-[300px]">
+      <div className="min-h-75">
         {activeTab === 'general' && (
           <GeneralTab values={values} errors={fieldErrors} refs={refs} onChange={handleChange} isEdit={isEdit} />
         )}
@@ -138,6 +140,9 @@ export default function ItemForm({ refs, initial }: Props) {
         )}
         {activeTab === 'pricing' && (
           <PricingTab values={values} errors={fieldErrors} refs={refs} onChange={handleChange} />
+        )}
+        {activeTab === 'stock' && (
+          <ItemStockTab itemId={initial?.id} />
         )}
         {activeTab === 'clinic' && (
           <ClinicDetailsTab values={values} errors={fieldErrors} refs={refs} onChange={handleChange} />

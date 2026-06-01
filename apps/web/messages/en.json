@@ -396,6 +396,7 @@
         "title": "Stock Ledger",
         "breadcrumb": "Stock Ledger",
         "columns": {
+          "branch": "Branch",
           "item": "Item",
           "lot": "Lot",
           "expiry": "Expiry",

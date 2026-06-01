@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { format } from 'date-fns';
 
-interface StockBalance {
+export interface StockBalance {
   id: string;
   productName: string;
   sku: string | null;
@@ -18,6 +18,8 @@ interface StockBalance {
 interface Props {
   rows: StockBalance[];
   loading?: boolean;
+  showBranchColumn?: boolean;
+  emptyMessage?: string;
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -27,15 +29,16 @@ const STATUS_BADGE: Record<string, string> = {
   EXPIRED: 'bg-gray-100 text-gray-700 line-through',
 };
 
-export default function StockLedgerTable({ rows, loading }: Props) {
+export default function StockLedgerTable({ rows, loading, showBranchColumn = false, emptyMessage }: Props) {
   const t = useTranslations('inventory.stock.ledger');
+  const message = emptyMessage ?? t('noMovements');
 
   if (loading) {
     return <div className="text-muted-foreground py-8 text-center">Loading…</div>;
   }
 
   if (rows.length === 0) {
-    return <div className="text-muted-foreground py-8 text-center">{t('noMovements')}</div>;
+    return <div className="text-muted-foreground py-8 text-center">{message}</div>;
   }
 
   return (
@@ -43,6 +46,9 @@ export default function StockLedgerTable({ rows, loading }: Props) {
       <table className="w-full text-sm">
         <thead className="bg-muted/50">
           <tr>
+            {showBranchColumn && (
+              <th className="px-4 py-3 text-left font-medium">{t('columns.branch')}</th>
+            )}
             <th className="px-4 py-3 text-left font-medium">{t('columns.item')}</th>
             <th className="px-4 py-3 text-left font-medium">{t('columns.lot')}</th>
             <th className="px-4 py-3 text-left font-medium">{t('columns.expiry')}</th>
@@ -53,10 +59,12 @@ export default function StockLedgerTable({ rows, loading }: Props) {
         <tbody>
           {rows.map((row) => (
             <tr key={row.id} className="border-t hover:bg-muted/30 transition-colors">
+              {showBranchColumn && (
+                <td className="px-4 py-3 text-muted-foreground">{row.branchName ?? '—'}</td>
+              )}
               <td className="px-4 py-3">
                 <div className="font-medium">{row.productName}</div>
                 {row.sku && <div className="text-xs text-muted-foreground">{row.sku}</div>}
-                {row.branchName && <div className="text-xs text-muted-foreground">{row.branchName}</div>}
               </td>
               <td className="px-4 py-3 text-muted-foreground">{row.lotNumber ?? '—'}</td>
               <td className="px-4 py-3 text-muted-foreground">
