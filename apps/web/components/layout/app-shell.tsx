@@ -42,7 +42,7 @@ import type { AuthProfile } from '@petiatrics/types';
 import { BranchSelector } from './branch-selector';
 import { useSessionStore } from '../../lib/session-store';
 
-type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'stockLedger' | 'goodsReceipt' | 'goodsIssue' | 'adjustments' | 'billing' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings';
+type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'products' | 'stockLedger' | 'goodsReceipt' | 'goodsIssue' | 'adjustments' | 'billing' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings';
 
 interface SubNavItem {
   key: NavKey;
@@ -68,7 +68,7 @@ const NAV_ITEMS: NavItem[] = [
     key: 'inventory',
     icon: Package,
     subItems: [
-      { key: 'inventory', href: '/clinic/inventory', icon: Package },
+      { key: 'products', href: '/clinic/inventory/products', icon: Package },
       { key: 'stockLedger', href: '/clinic/inventory/stock-ledger', icon: Archive },
       { key: 'goodsReceipt', href: '/clinic/inventory/receipt', icon: Boxes },
       { key: 'goodsIssue', href: '/clinic/inventory/issue', icon: Archive },

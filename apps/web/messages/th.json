@@ -92,6 +92,7 @@
     "medicalRecords": "บันทึกทางการแพทย์",
     "inventory": "คลังสินค้า",
     "stockLedger": "สมุดบัญชีสต็อก",
+    "products": "สินค้าและบริการ",
     "goodsReceipt": "รับสินค้าเข้าคลัง",
     "goodsIssue": "ปล่อยสินค้าออกจากคลัง",
     "adjustments": "ปรับปรุงสต็อก",
