@@ -11,6 +11,8 @@ import {
   Users,
   FileText,
   Package,
+  Archive,
+  Boxes,
   CreditCard,
   UserCog,
   ClipboardList,
@@ -23,6 +25,7 @@ import {
   LogOut,
   Search,
   Briefcase,
+  ChevronRight,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@petiatrics/ui';
 import { Button } from '@petiatrics/ui';
@@ -39,13 +42,20 @@ import type { AuthProfile } from '@petiatrics/types';
 import { BranchSelector } from './branch-selector';
 import { useSessionStore } from '../../lib/session-store';
 
-type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'billing' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings';
+type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'stockLedger' | 'goodsReceipt' | 'goodsIssue' | 'adjustments' | 'billing' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings';
 
-interface NavItem {
+interface SubNavItem {
   key: NavKey;
   href: string;
   icon: React.ElementType;
+}
+
+interface NavItem {
+  key: NavKey;
+  href?: string;
+  icon: React.ElementType;
   roles?: string[];
+  subItems?: SubNavItem[];
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -54,7 +64,17 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'patients', href: '/clinic/patients', icon: PawPrint },
   { key: 'clients', href: '/clients', icon: Users },
   { key: 'medicalRecords', href: '/medical-records', icon: FileText },
-  { key: 'inventory', href: '/clinic/inventory', icon: Package },
+  {
+    key: 'inventory',
+    icon: Package,
+    subItems: [
+      { key: 'inventory', href: '/clinic/inventory', icon: Package },
+      { key: 'stockLedger', href: '/clinic/inventory/stock-ledger', icon: Archive },
+      { key: 'goodsReceipt', href: '/clinic/inventory/receipt', icon: Boxes },
+      { key: 'goodsIssue', href: '/clinic/inventory/issue', icon: Archive },
+      { key: 'adjustments', href: '/clinic/inventory/adjustments', icon: Boxes },
+    ],
+  },
   { key: 'billing', href: '/clinic/billing', icon: CreditCard },
   {
     key: 'staff',
@@ -92,14 +112,28 @@ interface AppShellProps {
  */
 export function AppShell({ children, user }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [expandedNav, setExpandedNav] = useState<Record<NavKey, boolean>>({} as any);
   const pathname = usePathname();
   const t = useTranslations('nav');
   const tLocale = useTranslations('locale');
   const tAuth = useTranslations('auth');
 
-  function isActive(href: string) {
+  function isActive(href?: string) {
+    if (!href) return false;
     if (href === '/clinic/dashboard') return pathname === '/clinic/dashboard';
     return pathname.startsWith(href);
+  }
+
+  function isItemOrSubitemActive(item: NavItem): boolean {
+    if (item.href && isActive(item.href)) return true;
+    if (item.subItems) {
+      return item.subItems.some(sub => isActive(sub.href));
+    }
+    return false;
+  }
+
+  function toggleNav(key: NavKey) {
+    setExpandedNav(prev => ({ ...prev, [key]: !prev[key] }));
   }
 
   function canAccess(item: NavItem) {
@@ -169,15 +203,79 @@ export function AppShell({ children, user }: AppShellProps) {
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {NAV_ITEMS.filter(canAccess).map((item) => {
             const Icon = item.icon;
-            const active = isActive(item.href);
+            const itemActive = isItemOrSubitemActive(item);
+            const isExpanded = expandedNav[item.key];
+
+            // If item has sub-items, render as expandable menu
+            if (item.subItems) {
+              return (
+                <div key={item.key}>
+                  <button
+                    onClick={() => toggleNav(item.key)}
+                    className={cn(
+                      'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                      itemActive
+                        ? 'bg-blue-50 text-blue-700'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        'w-5 h-5 shrink-0',
+                        itemActive ? 'text-blue-600' : 'text-gray-400',
+                      )}
+                    />
+                    {t(item.key)}
+                    <ChevronRight
+                      className={cn(
+                        'w-4 h-4 ml-auto transition-transform',
+                        isExpanded && 'rotate-90',
+                      )}
+                    />
+                  </button>
+                  {/* Sub-menu items */}
+                  {isExpanded && (
+                    <div className="mt-1 space-y-0.5 pl-2">
+                      {item.subItems.map((subItem) => {
+                        const SubIcon = subItem.icon;
+                        const subActive = isActive(subItem.href);
+                        return (
+                          <Link
+                            key={subItem.href}
+                            href={subItem.href}
+                            onClick={() => setSidebarOpen(false)}
+                            className={cn(
+                              'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
+                              subActive
+                                ? 'bg-blue-50 text-blue-700 font-medium'
+                                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                            )}
+                          >
+                            <SubIcon
+                              className={cn(
+                                'w-4 h-4 shrink-0',
+                                subActive ? 'text-blue-600' : 'text-gray-400',
+                              )}
+                            />
+                            {t(subItem.key)}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // Regular link item
             return (
               <Link
-                key={item.href}
-                href={item.href}
+                key={item.key}
+                href={item.href || '#'}
                 onClick={() => setSidebarOpen(false)}
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                  active
+                  itemActive
                     ? 'bg-blue-50 text-blue-700'
                     : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
                 )}
@@ -185,7 +283,7 @@ export function AppShell({ children, user }: AppShellProps) {
                 <Icon
                   className={cn(
                     'w-5 h-5 shrink-0',
-                    active ? 'text-blue-600' : 'text-gray-400',
+                    itemActive ? 'text-blue-600' : 'text-gray-400',
                   )}
                 />
                 {t(item.key)}
