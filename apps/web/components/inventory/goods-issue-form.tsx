@@ -51,12 +51,16 @@ export default function GoodsIssueForm() {
 
   const doSubmit = async (overrideReason?: string) => {
     if (!selectedItem) return;
+    if (!activeBranchId) {
+      setError('Please select an active branch before submitting.');
+      setSubmitting(false);
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
       await apiClient.post('/inventory/stock-movements', {
         movementType: 'GOODS_ISSUE',
-        branchId: activeBranchId as string,
         productId: selectedItem.id,
         quantity: Number(quantity),
         ...(selectedLot?.lotNumber ? { lotNumber: selectedLot.lotNumber } : {}),
@@ -77,6 +81,11 @@ export default function GoodsIssueForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedItem || !quantity) return;
+    if (!activeBranchId) {
+      setError('Please select an active branch before submitting.');
+      setSubmitting(false);
+      return;
+    }
 
     const needsOverride = selectedLot && (!selectedLot.isFefo || selectedLot.isExpired);
     if (needsOverride && !pendingOverride) {

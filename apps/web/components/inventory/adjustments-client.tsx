@@ -60,11 +60,15 @@ export default function AdjustmentsClient() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedItem) return;
+    if (!activeBranchId) {
+      setFormError('Please select an active branch before submitting.');
+      setSubmitting(false);
+      return;
+    }
     setFormError(null);
     setSubmitting(true);
     try {
       await apiClient.post('/inventory/stock-adjustments', {
-        branchId: activeBranchId,
         productId: selectedItem.id,
         physicalCount: Number(physicalCount),
         notes: notes || undefined,

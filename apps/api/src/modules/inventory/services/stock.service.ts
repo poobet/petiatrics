@@ -199,6 +199,10 @@ export class StockService {
     if (product.itemType === 'SERVICE') {
       throw new BadRequestException(`Cannot modify stock for service item "${product.name}".`);
     }
+    if (!dto.branchId) {
+      throw new BadRequestException('Active branch context is required.');
+    }
+    const branchId = dto.branchId;
 
     if (product.requiresBatchAndExpiryTracking) {
       if (!dto.lotNumber) {
@@ -217,7 +221,7 @@ export class StockService {
       const existing = await tx.branchStockBalance.findFirst({
         where: {
           clinicId,
-          branchId: dto.branchId,
+          branchId,
           productId: dto.productId,
           lotNumber,
         },
@@ -237,7 +241,7 @@ export class StockService {
         balance = await tx.branchStockBalance.create({
           data: {
             clinicId,
-            branchId: dto.branchId,
+            branchId,
             productId: dto.productId,
             lotNumber,
             expiryDate,
@@ -252,7 +256,7 @@ export class StockService {
       const movement = await tx.stockMovement.create({
         data: {
           clinicId,
-          branchId: dto.branchId,
+          branchId,
           productId: dto.productId,
           delta: dto.quantity,
           quantityBefore: qAfter - dto.quantity,
@@ -269,9 +273,9 @@ export class StockService {
 
       const reorderPoint = Number(product.reorderPoint);
       if (qAfter > reorderPoint && reorderPoint > 0) {
-        await this.alertService.resolveAlert(clinicId, dto.branchId, dto.productId);
+        await this.alertService.resolveAlert(clinicId, branchId, dto.productId);
       } else if (reorderPoint > 0 && qAfter <= reorderPoint) {
-        this.emitLowStock(product, clinicId, dto.branchId, qAfter);
+        this.emitLowStock(product, clinicId, branchId, qAfter);
       }
 
       return { id: movement.id, status: 'COMMITTED', newBalance: qAfter };
@@ -308,16 +312,20 @@ export class StockService {
     if (product.itemType === 'SERVICE') {
       throw new BadRequestException(`Cannot modify stock for service item "${product.name}".`);
     }
+    if (!dto.branchId) {
+      throw new BadRequestException('Active branch context is required.');
+    }
+    const branchId = dto.branchId;
 
     // Determine FEFO lot (first by expiryDate ASC, then lotNumber ASC)
-    const lots = await this.getIssuableLots(clinicId, dto.branchId, dto.productId);
+    const lots = await this.getIssuableLots(clinicId, branchId, dto.productId);
     const fefoLot = lots[0] ?? null;
 
     const chosenLotNumber = dto.lotNumber ?? null;
 
     // Find the specific balance row to deduct from
     const balance = await db.branchStockBalance.findFirst({
-      where: { clinicId, branchId: dto.branchId, productId: dto.productId, lotNumber: chosenLotNumber },
+      where: { clinicId, branchId, productId: dto.productId, lotNumber: chosenLotNumber },
     });
     if (!balance) {
       throw new BadRequestException(
@@ -363,7 +371,7 @@ export class StockService {
       const movement = await tx.stockMovement.create({
         data: {
           clinicId,
-          branchId: dto.branchId,
+          branchId,
           productId: dto.productId,
           delta: -dto.quantity,
           quantityBefore: qAfter + dto.quantity,
@@ -381,7 +389,7 @@ export class StockService {
 
       const reorderPoint = Number(product.reorderPoint);
       if (reorderPoint > 0 && qAfter <= reorderPoint) {
-        this.emitLowStock(product, clinicId, dto.branchId, qAfter);
+        this.emitLowStock(product, clinicId, branchId, qAfter);
       }
 
       return { id: movement.id, status: 'COMMITTED', newBalance: qAfter };

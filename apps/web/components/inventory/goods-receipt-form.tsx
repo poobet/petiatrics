@@ -17,7 +17,6 @@ interface SelectedItem {
 
 interface GoodsReceiptPayload {
   movementType: 'GOODS_RECEIPT';
-  branchId: string;
   productId: string;
   quantity: number;
   lotNumber?: string;
@@ -43,6 +42,11 @@ export default function GoodsReceiptForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedItem) return;
+    if (!activeBranchId) {
+      setError('Please select an active branch before submitting.');
+      setSubmitting(false);
+      return;
+    }
 
     setError(null);
 
@@ -62,7 +66,6 @@ export default function GoodsReceiptForm() {
     try {
       const payload: GoodsReceiptPayload = {
         movementType: 'GOODS_RECEIPT',
-        branchId: activeBranchId as string,
         productId: selectedItem.id,
         quantity: Number(quantity),
         ...(lotNumber ? { lotNumber } : {}),

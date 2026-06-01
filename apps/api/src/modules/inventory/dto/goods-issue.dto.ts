@@ -7,8 +7,9 @@ import {
 } from 'class-validator';
 
 export class GoodsIssueDto {
+  @IsOptional()
   @IsUUID()
-  branchId!: string;
+  branchId?: string;
 
   @IsUUID()
   productId!: string;

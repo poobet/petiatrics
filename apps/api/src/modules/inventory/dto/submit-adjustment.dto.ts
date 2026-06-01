@@ -1,8 +1,9 @@
 import { IsUUID, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class SubmitAdjustmentDto {
+  @IsOptional()
   @IsUUID()
-  branchId!: string;
+  branchId?: string;
 
   @IsUUID()
   productId!: string;
