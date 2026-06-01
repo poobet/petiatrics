@@ -22,14 +22,14 @@ description: "Task list for 008-inventory-management"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T001 Add `lotNumber`, `expiryDate`, `version`, `updatedAt` fields to `BranchStockBalance` model in `packages/database/prisma/schema.prisma`
-- [ ] T002 Replace unique constraint on `BranchStockBalance` from `[clinicId, branchId, productId]` to `[clinicId, branchId, productId, lotNumber]` in `packages/database/prisma/schema.prisma`
-- [ ] T003 Add `lotNumber`, `expiryDate`, `overrideReason`, `approverId`, `status` fields to `StockMovement` model in `packages/database/prisma/schema.prisma`
-- [ ] T004 Add new enum `StockMovementStatus { COMMITTED PENDING_APPROVAL REJECTED }` to `packages/database/prisma/schema.prisma`
-- [ ] T005 Extend `StockMovementReason` enum with `GOODS_RECEIPT` and `GOODS_ISSUE` values in `packages/database/prisma/schema.prisma`
-- [ ] T006 Add new `StockAlert` model and `StockAlertType { LOW_STOCK }` enum to `packages/database/prisma/schema.prisma`
-- [ ] T007 Run `prisma migrate dev --name inventory_lot_tracking` and add raw SQL partial unique index for null-lot rows in the generated migration file under `packages/database/prisma/migrations/`
-- [ ] T008 Verify existing `StockService` unit tests (`apps/api/src/modules/inventory/stock.service.spec.ts`) still pass after schema migration (backward compat check)
+- [X] T001 Add `lotNumber`, `expiryDate`, `version`, `updatedAt` fields to `BranchStockBalance` model in `packages/database/prisma/schema.prisma`
+- [X] T002 Replace unique constraint on `BranchStockBalance` from `[clinicId, branchId, productId]` to `[clinicId, branchId, productId, lotNumber]` in `packages/database/prisma/schema.prisma`
+- [X] T003 Add `lotNumber`, `expiryDate`, `overrideReason`, `approverId`, `status` fields to `StockMovement` model in `packages/database/prisma/schema.prisma`
+- [X] T004 Add new enum `StockMovementStatus { COMMITTED PENDING_APPROVAL REJECTED }` to `packages/database/prisma/schema.prisma`
+- [X] T005 Extend `StockMovementReason` enum with `GOODS_RECEIPT` and `GOODS_ISSUE` values in `packages/database/prisma/schema.prisma`
+- [X] T006 Add new `StockAlert` model and `StockAlertType { LOW_STOCK }` enum to `packages/database/prisma/schema.prisma`
+- [X] T007 Run `prisma migrate dev --name inventory_lot_tracking` and add raw SQL partial unique index for null-lot rows in the generated migration file under `packages/database/prisma/migrations/`
+- [X] T008 Verify existing `StockService` unit tests (`apps/api/src/modules/inventory/stock.service.spec.ts`) still pass after schema migration (backward compat check)
 
 **Checkpoint**: Schema ready — all user story phases can now begin.
 
@@ -39,13 +39,13 @@ description: "Task list for 008-inventory-management"
 
 **Purpose**: Shared DTOs, base service extensions, and controller scaffolding needed before any user story endpoint can be implemented.
 
-- [ ] T009 Create `GoodsReceiptDto` with class-validator decorators in `apps/api/src/modules/inventory/dto/goods-receipt.dto.ts`
-- [ ] T010 [P] Create `GoodsIssueDto` with class-validator decorators in `apps/api/src/modules/inventory/dto/goods-issue.dto.ts`
-- [ ] T011 [P] Create `ListStockBalancesDto` (pagination + branch filter) in `apps/api/src/modules/inventory/dto/list-stock-balances.dto.ts`
-- [ ] T012 [P] Create `SubmitAdjustmentDto` in `apps/api/src/modules/inventory/dto/submit-adjustment.dto.ts`
-- [ ] T013 [P] Create `ApproveAdjustmentDto` and `RejectAdjustmentDto` in `apps/api/src/modules/inventory/dto/approve-adjustment.dto.ts` and `apps/api/src/modules/inventory/dto/reject-adjustment.dto.ts`
-- [ ] T014 Create `StockAlertService` skeleton with `upsertAlert()`, `resolveAlert()`, `listActive()` stubs in `apps/api/src/modules/inventory/services/stock-alert.service.ts`
-- [ ] T015 Register `StockAlertService` in `apps/api/src/modules/inventory/inventory.module.ts`
+- [X] T009 Create `GoodsReceiptDto` with class-validator decorators in `apps/api/src/modules/inventory/dto/goods-receipt.dto.ts`
+- [X] T010 [P] Create `GoodsIssueDto` with class-validator decorators in `apps/api/src/modules/inventory/dto/goods-issue.dto.ts`
+- [X] T011 [P] Create `ListStockBalancesDto` (pagination + branch filter) in `apps/api/src/modules/inventory/dto/list-stock-balances.dto.ts`
+- [X] T012 [P] Create `SubmitAdjustmentDto` in `apps/api/src/modules/inventory/dto/submit-adjustment.dto.ts`
+- [X] T013 [P] Create `ApproveAdjustmentDto` and `RejectAdjustmentDto` in `apps/api/src/modules/inventory/dto/approve-adjustment.dto.ts` and `apps/api/src/modules/inventory/dto/reject-adjustment.dto.ts`
+- [X] T014 Create `StockAlertService` skeleton with `upsertAlert()`, `resolveAlert()`, `listActive()` stubs in `apps/api/src/modules/inventory/services/stock-alert.service.ts`
+- [X] T015 Register `StockAlertService` in `apps/api/src/modules/inventory/inventory.module.ts`
 
 **Checkpoint**: Infrastructure ready — user story phases can now proceed.
 
@@ -59,18 +59,18 @@ description: "Task list for 008-inventory-management"
 
 ### API
 
-- [ ] T016 [US1] Implement `goodsReceipt()` method in `apps/api/src/modules/inventory/services/stock.service.ts`: validate product belongs to clinic; enforce lot/expiry fields when `requiresBatchAndExpiryTracking`; upsert `BranchStockBalance` with version increment; write immutable `StockMovement` (COMMITTED, GOODS_RECEIPT); emit `stock.low_stock_warning` if applicable
-- [ ] T017 [US1] Add `GET /inventory/stock-balances` endpoint (paginated, branch-filtered) to `apps/api/src/modules/inventory/controllers/stock.controller.ts`
-- [ ] T018 [P] [US1] Add `POST /inventory/stock-movements` endpoint (type=GOODS_RECEIPT) to `apps/api/src/modules/inventory/controllers/stock.controller.ts`
-- [ ] T019 [P] [US1] Write unit tests for `goodsReceipt()` covering: standard receipt, compliance field validation, lot-row creation, duplicate lot upsert in `apps/api/src/modules/inventory/stock.service.spec.ts`
+- [X] T016 [US1] Implement `goodsReceipt()` method in `apps/api/src/modules/inventory/services/stock.service.ts`: validate product belongs to clinic; enforce lot/expiry fields when `requiresBatchAndExpiryTracking`; upsert `BranchStockBalance` with version increment; write immutable `StockMovement` (COMMITTED, GOODS_RECEIPT); emit `stock.low_stock_warning` if applicable
+- [X] T017 [US1] Add `GET /inventory/stock-balances` endpoint (paginated, branch-filtered) to `apps/api/src/modules/inventory/controllers/stock.controller.ts`
+- [X] T018 [P] [US1] Add `POST /inventory/stock-movements` endpoint (type=GOODS_RECEIPT) to `apps/api/src/modules/inventory/controllers/stock.controller.ts`
+- [X] T019 [P] [US1] Write unit tests for `goodsReceipt()` covering: standard receipt, compliance field validation, lot-row creation, duplicate lot upsert in `apps/api/src/modules/inventory/stock.service.spec.ts`
 
 ### Frontend
 
-- [ ] T020 [US1] Create Stock Ledger page at `apps/web/app/(clinic)/clinic/inventory/stock-ledger/page.tsx` with server component shell and `StockLedgerTable` import
-- [ ] T021 [P] [US1] Create `StockLedgerTable` component with data grid (item name, lot, expiry, quantity, status badge, reorder indicator) in `apps/web/components/inventory/stock-ledger-table.tsx`
-- [ ] T022 [P] [US1] Create Goods Receipt page at `apps/web/app/(clinic)/clinic/inventory/receipt/page.tsx`
-- [ ] T023 [P] [US1] Create `GoodsReceiptForm` component with item search, quantity field, conditional lot/expiry fields (gated on `requiresBatchAndExpiryTracking`), and blocking validation in `apps/web/components/inventory/goods-receipt-form.tsx`
-- [ ] T024 [P] [US1] Add `inventory.stock.receipt.*` i18n keys to `apps/web/messages/en.json` and `apps/web/messages/th.json`
+- [X] T020 [US1] Create Stock Ledger page at `apps/web/app/(clinic)/clinic/inventory/stock-ledger/page.tsx` with server component shell and `StockLedgerTable` import
+- [X] T021 [P] [US1] Create `StockLedgerTable` component with data grid (item name, lot, expiry, quantity, status badge, reorder indicator) in `apps/web/components/inventory/stock-ledger-table.tsx`
+- [X] T022 [P] [US1] Create Goods Receipt page at `apps/web/app/(clinic)/clinic/inventory/receipt/page.tsx`
+- [X] T023 [P] [US1] Create `GoodsReceiptForm` component with item search, quantity field, conditional lot/expiry fields (gated on `requiresBatchAndExpiryTracking`), and blocking validation in `apps/web/components/inventory/goods-receipt-form.tsx`
+- [X] T024 [P] [US1] Add `inventory.stock.receipt.*` i18n keys to `apps/web/messages/en.json` and `apps/web/messages/th.json`
 
 ---
 
@@ -82,18 +82,18 @@ description: "Task list for 008-inventory-management"
 
 ### API
 
-- [ ] T025 [US2] Implement `getIssuableLots()` method in `apps/api/src/modules/inventory/services/stock.service.ts`: query `BranchStockBalance` for product/branch ordered by `expiryDate ASC NULLS LAST, lotNumber ASC`; return `isFefo`, `isExpired`, `quantity` flags
-- [ ] T026 [US2] Implement `goodsIssue()` method in `apps/api/src/modules/inventory/services/stock.service.ts`: validate sufficient stock; require `overrideReason` if chosen lot ≠ FEFO lot or lot is expired; decrement balance via optimistic lock (`where: { id, version }`); throw `ConflictException` on version mismatch or negative result; write immutable ISSUE movement; emit `stock.low_stock_warning` if balance ≤ reorderPoint
-- [ ] T027 [P] [US2] Add `GET /inventory/stock-balances/lots/:productId` endpoint (FEFO-ordered) to `apps/api/src/modules/inventory/controllers/stock.controller.ts`
-- [ ] T028 [P] [US2] Add `POST /inventory/stock-movements` (type=GOODS_ISSUE) routing to `goodsIssue()` in `apps/api/src/modules/inventory/controllers/stock.controller.ts`
-- [ ] T029 [P] [US2] Write unit tests for `goodsIssue()` covering: standard issue, FEFO override enforcement, expired lot override, negative stock hard-block, optimistic lock conflict (409) in `apps/api/src/modules/inventory/stock.service.spec.ts`
+- [X] T025 [US2] Implement `getIssuableLots()` method in `apps/api/src/modules/inventory/services/stock.service.ts`: query `BranchStockBalance` for product/branch ordered by `expiryDate ASC NULLS LAST, lotNumber ASC`; return `isFefo`, `isExpired`, `quantity` flags
+- [X] T026 [US2] Implement `goodsIssue()` method in `apps/api/src/modules/inventory/services/stock.service.ts`: validate sufficient stock; require `overrideReason` if chosen lot ≠ FEFO lot or lot is expired; decrement balance via optimistic lock (`where: { id, version }`); throw `ConflictException` on version mismatch or negative result; write immutable ISSUE movement; emit `stock.low_stock_warning` if balance ≤ reorderPoint
+- [X] T027 [P] [US2] Add `GET /inventory/stock-balances/lots/:productId` endpoint (FEFO-ordered) to `apps/api/src/modules/inventory/controllers/stock.controller.ts`
+- [X] T028 [P] [US2] Add `POST /inventory/stock-movements` (type=GOODS_ISSUE) routing to `goodsIssue()` in `apps/api/src/modules/inventory/controllers/stock.controller.ts`
+- [X] T029 [P] [US2] Write unit tests for `goodsIssue()` covering: standard issue, FEFO override enforcement, expired lot override, negative stock hard-block, optimistic lock conflict (409) in `apps/api/src/modules/inventory/stock.service.spec.ts`
 
 ### Frontend
 
-- [ ] T030 [US2] Create Goods Issue page at `apps/web/app/(clinic)/clinic/inventory/issue/page.tsx`
-- [ ] T031 [P] [US2] Create `GoodsIssueForm` component with item search, `GoodsIssueLotSelector` (populated from `GET /inventory/stock-balances/lots/:productId`, first lot badged "FEFO Recommended"), and 409 inline error handling in `apps/web/components/inventory/goods-issue-form.tsx`
-- [ ] T032 [P] [US2] Create `FefoOverrideDialog` modal component (triggers when non-FEFO or expired lot selected; requires override reason text; blocks save until reason entered) in `apps/web/components/inventory/fefo-override-dialog.tsx`
-- [ ] T033 [P] [US2] Add `inventory.stock.issue.*` and `inventory.stock.fefo.*` i18n keys to `apps/web/messages/en.json` and `apps/web/messages/th.json`
+- [X] T030 [US2] Create Goods Issue page at `apps/web/app/(clinic)/clinic/inventory/issue/page.tsx`
+- [X] T031 [P] [US2] Create `GoodsIssueForm` component with item search, `GoodsIssueLotSelector` (populated from `GET /inventory/stock-balances/lots/:productId`, first lot badged "FEFO Recommended"), and 409 inline error handling in `apps/web/components/inventory/goods-issue-form.tsx`
+- [X] T032 [P] [US2] Create `FefoOverrideDialog` modal component (triggers when non-FEFO or expired lot selected; requires override reason text; blocks save until reason entered) in `apps/web/components/inventory/fefo-override-dialog.tsx`
+- [X] T033 [P] [US2] Add `inventory.stock.issue.*` and `inventory.stock.fefo.*` i18n keys to `apps/web/messages/en.json` and `apps/web/messages/th.json`
 
 ---
 
@@ -105,18 +105,18 @@ description: "Task list for 008-inventory-management"
 
 ### API
 
-- [ ] T034 [US3] Implement `StockAdjustmentService` with `submitAdjustment()` (writes PENDING_APPROVAL movement; does not update balance), `approveAdjustment()` (transaction: update balance + write COMMITTED movement with `approverId`), `rejectAdjustment()` (set REJECTED + store rejection reason) in `apps/api/src/modules/inventory/services/stock-adjustment.service.ts`
-- [ ] T035 [P] [US3] Create `StockAdjustmentController` with `POST /inventory/stock-adjustments`, `PATCH /inventory/stock-adjustments/:id/approve`, `PATCH /inventory/stock-adjustments/:id/reject` — all guarded with `@Roles(MANAGER, ADMIN)` in `apps/api/src/modules/inventory/controllers/stock-adjustment.controller.ts`
-- [ ] T036 [P] [US3] Register `StockAdjustmentService` and `StockAdjustmentController` in `apps/api/src/modules/inventory/inventory.module.ts`
-- [ ] T037 [P] [US3] Write unit tests for `StockAdjustmentService` covering: submit creates pending movement, approve updates balance and sets approverId, reject leaves balance unchanged, Staff role returns 403 in `apps/api/src/modules/inventory/stock-adjustment.service.spec.ts`
+- [X] T034 [US3] Implement `StockAdjustmentService` with `submitAdjustment()` (writes PENDING_APPROVAL movement; does not update balance), `approveAdjustment()` (transaction: update balance + write COMMITTED movement with `approverId`), `rejectAdjustment()` (set REJECTED + store rejection reason) in `apps/api/src/modules/inventory/services/stock-adjustment.service.ts`
+- [X] T035 [P] [US3] Create `StockAdjustmentController` with `POST /inventory/stock-adjustments`, `PATCH /inventory/stock-adjustments/:id/approve`, `PATCH /inventory/stock-adjustments/:id/reject` — all guarded with `@Roles(MANAGER, ADMIN)` in `apps/api/src/modules/inventory/controllers/stock-adjustment.controller.ts`
+- [X] T036 [P] [US3] Register `StockAdjustmentService` and `StockAdjustmentController` in `apps/api/src/modules/inventory/inventory.module.ts`
+- [X] T037 [P] [US3] Write unit tests for `StockAdjustmentService` covering: submit creates pending movement, approve updates balance and sets approverId, reject leaves balance unchanged, Staff role returns 403 in `apps/api/src/modules/inventory/stock-adjustment.service.spec.ts`
 
 ### Frontend
 
-- [ ] T038 [US3] Create Pending Adjustments list page at `apps/web/app/(clinic)/clinic/inventory/adjustments/page.tsx` (Manager-only, shows pending adjustments with approve/reject buttons)
-- [ ] T039 [P] [US3] Create `PendingAdjustmentsTable` component with confirm dialogs for approve/reject in `apps/web/components/inventory/pending-adjustments-table.tsx`
-- [ ] T040 [P] [US3] Create Submit Adjustment page at `apps/web/app/(clinic)/clinic/inventory/adjustments/new/page.tsx`
-- [ ] T041 [P] [US3] Create `StockAdjustmentForm` component with item search, current balance display, new physical count input, variance preview in `apps/web/components/inventory/stock-adjustment-form.tsx`
-- [ ] T042 [P] [US3] Add `inventory.stock.adjustment.*` i18n keys to `apps/web/messages/en.json` and `apps/web/messages/th.json`
+- [X] T038 [US3] Create Pending Adjustments list page at `apps/web/app/(clinic)/clinic/inventory/adjustments/page.tsx` (Manager-only, shows pending adjustments with approve/reject buttons)
+- [X] T039 [P] [US3] Create `PendingAdjustmentsTable` component with confirm dialogs for approve/reject in `apps/web/components/inventory/pending-adjustments-table.tsx`
+- [X] T040 [P] [US3] Create Submit Adjustment page at `apps/web/app/(clinic)/clinic/inventory/adjustments/new/page.tsx`
+- [X] T041 [P] [US3] Create `StockAdjustmentForm` component with item search, current balance display, new physical count input, variance preview in `apps/web/components/inventory/stock-adjustment-form.tsx`
+- [X] T042 [P] [US3] Add `inventory.stock.adjustment.*` i18n keys to `apps/web/messages/en.json` and `apps/web/messages/th.json`
 
 ---
 
@@ -128,17 +128,17 @@ description: "Task list for 008-inventory-management"
 
 ### API
 
-- [ ] T043 [US4] Extend `GET /inventory/stock-balances` in `apps/api/src/modules/inventory/controllers/stock.controller.ts` to enforce branch-scoping for Staff (session branch only) vs Manager (all clinic branches + aggregate) per role
-- [ ] T044 [P] [US4] Add `GET /inventory/stock-movements` audit log endpoint (paginated, filtered by product/branch/date) to `apps/api/src/modules/inventory/controllers/stock.controller.ts`
+- [X] T043 [US4] Extend `GET /inventory/stock-balances` in `apps/api/src/modules/inventory/controllers/stock.controller.ts` to enforce branch-scoping for Staff (session branch only) vs Manager (all clinic branches + aggregate) per role
+- [X] T044 [P] [US4] Add `GET /inventory/stock-movements` audit log endpoint (paginated, filtered by product/branch/date) to `apps/api/src/modules/inventory/controllers/stock.controller.ts`
 
 ### Frontend
 
-- [ ] T045 [US4] Add branch filter dropdown to `StockLedgerTable` (Staff sees own branch locked; Manager sees branch selector + "All Branches" option) in `apps/web/components/inventory/stock-ledger-table.tsx`
-- [ ] T046 [P] [US4] Add Low Stock row indicator (amber badge) when `quantity <= reorderPoint` to `StockLedgerTable` in `apps/web/components/inventory/stock-ledger-table.tsx`
-- [ ] T047 [P] [US4] Add lot-per-row rendering (each `BranchStockBalance` lot row shown separately with lot number and expiry date columns) to `StockLedgerTable` in `apps/web/components/inventory/stock-ledger-table.tsx`
-- [ ] T048 [P] [US4] Add slide-over panel showing paginated movement history for a selected item/lot in `apps/web/components/inventory/stock-ledger-table.tsx`
-- [ ] T049 [P] [US4] Add navigation links ("New Receipt", "New Issue", "Adjust Stock" buttons) to `apps/web/app/(clinic)/clinic/inventory/stock-ledger/page.tsx`
-- [ ] T050 [P] [US4] Add `inventory.stock.ledger.*` i18n keys to `apps/web/messages/en.json` and `apps/web/messages/th.json`
+- [X] T045 [US4] Add branch filter dropdown to `StockLedgerTable` (Staff sees own branch locked; Manager sees branch selector + "All Branches" option) in `apps/web/components/inventory/stock-ledger-table.tsx`
+- [X] T046 [P] [US4] Add Low Stock row indicator (amber badge) when `quantity <= reorderPoint` to `StockLedgerTable` in `apps/web/components/inventory/stock-ledger-table.tsx`
+- [X] T047 [P] [US4] Add lot-per-row rendering (each `BranchStockBalance` lot row shown separately with lot number and expiry date columns) to `StockLedgerTable` in `apps/web/components/inventory/stock-ledger-table.tsx`
+- [X] T048 [P] [US4] Add slide-over panel showing paginated movement history for a selected item/lot in `apps/web/components/inventory/stock-ledger-table.tsx`
+- [X] T049 [P] [US4] Add navigation links ("New Receipt", "New Issue", "Adjust Stock" buttons) to `apps/web/app/(clinic)/clinic/inventory/stock-ledger/page.tsx`
+- [X] T050 [P] [US4] Add `inventory.stock.ledger.*` i18n keys to `apps/web/messages/en.json` and `apps/web/messages/th.json`
 
 ---
 
@@ -150,19 +150,19 @@ description: "Task list for 008-inventory-management"
 
 ### API
 
-- [ ] T051 [US5] Implement `StockAlertService.upsertAlert()` and `resolveAlert()` fully in `apps/api/src/modules/inventory/services/stock-alert.service.ts`: `upsertAlert()` creates or reactivates `StockAlert` row; `resolveAlert()` sets `isActive = false` and `resolvedAt = now()`
-- [ ] T052 [P] [US5] Implement `StockAlertService.listActive()`: query active `StockAlert` rows for clinicId/branchId; join product name and `defaultSupplierId` supplier name in `apps/api/src/modules/inventory/services/stock-alert.service.ts`
-- [ ] T053 [P] [US5] Modify `LowStockListener` to call `StockAlertService.upsertAlert()` on `stock.low_stock_warning` event in `apps/api/src/modules/inventory/listeners/low-stock.listener.ts`
-- [ ] T054 [P] [US5] Call `StockAlertService.resolveAlert()` from `StockService.goodsReceipt()` when replenished balance exceeds `reorderPoint` in `apps/api/src/modules/inventory/services/stock.service.ts`
-- [ ] T055 [P] [US5] Create `StockAlertController` with `GET /inventory/alerts/low-stock` in `apps/api/src/modules/inventory/controllers/stock-alert.controller.ts`
-- [ ] T056 [P] [US5] Register `StockAlertController` in `apps/api/src/modules/inventory/inventory.module.ts`
+- [X] T051 [US5] Implement `StockAlertService.upsertAlert()` and `resolveAlert()` fully in `apps/api/src/modules/inventory/services/stock-alert.service.ts`: `upsertAlert()` creates or reactivates `StockAlert` row; `resolveAlert()` sets `isActive = false` and `resolvedAt = now()`
+- [X] T052 [P] [US5] Implement `StockAlertService.listActive()`: query active `StockAlert` rows for clinicId/branchId; join product name and `defaultSupplierId` supplier name in `apps/api/src/modules/inventory/services/stock-alert.service.ts`
+- [X] T053 [P] [US5] Modify `LowStockListener` to call `StockAlertService.upsertAlert()` on `stock.low_stock_warning` event in `apps/api/src/modules/inventory/listeners/low-stock.listener.ts`
+- [X] T054 [P] [US5] Call `StockAlertService.resolveAlert()` from `StockService.goodsReceipt()` when replenished balance exceeds `reorderPoint` in `apps/api/src/modules/inventory/services/stock.service.ts`
+- [X] T055 [P] [US5] Create `StockAlertController` with `GET /inventory/alerts/low-stock` in `apps/api/src/modules/inventory/controllers/stock-alert.controller.ts`
+- [X] T056 [P] [US5] Register `StockAlertController` in `apps/api/src/modules/inventory/inventory.module.ts`
 
 ### Frontend
 
-- [ ] T057 [US5] Create `LowStockBanner` component that polls `GET /inventory/alerts/low-stock` every 30 seconds and renders an amber dismissable strip with item name, quantity, reorder point, and supplier name in `apps/web/components/inventory/low-stock-banner.tsx`
-- [ ] T058 [P] [US5] Mount `LowStockBanner` on the main inventory layout page (`apps/web/app/(clinic)/clinic/inventory/page.tsx`)
-- [ ] T059 [P] [US5] Increment notification bell badge count from `LowStockBanner` alert count (wire to existing notification bell in app shell)
-- [ ] T060 [P] [US5] Add `inventory.stock.alerts.*` i18n keys to `apps/web/messages/en.json` and `apps/web/messages/th.json`
+- [X] T057 [US5] Create `LowStockBanner` component that polls `GET /inventory/alerts/low-stock` every 30 seconds and renders an amber dismissable strip with item name, quantity, reorder point, and supplier name in `apps/web/components/inventory/low-stock-banner.tsx`
+- [X] T058 [P] [US5] Mount `LowStockBanner` on the main inventory layout page (`apps/web/app/(clinic)/clinic/inventory/page.tsx`)
+- [X] T059 [P] [US5] Increment notification bell badge count from `LowStockBanner` alert count (wire to existing notification bell in app shell)
+- [X] T060 [P] [US5] Add `inventory.stock.alerts.*` i18n keys to `apps/web/messages/en.json` and `apps/web/messages/th.json`
 
 ---
 
@@ -170,11 +170,11 @@ description: "Task list for 008-inventory-management"
 
 **Purpose**: E2E tests, missing i18n keys audit, and any cleanup.
 
-- [ ] T061 [P] Write Playwright E2E test: Goods Receipt happy path (non-lot-tracked item) in `apps/web/test/inventory-receipt.spec.ts`
-- [ ] T062 [P] Write Playwright E2E test: Goods Issue with FEFO deviation (override dialog) in `apps/web/test/inventory-issue-fefo.spec.ts`
-- [ ] T063 [P] Write Playwright E2E test: Low Stock alert appears after issue reduces balance to reorderPoint in `apps/web/test/inventory-low-stock-alert.spec.ts`
-- [ ] T064 [P] Audit all `inventory.stock.*` keys for EN/TH completeness and fill any gaps in `apps/web/messages/en.json` and `apps/web/messages/th.json`
-- [ ] T065 [P] Add `@Audit()` decorator to all mutation endpoints in `StockController`, `StockAdjustmentController` per constitution Principle III
+- [X] T061 [P] Write Playwright E2E test: Goods Receipt happy path (non-lot-tracked item) in `apps/web/test/inventory-receipt.spec.ts`
+- [X] T062 [P] Write Playwright E2E test: Goods Issue with FEFO deviation (override dialog) in `apps/web/test/inventory-issue-fefo.spec.ts`
+- [X] T063 [P] Write Playwright E2E test: Low Stock alert appears after issue reduces balance to reorderPoint in `apps/web/test/inventory-low-stock-alert.spec.ts`
+- [X] T064 [P] Audit all `inventory.stock.*` keys for EN/TH completeness and fill any gaps in `apps/web/messages/en.json` and `apps/web/messages/th.json`
+- [X] T065 [P] Add `@Audit()` decorator to all mutation endpoints in `StockController`, `StockAdjustmentController` per constitution Principle III
 
 ---
 

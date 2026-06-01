@@ -328,6 +328,100 @@
         "conversionRatioPositive": "Ratio must be greater than 0.",
         "codeDuplicate": "This item code already exists in your clinic."
       }
+    },
+    "stock": {
+      "receipt": {
+        "title": "Goods Receipt",
+        "breadcrumb": "Receive Stock",
+        "selectItem": "Select Item",
+        "quantity": "Quantity",
+        "lotNumber": "Lot / Batch Number",
+        "lotNumberRequired": "Lot number is required for this item",
+        "expiryDate": "Expiry Date",
+        "expiryDateRequired": "Expiry date is required for this item",
+        "referenceId": "Reference / PO Number",
+        "submit": "Post Receipt",
+        "submitting": "Posting…",
+        "success": "Stock received successfully.",
+        "error": "Failed to post receipt. Please try again."
+      },
+      "issue": {
+        "title": "Goods Issue",
+        "breadcrumb": "Issue Stock",
+        "selectItem": "Select Item",
+        "quantity": "Quantity",
+        "selectLot": "Select Lot",
+        "fefoRecommended": "FEFO Recommended",
+        "expired": "EXPIRED",
+        "overrideReason": "Override Reason",
+        "submit": "Post Issue",
+        "submitting": "Posting…",
+        "success": "Stock issued successfully.",
+        "error": "Failed to post issue. Please try again.",
+        "insufficientStock": "Insufficient stock. Please check the balance and retry."
+      },
+      "fefo": {
+        "dialogTitle": "Override FEFO Recommendation",
+        "dialogDescription": "You are about to issue from a lot that is not the FEFO-recommended lot. This requires a reason.",
+        "expiredDialogDescription": "This lot has expired. Issuing expired stock requires a documented reason.",
+        "reasonLabel": "Override Reason",
+        "reasonPlaceholder": "Describe why you are overriding FEFO…",
+        "confirm": "Confirm Override",
+        "cancel": "Cancel"
+      },
+      "adjustment": {
+        "title": "Stock Adjustments",
+        "breadcrumb": "Adjustments",
+        "newAdjustment": "New Adjustment",
+        "selectItem": "Select Item",
+        "physicalCount": "Physical Count (units)",
+        "notes": "Notes",
+        "submit": "Submit for Approval",
+        "submitting": "Submitting…",
+        "approve": "Approve",
+        "reject": "Reject",
+        "rejectionReason": "Rejection Reason",
+        "pending": "Pending Approval",
+        "success": "Adjustment submitted.",
+        "approveSuccess": "Adjustment approved.",
+        "rejectSuccess": "Adjustment rejected.",
+        "error": "Failed to submit adjustment."
+      },
+      "ledger": {
+        "title": "Stock Ledger",
+        "breadcrumb": "Stock Ledger",
+        "columns": {
+          "item": "Item",
+          "lot": "Lot",
+          "expiry": "Expiry",
+          "quantity": "Qty on Hand",
+          "status": "Status"
+        },
+        "status": {
+          "inStock": "In Stock",
+          "lowStock": "Low Stock",
+          "outOfStock": "Out of Stock",
+          "expired": "Expired"
+        },
+        "filterBranch": "Filter by Branch",
+        "allBranches": "All Branches",
+        "newReceipt": "New Receipt",
+        "newIssue": "New Issue",
+        "adjustStock": "Adjust Stock",
+        "movementHistory": "Movement History",
+        "noMovements": "No movements found."
+      },
+      "alerts": {
+        "title": "Low Stock Alerts",
+        "banner": "{count} item(s) are below reorder point",
+        "item": "{name} (SKU: {sku})",
+        "currentQty": "Current: {qty}",
+        "reorderPoint": "Reorder at: {rp}",
+        "supplier": "Supplier: {supplier}",
+        "noSupplier": "No preferred supplier",
+        "dismiss": "Dismiss",
+        "resolvedNote": "Alert will auto-resolve when stock is replenished."
+      }
     }
   },
   "billing": {

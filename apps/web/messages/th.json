@@ -328,6 +328,100 @@
         "conversionRatioPositive": "อัตราส่วนต้องมากกว่า 0",
         "codeDuplicate": "รหัสรายการนี้มีอยู่แล้วในคลินิกของคุณ"
       }
+    },
+    "stock": {
+      "receipt": {
+        "title": "รับสินค้า",
+        "breadcrumb": "รับสินค้าเข้าคลัง",
+        "selectItem": "เลือกรายการ",
+        "quantity": "จำนวน",
+        "lotNumber": "หมายเลขล็อต / แบทช์",
+        "lotNumberRequired": "จำเป็นต้องระบุหมายเลขล็อตสำหรับรายการนี้",
+        "expiryDate": "วันหมดอายุ",
+        "expiryDateRequired": "จำเป็นต้องระบุวันหมดอายุสำหรับรายการนี้",
+        "referenceId": "เลขที่อ้างอิง / PO",
+        "submit": "บันทึกการรับสินค้า",
+        "submitting": "กำลังบันทึก…",
+        "success": "รับสินค้าเรียบร้อยแล้ว",
+        "error": "ไม่สามารถบันทึกการรับสินค้าได้ กรุณาลองใหม่"
+      },
+      "issue": {
+        "title": "เบิกสินค้า",
+        "breadcrumb": "เบิกสินค้าออกจากคลัง",
+        "selectItem": "เลือกรายการ",
+        "quantity": "จำนวน",
+        "selectLot": "เลือกล็อต",
+        "fefoRecommended": "แนะนำ FEFO",
+        "expired": "หมดอายุ",
+        "overrideReason": "เหตุผลที่ไม่ตาม FEFO",
+        "submit": "บันทึกการเบิกสินค้า",
+        "submitting": "กำลังบันทึก…",
+        "success": "เบิกสินค้าเรียบร้อยแล้ว",
+        "error": "ไม่สามารถบันทึกการเบิกสินค้าได้ กรุณาลองใหม่",
+        "insufficientStock": "สินค้าไม่เพียงพอ กรุณาตรวจสอบยอดคงเหลือแล้วลองใหม่"
+      },
+      "fefo": {
+        "dialogTitle": "ยืนยันการข้าม FEFO",
+        "dialogDescription": "คุณกำลังจะเบิกสินค้าจากล็อตที่ไม่ใช่ล็อตแรกสุดตาม FEFO จำเป็นต้องระบุเหตุผล",
+        "expiredDialogDescription": "ล็อตนี้หมดอายุแล้ว การเบิกสินค้าที่หมดอายุจำเป็นต้องระบุเหตุผล",
+        "reasonLabel": "เหตุผล",
+        "reasonPlaceholder": "ระบุเหตุผลที่ไม่ตาม FEFO…",
+        "confirm": "ยืนยัน",
+        "cancel": "ยกเลิก"
+      },
+      "adjustment": {
+        "title": "การปรับสต็อก",
+        "breadcrumb": "ปรับสต็อก",
+        "newAdjustment": "ปรับสต็อกใหม่",
+        "selectItem": "เลือกรายการ",
+        "physicalCount": "จำนวนที่นับได้จริง (หน่วย)",
+        "notes": "หมายเหตุ",
+        "submit": "ส่งเพื่ออนุมัติ",
+        "submitting": "กำลังส่ง…",
+        "approve": "อนุมัติ",
+        "reject": "ปฏิเสธ",
+        "rejectionReason": "เหตุผลการปฏิเสธ",
+        "pending": "รออนุมัติ",
+        "success": "ส่งคำขอปรับสต็อกแล้ว",
+        "approveSuccess": "อนุมัติการปรับสต็อกแล้ว",
+        "rejectSuccess": "ปฏิเสธการปรับสต็อกแล้ว",
+        "error": "ไม่สามารถส่งคำขอปรับสต็อกได้"
+      },
+      "ledger": {
+        "title": "บัญชีสต็อก",
+        "breadcrumb": "บัญชีสต็อก",
+        "columns": {
+          "item": "รายการ",
+          "lot": "ล็อต",
+          "expiry": "วันหมดอายุ",
+          "quantity": "จำนวนคงเหลือ",
+          "status": "สถานะ"
+        },
+        "status": {
+          "inStock": "มีสต็อก",
+          "lowStock": "ใกล้หมด",
+          "outOfStock": "หมดสต็อก",
+          "expired": "หมดอายุ"
+        },
+        "filterBranch": "กรองตามสาขา",
+        "allBranches": "ทุกสาขา",
+        "newReceipt": "รับสินค้า",
+        "newIssue": "เบิกสินค้า",
+        "adjustStock": "ปรับสต็อก",
+        "movementHistory": "ประวัติการเคลื่อนไหว",
+        "noMovements": "ไม่พบรายการเคลื่อนไหว"
+      },
+      "alerts": {
+        "title": "แจ้งเตือนสต็อกต่ำ",
+        "banner": "{count} รายการ ต่ำกว่าจุดสั่งซื้อ",
+        "item": "{name} (SKU: {sku})",
+        "currentQty": "ปัจจุบัน: {qty}",
+        "reorderPoint": "สั่งซื้อเมื่อ: {rp}",
+        "supplier": "ผู้จำหน่าย: {supplier}",
+        "noSupplier": "ไม่มีผู้จำหน่ายที่ตั้งค่าไว้",
+        "dismiss": "ปิด",
+        "resolvedNote": "การแจ้งเตือนจะถูกปิดโดยอัตโนมัติเมื่อเติมสต็อกแล้ว"
+      }
     }
   },
   "billing": {
