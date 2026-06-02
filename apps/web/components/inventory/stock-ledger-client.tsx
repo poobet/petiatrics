@@ -61,22 +61,23 @@ export default function StockLedgerClient() {
   }, [activeBranchId, lowStockOnly]);
 
   const groupedProducts = useMemo<ProductSummaryRow[]>(() => {
-    const map = new Map<string, ProductSummaryRow>();
-    for (const balance of balances) {
-      const existing = map.get(balance.productId);
-      if (existing) {
-        existing.totalQuantity += balance.quantity;
-      } else {
-        map.set(balance.productId, {
-          productId: balance.productId,
-          productName: balance.productName,
-          sku: balance.sku,
-          totalQuantity: balance.quantity,
-          reorderPoint: balance.reorderPoint,
-        });
-      }
-    }
-    return Array.from(map.values()).sort((a, b) => a.productName.localeCompare(b.productName));
+    return balances
+      .reduce<ProductSummaryRow[]>((acc, balance) => {
+        const existing = acc.find((item) => item.productId === balance.productId);
+        if (existing) {
+          existing.totalQuantity += balance.quantity;
+        } else {
+          acc.push({
+            productId: balance.productId,
+            productName: balance.productName,
+            sku: balance.sku,
+            totalQuantity: balance.quantity,
+            reorderPoint: balance.reorderPoint,
+          });
+        }
+        return acc;
+      }, [])
+      .sort((a, b) => a.productName.localeCompare(b.productName));
   }, [balances]);
 
   const fetchMovements = useCallback(

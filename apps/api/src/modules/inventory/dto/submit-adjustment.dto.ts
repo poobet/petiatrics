@@ -7,10 +7,6 @@ export enum AdjustmentReasonCode {
 }
 
 export class SubmitAdjustmentDto {
-  @IsOptional()
-  @IsUUID()
-  branchId?: string;
-
   @IsUUID()
   productId!: string;
 

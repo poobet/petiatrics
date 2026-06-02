@@ -42,8 +42,7 @@ export class StockAdjustmentController {
     @CurrentUser() user: UserContext,
     @Body() dto: SubmitAdjustmentDto,
   ) {
-    dto.branchId = branchId;
-    return this.adjustmentService.submitAdjustment(clinicId, user.userId, dto);
+    return this.adjustmentService.submitAdjustment(clinicId, branchId, user.userId, dto);
   }
 
   @Patch(':id/approve')

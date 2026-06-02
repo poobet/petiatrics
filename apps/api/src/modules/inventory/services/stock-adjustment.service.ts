@@ -17,17 +17,17 @@ export class StockAdjustmentService {
    * Submit a stock adjustment for manager review.
    * Creates a PENDING_APPROVAL StockMovement; does NOT update BranchStockBalance.
    */
-  async submitAdjustment(clinicId: string, actorId: string, dto: SubmitAdjustmentDto) {
+  async submitAdjustment(clinicId: string, branchId: string, actorId: string, dto: SubmitAdjustmentDto) {
     const db = scopedPrisma(this.prisma, clinicId);
 
     const product = await db.product.findUnique({ where: { id: dto.productId } });
     if (!product) throw new NotFoundException(`Product ${dto.productId} not found.`);
 
-    // Find the current balance for the lot
+    // Find the current balance for the lot in the securely extracted branch
     const balance = await db.branchStockBalance.findFirst({
       where: {
         clinicId,
-        branchId: dto.branchId,
+        branchId,
         productId: dto.productId,
         lotNumber: dto.lotNumber ?? null,
       },
@@ -39,7 +39,7 @@ export class StockAdjustmentService {
     const movement = await this.prisma.stockMovement.create({
       data: {
         clinicId,
-        branchId: dto.branchId,
+        branchId,
         productId: dto.productId,
         delta,
         quantityBefore: currentQty,
