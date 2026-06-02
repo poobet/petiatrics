@@ -185,6 +185,11 @@ export class StockService {
       where: { branchId, ...(productId ? { productId } : {}) },
       orderBy: { createdAt: 'desc' },
       take: 100,
+      include: {
+        actor: {
+          select: { id: true, name: true },
+        },
+      },
     });
   }
 

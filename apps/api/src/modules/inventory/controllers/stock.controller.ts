@@ -50,6 +50,22 @@ export class StockController {
     return this.stockService.getMovements(clinicId, branchId, productId);
   }
 
+  @Get('products/:productId/all-branch-balances')
+  @Roles(Role.CLINIC_OWNER, Role.VET, Role.STAFF, Role.ASSISTANT, Role.CASHIER)
+  @UseGuards(BranchContextGuard)
+  getAllBranchBalances(
+    @TenantId() clinicId: string,
+    @Param('productId') productId: string,
+    @Query() query: ListStockBalancesDto,
+  ) {
+    return this.stockService.listBalances(clinicId, {
+      productId,
+      lowStock: query.lowStock,
+      page: query.page ?? 1,
+      limit: query.limit ?? 50,
+    });
+  }
+
   // ─── Stock Balances (US1 / US4) ────────────────────────────────────────────
 
   @Get('stock-balances')

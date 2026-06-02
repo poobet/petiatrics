@@ -49,7 +49,7 @@ export default function StockLedgerClient() {
 
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: '1', limit: '100', branchId: activeBranchId });
+      const params = new URLSearchParams({ page: '1', limit: '100' });
       if (lowStockOnly) params.set('lowStock', 'true');
       const result = await apiClient.get<BalancesResponse>(`/inventory/stock-balances?${params}`);
       setBalances(result?.data ?? []);
@@ -90,7 +90,7 @@ export default function StockLedgerClient() {
       setExpandedProductId(productId);
       setMovementLoadingFor(productId);
       try {
-        const params = new URLSearchParams({ productId, branchId: activeBranchId, page: '1', limit: '100' });
+        const params = new URLSearchParams({ productId, page: '1', limit: '100' });
         const result = await apiClient.get<MovementHistoryRow[]>(`/inventory/stock/movements?${params}`);
         const rows = Array.isArray(result)
           ? result

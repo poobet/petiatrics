@@ -95,9 +95,9 @@ export default function StockLedgerTable({
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr>
-              <th className="px-4 py-3 text-left font-medium">{t('columns.item')}</th>
+              <th className="px-4 py-3 text-left font-medium">{t('columns.productName')}</th>
               <th className="px-4 py-3 text-left font-medium">{t('columns.sku')}</th>
-              <th className="px-4 py-3 text-right font-medium">{t('columns.quantity')}</th>
+              <th className="px-4 py-3 text-right font-medium">{t('columns.totalQuantity')}</th>
               <th className="px-4 py-3 text-right font-medium">{t('columns.actions')}</th>
             </tr>
           </thead>
@@ -129,7 +129,7 @@ export default function StockLedgerTable({
                             <table className="w-full text-sm">
                               <thead className="bg-muted/50">
                                 <tr>
-                                  <th className="px-3 py-2 text-left font-medium">{t('columns.dateTime')}</th>
+                                  <th className="px-3 py-2 text-left font-medium">{t('columns.date')}</th>
                                   <th className="px-3 py-2 text-left font-medium">{t('columns.action')}</th>
                                   <th className="px-3 py-2 text-left font-medium">{t('columns.lotNumber')}</th>
                                   <th className="px-3 py-2 text-right font-medium">{t('columns.quantityChanged')}</th>
@@ -138,7 +138,14 @@ export default function StockLedgerTable({
                               </thead>
                               <tbody>
                                 {movementRows.map((movement) => {
-                                  const typeLabel = movement.movementType ?? movement.referenceType ?? movement.reason ?? movement.status ?? t('unknownAction');
+                                  const typeLabel =
+                                    movement.movementType === 'GOODS_RECEIPT' || movement.reason === 'REPLENISH' || movement.referenceType === 'REPLENISHMENT'
+                                      ? t('actions.receipt')
+                                      : movement.movementType === 'GOODS_ISSUE' || movement.reason === 'DISPENSE' || movement.referenceType === 'VISIT_RECORD'
+                                      ? t('actions.issue')
+                                      : movement.reason === 'MANUAL_ADJUSTMENT'
+                                      ? t('actions.adjust')
+                                      : movement.reason ?? movement.status ?? t('unknownAction');
                                   const quantity = movement.quantityChange ?? movement.delta ?? movement.quantity ?? 0;
                                   const user = movement.actor?.name ?? '—';
 
@@ -181,7 +188,7 @@ export default function StockLedgerTable({
               <th className="px-4 py-3 text-left font-medium">{t('columns.branch')}</th>
             )}
             {!hideItemColumn && (
-              <th className="px-4 py-3 text-left font-medium">{t('columns.item')}</th>
+              <th className="px-4 py-3 text-left font-medium">{t('columns.productName')}</th>
             )}
             <th className="px-4 py-3 text-left font-medium">{t('columns.lot')}</th>
             <th className="px-4 py-3 text-left font-medium">{t('columns.expiry')}</th>
