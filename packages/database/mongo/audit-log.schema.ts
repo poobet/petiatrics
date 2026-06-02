@@ -1,8 +1,8 @@
-import { Schema, Document, model, models } from 'mongoose';
+import mongoose from 'mongoose';
 
 export type AuditOperation = 'create' | 'update' | 'delete' | 'void' | 'amend' | 'status_change';
 
-export interface IAuditLog extends Document {
+export interface IAuditLog extends mongoose.Document {
   clinicId?: string | null; // null for platform-level entries
   entityType: string;
   entityId: string;
@@ -15,7 +15,7 @@ export interface IAuditLog extends Document {
   metadata?: Record<string, unknown> | null;
 }
 
-const AuditLogSchema = new Schema<IAuditLog>(
+const AuditLogSchema = new mongoose.Schema<IAuditLog>(
   {
     clinicId: { type: String, default: null, index: true },
     entityType: { type: String, required: true, index: true },
@@ -28,9 +28,9 @@ const AuditLogSchema = new Schema<IAuditLog>(
     actorId: { type: String, required: true, index: true },
     actorRole: { type: String, required: true },
     timestamp: { type: Date, required: true, default: Date.now, index: true },
-    beforeState: { type: Schema.Types.Mixed, default: null },
-    afterState: { type: Schema.Types.Mixed, default: null },
-    metadata: { type: Schema.Types.Mixed, default: null },
+    beforeState: { type: mongoose.Schema.Types.Mixed, default: null },
+    afterState: { type: mongoose.Schema.Types.Mixed, default: null },
+    metadata: { type: mongoose.Schema.Types.Mixed, default: null },
   },
   {
     // No timestamps: true — we use an explicit `timestamp` field for immutability clarity
@@ -54,6 +54,6 @@ AuditLogSchema.pre(['deleteOne', 'findOneAndDelete', 'deleteMany'], function () 
 });
 
 export const AuditLogModel =
-  models['AuditLog'] ?? model<IAuditLog>('AuditLog', AuditLogSchema);
+  mongoose.models['AuditLog'] ?? mongoose.model<IAuditLog>('AuditLog', AuditLogSchema);
 
 export { AuditLogSchema };

@@ -91,6 +91,11 @@ export class CreateProductDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
+  reorderThreshold?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
   minimumStock?: number;
 
   @IsOptional()

@@ -1,4 +1,10 @@
-import { IsUUID, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsUUID, IsNumber, IsOptional, IsString, Min, IsEnum } from 'class-validator';
+
+export enum AdjustmentReasonCode {
+  COUNT_DISCREPANCY = 'COUNT_DISCREPANCY',
+  DAMAGED = 'DAMAGED',
+  EXPIRED = 'EXPIRED',
+}
 
 export class SubmitAdjustmentDto {
   @IsOptional()
@@ -16,6 +22,10 @@ export class SubmitAdjustmentDto {
   @IsNumber()
   @Min(0)
   physicalCount!: number;
+
+  @IsOptional()
+  @IsEnum(AdjustmentReasonCode)
+  reasonCode?: AdjustmentReasonCode;
 
   @IsOptional()
   @IsString()

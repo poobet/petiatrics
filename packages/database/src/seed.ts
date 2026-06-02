@@ -4,29 +4,43 @@
  * Requires: DATABASE_URL and MONGO_URI env variables
  */
 
+import * as dotenv from 'dotenv';
+import * as path from 'path';
 import { PrismaClient } from '@prisma/client';
-import mongoose from 'mongoose';
 import * as bcrypt from 'bcrypt';
-import { PetProfileSchema } from '../mongo/pet-profile.schema';
-import { VisitRecordSchema } from '../mongo/visit-record.schema';
-import { VaccinationRecordSchema } from '../mongo/vaccination-record.schema';
+import { PetProfileSchema } from '../mongo/pet-profile.schema.ts';
+import { VisitRecordSchema } from '../mongo/visit-record.schema.ts';
+import { VaccinationRecordSchema } from '../mongo/vaccination-record.schema.ts';
+
+dotenv.config({
+  path: path.resolve(process.cwd(), '../../.env'),
+});
 
 const prisma = new PrismaClient();
+let mongoose: any;
+let PetProfile: any;
+let VisitRecord: any;
+let VaccinationRecord: any;
 
-// Mongoose model registrations (safe to re-register during seeding)
-const PetProfile =
-  mongoose.models['PetProfile'] ?? mongoose.model('PetProfile', PetProfileSchema);
-const VisitRecord =
-  mongoose.models['VisitRecord'] ?? mongoose.model('VisitRecord', VisitRecordSchema);
-const VaccinationRecord =
-  mongoose.models['VaccinationRecord'] ??
-  mongoose.model('VaccinationRecord', VaccinationRecordSchema);
+async function initMongoose() {
+  const mongooseModule = await import('mongoose');
+  mongoose = (mongooseModule as any).default ?? mongooseModule;
+
+  PetProfile =
+    mongoose.models['PetProfile'] ?? mongoose.model('PetProfile', PetProfileSchema);
+  VisitRecord =
+    mongoose.models['VisitRecord'] ?? mongoose.model('VisitRecord', VisitRecordSchema);
+  VaccinationRecord =
+    mongoose.models['VaccinationRecord'] ??
+    mongoose.model('VaccinationRecord', VaccinationRecordSchema);
+}
 
 async function hashPassword(plain: string): Promise<string> {
   return bcrypt.hash(plain, 10);
 }
 
 async function main() {
+  await initMongoose();
   const MONGO_URI = process.env.MONGO_URI ?? 'mongodb://localhost:27017/petiatrics';
   await mongoose.connect(MONGO_URI);
   console.log('✓ MongoDB connected');

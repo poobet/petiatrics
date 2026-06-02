@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import * as mongoose from 'mongoose';
 
 /**
  * Applies global Mongoose query middleware that enforces clinic_id tenant scoping

@@ -598,6 +598,7 @@ model StockMovement {
   lotNumber      String?
   expiryDate     DateTime?
   overrideReason String?             // populated on FEFO/expiry override
+  reasonCode     String?             // write-off classification: COUNT_DISCREPANCY, DAMAGED, EXPIRED
   approverId     String?             // populated when adjustment approved
   status         StockMovementStatus @default(COMMITTED)
   createdAt      DateTime            @default(now())

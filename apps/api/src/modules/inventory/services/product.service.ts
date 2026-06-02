@@ -89,7 +89,8 @@ export class ProductService {
     // Auto-assign SKU if not supplied
     const sku = dto.sku ?? (await this.skuSequence.nextSku(clinicId));
 
-    const { conversions, ...rest } = dto;
+    const { conversions, reorderThreshold, ...rest } = dto;
+    const reorderPoint = rest.reorderPoint ?? reorderThreshold;
     const db = scopedPrisma(this.prisma, clinicId);
 
     return db.product.create({
@@ -98,6 +99,7 @@ export class ProductService {
         ...rest,
         code,
         sku,
+        reorderPoint,
         unitConversions: conversions?.length
           ? { create: conversions.map((c) => ({ unitId: c.unitId, ratioToBase: c.ratioToBase })) }
           : undefined,
@@ -177,7 +179,8 @@ export class ProductService {
       await this.assertBarcodeUnique(dto.barcode, id);
     }
 
-    const { conversions, ...rest } = dto;
+    const { conversions, reorderThreshold, ...rest } = dto;
+    const reorderPoint = rest.reorderPoint ?? reorderThreshold;
     const db = scopedPrisma(this.prisma, clinicId);
 
     // Delete and recreate conversions when provided
@@ -189,6 +192,7 @@ export class ProductService {
       where: { id },
       data: {
         ...rest,
+        reorderPoint,
         unitConversions: conversions?.length
           ? { create: conversions.map((c) => ({ unitId: c.unitId, ratioToBase: c.ratioToBase })) }
           : undefined,

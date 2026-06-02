@@ -49,6 +49,7 @@ export class StockAdjustmentService {
         referenceId: `ADJ-${Date.now()}`,
         actorId,
         lotNumber: dto.lotNumber ?? null,
+        reasonCode: dto.reasonCode ?? null,
         overrideReason: dto.notes ?? null,
         status: 'PENDING_APPROVAL',
       },

@@ -1,8 +1,8 @@
-import { Schema, Document, model, models, Types } from 'mongoose';
+import mongoose from 'mongoose';
 
-export interface IVaccinationRecord extends Document {
+export interface IVaccinationRecord extends mongoose.Document {
   clinicId: string;
-  patientId: Types.ObjectId;
+  patientId: mongoose.Types.ObjectId;
   vaccineName: string;
   administeredAt: Date;
   nextDueAt?: Date | null;
@@ -12,10 +12,10 @@ export interface IVaccinationRecord extends Document {
   updatedAt: Date;
 }
 
-const VaccinationRecordSchema = new Schema<IVaccinationRecord>(
+const VaccinationRecordSchema = new mongoose.Schema<IVaccinationRecord>(
   {
     clinicId: { type: String, required: true, index: true },
-    patientId: { type: Schema.Types.ObjectId, required: true, ref: 'PetProfile' },
+    patientId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'PetProfile' },
     vaccineName: { type: String, required: true },
     administeredAt: { type: Date, required: true },
     nextDueAt: { type: Date, default: null },
@@ -33,5 +33,5 @@ VaccinationRecordSchema.index({ clinicId: 1, nextDueAt: 1 });
 
 export { VaccinationRecordSchema };
 export const VaccinationRecordModel =
-  models['VaccinationRecord'] ??
-  model<IVaccinationRecord>('VaccinationRecord', VaccinationRecordSchema);
+  mongoose.models['VaccinationRecord'] ??
+  mongoose.model<IVaccinationRecord>('VaccinationRecord', VaccinationRecordSchema);
