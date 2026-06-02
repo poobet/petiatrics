@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaClient } from '@prisma/client';
 import { scopedPrisma } from '@petiatrics/database';
@@ -28,7 +28,7 @@ export interface DeductDto {
 @Injectable()
 export class StockService {
   constructor(
-    private readonly prisma: PrismaClient,
+    @Inject(PrismaClient) private readonly prisma: PrismaClient,
     private readonly events: EventEmitter2,
     private readonly writeGuard: InventoryWriteGuardService,
     private readonly alertService: StockAlertService,
@@ -195,7 +195,7 @@ export class StockService {
 
   // ─── Goods Receipt (US1) ────────────────────────────────────────────────────
 
-  async goodsReceipt(clinicId: string, actorId: string, dto: GoodsReceiptDto) {
+  async goodsReceipt(clinicId: string, branchId: string, actorId: string, dto: GoodsReceiptDto) {
     this.writeGuard.assertWritable();
     const db = scopedPrisma(this.prisma, clinicId);
 
@@ -204,10 +204,6 @@ export class StockService {
     if (product.itemType === 'SERVICE') {
       throw new BadRequestException(`Cannot modify stock for service item "${product.name}".`);
     }
-    if (!dto.branchId) {
-      throw new BadRequestException('Active branch context is required.');
-    }
-    const branchId = dto.branchId;
 
     if (product.requiresBatchAndExpiryTracking) {
       if (!dto.lotNumber) {
@@ -297,7 +293,7 @@ export class StockService {
     });
 
     const now = new Date();
-    return rows.map((row, index) => ({
+    return rows.map((row: any, index: number) => ({
       lotNumber: row.lotNumber,
       expiryDate: row.expiryDate,
       quantity: Number(row.quantity),
@@ -308,7 +304,7 @@ export class StockService {
 
   // ─── Goods Issue (US2) ───────────────────────────────────────────────────────
 
-  async goodsIssue(clinicId: string, actorId: string, dto: GoodsIssueDto) {
+  async goodsIssue(clinicId: string, branchId: string, actorId: string, dto: GoodsIssueDto) {
     this.writeGuard.assertWritable();
     const db = scopedPrisma(this.prisma, clinicId);
 
@@ -317,10 +313,6 @@ export class StockService {
     if (product.itemType === 'SERVICE') {
       throw new BadRequestException(`Cannot modify stock for service item "${product.name}".`);
     }
-    if (!dto.branchId) {
-      throw new BadRequestException('Active branch context is required.');
-    }
-    const branchId = dto.branchId;
 
     // Determine FEFO lot (first by expiryDate ASC, then lotNumber ASC)
     const lots = await this.getIssuableLots(clinicId, branchId, dto.productId);
@@ -428,8 +420,8 @@ export class StockService {
 
     const now = new Date();
     const data = rows
-      .filter((r) => !opts.lowStock || Number(r.quantity) <= Number(r.product.reorderPoint))
-      .map((r) => {
+      .filter((r: any) => !opts.lowStock || Number(r.quantity) <= Number(r.product.reorderPoint))
+      .map((r: any) => {
         const qty = Number(r.quantity);
         const rp = Number(r.product.reorderPoint);
         const expired = r.expiryDate ? r.expiryDate < now : false;

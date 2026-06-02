@@ -25,11 +25,11 @@ export class UnlinkedItemsService {
       select: { name: true, quantity: true, reorderPoint: true },
     });
     const low = products.filter(
-      (p) => Number(p.quantity) <= Number(p.reorderPoint),
+      (p: any) => Number(p.quantity) <= Number(p.reorderPoint),
     );
     return {
       count: low.length,
-      productNames: low.map((p) => p.name),
+      productNames: low.map((p: any) => p.name),
     };
   }
 }

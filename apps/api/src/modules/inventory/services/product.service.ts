@@ -141,8 +141,8 @@ export class ProductService {
       }),
     ]);
 
-    const byProductId = new Map(balances.map((row) => [row.productId, Number(row.quantity)]));
-    const mappedItems = items.map((item) => ({
+    const byProductId = new Map(balances.map((row: any) => [row.productId, Number(row.quantity)]));
+    const mappedItems = items.map((item: any) => ({
       ...item,
       quantity: item.itemType === ItemType.SERVICE ? null : (byProductId.get(item.id) ?? 0),
       reorderPoint: Number(item.reorderPoint),
@@ -230,11 +230,11 @@ export class ProductService {
 
     return balances
       .filter(
-        (row) =>
+        (row: any) =>
           Number(row.product.reorderPoint) > 0 &&
           Number(row.quantity) <= Number(row.product.reorderPoint),
       )
-      .map((row) => ({
+      .map((row: any) => ({
         ...row.product,
         quantity: Number(row.quantity),
         reorderPoint: Number(row.product.reorderPoint),

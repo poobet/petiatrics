@@ -42,7 +42,7 @@ export class InvoiceService {
     const taxTotalMinor = Math.round(subtotalMinor * taxRateBps / 10_000);
     const totalMinor = subtotalMinor + taxTotalMinor;
 
-    const invoice = await db.$transaction(async (tx) => {
+    const invoice = await db.$transaction(async (tx: any) => {
       return tx.invoice.create({
         data: {
           clinicId,

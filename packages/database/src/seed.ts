@@ -8,9 +8,9 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { PetProfileSchema } from '../mongo/pet-profile.schema.ts';
-import { VisitRecordSchema } from '../mongo/visit-record.schema.ts';
-import { VaccinationRecordSchema } from '../mongo/vaccination-record.schema.ts';
+import { PetProfileSchema } from '../mongo/pet-profile.schema';
+import { VisitRecordSchema } from '../mongo/visit-record.schema';
+import { VaccinationRecordSchema } from '../mongo/vaccination-record.schema';
 
 dotenv.config({
   path: path.resolve(process.cwd(), '../../.env'),

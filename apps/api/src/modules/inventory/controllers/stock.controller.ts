@@ -74,12 +74,11 @@ export class StockController {
   listBalances(
     @TenantId() clinicId: string,
     @ActiveBranch() sessionBranchId: string,
-    @CurrentUser() user: UserContext,
     @Query() query: ListStockBalancesDto,
   ) {
-    // Staff/non-owners are scoped to their session branch
-    const branchId =
-      user.role === Role.CLINIC_OWNER ? query.branchId : sessionBranchId;
+    // Default to the active session branch; CLINIC_OWNER may override with an explicit
+    // query.branchId to view another branch (e.g. cross-branch admin reports).
+    const branchId = query.branchId ?? sessionBranchId;
 
     return this.stockService.listBalances(clinicId, {
       branchId,
@@ -113,12 +112,9 @@ export class StockController {
     @CurrentUser() user: UserContext,
     @Body() body: (GoodsReceiptDto | GoodsIssueDto) & { movementType: 'GOODS_RECEIPT' | 'GOODS_ISSUE' },
   ) {
-    
-    body.branchId = branchId;
-
     if (body.movementType === 'GOODS_RECEIPT') {
-      return this.stockService.goodsReceipt(clinicId, user.userId, body as GoodsReceiptDto);
+      return this.stockService.goodsReceipt(clinicId, branchId, user.userId, body as GoodsReceiptDto);
     }
-    return this.stockService.goodsIssue(clinicId, user.userId, body as GoodsIssueDto);
+    return this.stockService.goodsIssue(clinicId, branchId, user.userId, body as GoodsIssueDto);
   }
 }
