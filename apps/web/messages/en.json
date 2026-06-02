@@ -399,9 +399,13 @@
         "columns": {
           "branch": "Branch",
           "item": "Item",
+          "productName": "Product Name",
+          "sku": "SKU",
           "lot": "Lot",
           "expiry": "Expiry",
           "quantity": "Qty on Hand",
+          "totalQuantity": "Total Quantity",
+          "date": "Date",
           "status": "Status"
         },
         "status": {
@@ -427,18 +431,24 @@
         "unknownAction": "Unknown",
         "actions": {
           "viewDetails": "View Details",
-          "hideDetails": "Hide Details"
+          "hideDetails": "Hide Details",
+          "receipt": "Receipt",
+          "issue": "Issue",
+          "adjust": "Adjust"
         },
         "columns": {
           "branch": "Branch",
           "item": "Item",
+          "productName": "Product Name",
           "sku": "SKU",
           "lot": "Lot",
           "lotNumber": "Lot Number",
           "expiry": "Expiry",
           "quantity": "Qty on Hand",
+          "totalQuantity": "Total Quantity",
           "quantityChanged": "Quantity Changed",
           "action": "Action",
+          "date": "Date",
           "dateTime": "Date/Time",
           "user": "User",
           "status": "Status",

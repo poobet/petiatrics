@@ -29,8 +29,8 @@ export default function ItemStockTab({ itemId }: Props) {
     setError('');
 
     try {
-      const params = new URLSearchParams({ page: '1', limit: '100', productId: itemId });
-      const result = await apiClient.get<BalancesResponse>(`/inventory/stock-balances?${params}`);
+      const params = new URLSearchParams({ page: '1', limit: '100' });
+      const result = await apiClient.get<BalancesResponse>(`/inventory/products/${itemId}/all-branch-balances?${params}`);
       setBalances(result?.data ?? []);
     } catch (err) {
       setBalances([]);
@@ -38,7 +38,7 @@ export default function ItemStockTab({ itemId }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [itemId]);
+  }, [itemId, t]);
 
   useEffect(() => {
     void fetchBalances();

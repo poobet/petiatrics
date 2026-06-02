@@ -399,9 +399,13 @@
         "columns": {
           "branch": "สาขา",
           "item": "รายการ",
+          "productName": "ชื่อสินค้า",
+          "sku": "SKU",
           "lot": "ล็อต",
           "expiry": "วันหมดอายุ",
           "quantity": "จำนวนคงเหลือ",
+          "totalQuantity": "จำนวนรวม",
+          "date": "วันที่",
           "status": "สถานะ"
         },
         "status": {
@@ -427,18 +431,24 @@
         "unknownAction": "ไม่ทราบ",
         "actions": {
           "viewDetails": "ดูรายละเอียด",
-          "hideDetails": "ซ่อนรายละเอียด"
+          "hideDetails": "ซ่อนรายละเอียด",
+          "receipt": "รับสินค้า",
+          "issue": "เบิกสินค้า",
+          "adjust": "ปรับสต็อก"
         },
         "columns": {
           "branch": "สาขา",
           "item": "รายการ",
+          "productName": "ชื่อสินค้า",
           "sku": "SKU",
           "lot": "ล็อต",
           "lotNumber": "หมายเลขล็อต",
           "expiry": "วันหมดอายุ",
           "quantity": "จำนวนคงเหลือ",
+          "totalQuantity": "จำนวนรวม",
           "quantityChanged": "จำนวนที่เปลี่ยน",
           "action": "การดำเนินการ",
+          "date": "วันที่",
           "dateTime": "วันที่/เวลา",
           "user": "ผู้ใช้งาน",
           "status": "สถานะ",
