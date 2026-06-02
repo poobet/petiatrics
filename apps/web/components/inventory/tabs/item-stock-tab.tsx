@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@petiatrics/ui';
 import { apiClient } from '@/lib/api-client';
@@ -34,7 +34,7 @@ export default function ItemStockTab({ itemId }: Props) {
       setBalances(result?.data ?? []);
     } catch (err) {
       setBalances([]);
-      setError('Unable to load stock balances at the moment.');
+      setError(t('loadError'));
     } finally {
       setLoading(false);
     }
@@ -44,10 +44,18 @@ export default function ItemStockTab({ itemId }: Props) {
     void fetchBalances();
   }, [fetchBalances]);
 
+  const sortedBalances = useMemo(() => {
+    return [...balances].sort((a, b) => {
+      const branchCompare = (a.branchName ?? '').localeCompare(b.branchName ?? '');
+      if (branchCompare !== 0) return branchCompare;
+      return (a.lotNumber ?? '').localeCompare(b.lotNumber ?? '');
+    });
+  }, [balances]);
+
   if (!itemId) {
     return (
       <div className="rounded-lg border border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-600">
-        Save item to view stock.
+        {t('saveItemToViewStock')}
       </div>
     );
   }
@@ -57,10 +65,10 @@ export default function ItemStockTab({ itemId }: Props) {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-lg font-semibold">{t('title')}</h2>
-          <p className="text-sm text-gray-500">View current stock balances for this product across branches.</p>
+          <p className="text-sm text-gray-500">{t('stockAcrossBranchesDescription')}</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => void fetchBalances()} disabled={loading}>
-          {loading ? 'Refreshing…' : 'Refresh'}
+          {loading ? t('refreshing') : t('refresh')}
         </Button>
       </div>
 
@@ -71,10 +79,12 @@ export default function ItemStockTab({ itemId }: Props) {
       ) : null}
 
       <StockLedgerTable
-        rows={balances}
+        rows={sortedBalances}
         loading={loading}
         showBranchColumn
-        emptyMessage="No stock recorded for this item yet."
+        hideItemColumn
+        showStatusColumn={false}
+        emptyMessage={t('noStockRecorded')}
       />
     </div>
   );

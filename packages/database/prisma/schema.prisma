@@ -212,6 +212,7 @@ model User {
   businessPartner         BusinessPartner? @relation(fields: [businessPartnerId], references: [id])
   userBranches            UserBranch[]
   appointments            Appointment[]    @relation("VetAppointments")
+  stockMovements          StockMovement[]  @relation("StockMovementActor")
   approvedStockMovements  StockMovement[]  @relation("StockMovementApprover")
 
   @@index([clinicId])
@@ -606,6 +607,7 @@ model StockMovement {
   clinic   Clinic  @relation(fields: [clinicId], references: [id])
   branch   Branch? @relation(fields: [branchId], references: [id])
   product  Product @relation(fields: [productId], references: [id])
+  actor    User    @relation("StockMovementActor", fields: [actorId], references: [id])
   approver User?   @relation("StockMovementApprover", fields: [approverId], references: [id])
 
   @@unique([clinicId, idempotencyKey])

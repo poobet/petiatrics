@@ -395,6 +395,7 @@
       "ledger": {
         "title": "Stock Ledger",
         "breadcrumb": "Stock Ledger",
+        "loading": "Loading…",
         "columns": {
           "branch": "Branch",
           "item": "Item",
@@ -415,7 +416,34 @@
         "newIssue": "New Issue",
         "adjustStock": "Adjust Stock",
         "movementHistory": "Movement History",
-        "noMovements": "No movements found."
+        "noMovements": "No movements found.",
+        "noMovementHistory": "No movement history available.",
+        "refresh": "Refresh",
+        "refreshing": "Refreshing…",
+        "stockAcrossBranchesDescription": "View current stock balances for this product across branches.",
+        "saveItemToViewStock": "Save item to view stock.",
+        "noStockRecorded": "No stock recorded for this item yet.",
+        "loadError": "Unable to load stock balances at the moment.",
+        "unknownAction": "Unknown",
+        "actions": {
+          "viewDetails": "View Details",
+          "hideDetails": "Hide Details"
+        },
+        "columns": {
+          "branch": "Branch",
+          "item": "Item",
+          "sku": "SKU",
+          "lot": "Lot",
+          "lotNumber": "Lot Number",
+          "expiry": "Expiry",
+          "quantity": "Qty on Hand",
+          "quantityChanged": "Quantity Changed",
+          "action": "Action",
+          "dateTime": "Date/Time",
+          "user": "User",
+          "status": "Status",
+          "actions": "Actions"
+        }
       },
       "alerts": {
         "title": "Low Stock Alerts",

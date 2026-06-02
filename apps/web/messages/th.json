@@ -395,6 +395,7 @@
       "ledger": {
         "title": "บัญชีสต็อก",
         "breadcrumb": "บัญชีสต็อก",
+        "loading": "กำลังโหลด…",
         "columns": {
           "branch": "สาขา",
           "item": "รายการ",
@@ -415,7 +416,34 @@
         "newIssue": "เบิกสินค้า",
         "adjustStock": "ปรับสต็อก",
         "movementHistory": "ประวัติการเคลื่อนไหว",
-        "noMovements": "ไม่พบรายการเคลื่อนไหว"
+        "noMovements": "ไม่พบรายการเคลื่อนไหว",
+        "noMovementHistory": "ไม่มีประวัติการเคลื่อนไหว",
+        "refresh": "รีเฟรช",
+        "refreshing": "กำลังรีเฟรช…",
+        "stockAcrossBranchesDescription": "ดูยอดสต็อกปัจจุบันของสินค้านี้ในทุกสาขา",
+        "saveItemToViewStock": "บันทึกรายการก่อนเพื่อดูสต็อก",
+        "noStockRecorded": "ยังไม่มีสต็อกสำหรับรายการนี้",
+        "loadError": "ไม่สามารถโหลดยอดสต็อกได้ในขณะนี้",
+        "unknownAction": "ไม่ทราบ",
+        "actions": {
+          "viewDetails": "ดูรายละเอียด",
+          "hideDetails": "ซ่อนรายละเอียด"
+        },
+        "columns": {
+          "branch": "สาขา",
+          "item": "รายการ",
+          "sku": "SKU",
+          "lot": "ล็อต",
+          "lotNumber": "หมายเลขล็อต",
+          "expiry": "วันหมดอายุ",
+          "quantity": "จำนวนคงเหลือ",
+          "quantityChanged": "จำนวนที่เปลี่ยน",
+          "action": "การดำเนินการ",
+          "dateTime": "วันที่/เวลา",
+          "user": "ผู้ใช้งาน",
+          "status": "สถานะ",
+          "actions": "การดำเนินการ"
+        }
       },
       "alerts": {
         "title": "แจ้งเตือนสต็อกต่ำ",
