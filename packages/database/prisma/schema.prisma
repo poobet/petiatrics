@@ -531,6 +531,8 @@ model Product {
   branchStockBalances BranchStockBalance[]
   stockAlerts         StockAlert[]
   unitConversions     ItemUnitConversion[]
+  parentProductAccessories       ProductAccessory[] @relation("ParentProductRelations")
+  childProductAccessories        ProductAccessory[] @relation("ChildProductRelations")
 
   @@unique([clinicId, code])
   @@unique([clinicId, sku])
@@ -687,4 +689,23 @@ model InvoiceLineItem {
 
   @@index([invoiceId])
   @@map("invoice_line_items")
+}
+
+// ─── ProductAccessory (Parent-Child relation) ────────────────────────────────
+
+model ProductAccessory {
+  id              String   @id @default(uuid())
+  parentProductId String
+  childProductId  String
+  quantityRatio   Decimal  @db.Decimal(10, 3) @default(1.0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  parentProduct   Product  @relation("ParentProductRelations", fields: [parentProductId], references: [id], onDelete: Cascade)
+  childProduct    Product  @relation("ChildProductRelations", fields: [childProductId], references: [id], onDelete: Cascade)
+
+  @@unique([parentProductId, childProductId])
+  @@index([parentProductId])
+  @@index([childProductId])
+  @@map("product_accessories")
 }
