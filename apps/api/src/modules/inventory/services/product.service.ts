@@ -141,7 +141,12 @@ export class ProductService {
       }),
     ]);
 
-    const byProductId = new Map(balances.map((row: any) => [row.productId, Number(row.quantity)]));
+    const byProductId = new Map<string, number>();
+    for (const row of balances) {
+      const currentQty = byProductId.get(row.productId) ?? 0;
+      byProductId.set(row.productId, currentQty + Number(row.quantity));
+    }
+
     const mappedItems = items.map((item: any) => ({
       ...item,
       quantity: item.itemType === ItemType.SERVICE ? null : (byProductId.get(item.id) ?? 0),
@@ -228,17 +233,27 @@ export class ProductService {
       include: { product: { include: PRODUCT_INCLUDE } },
     });
 
-    return balances
+    const productMap = new Map<string, { product: any; quantity: number }>();
+    for (const row of balances) {
+      const prodId = row.productId;
+      const qty = Number(row.quantity);
+      if (!productMap.has(prodId)) {
+        productMap.set(prodId, { product: row.product, quantity: 0 });
+      }
+      productMap.get(prodId)!.quantity += qty;
+    }
+
+    return Array.from(productMap.values())
       .filter(
-        (row: any) =>
-          Number(row.product.reorderPoint) > 0 &&
-          Number(row.quantity) <= Number(row.product.reorderPoint),
+        ({ product, quantity }) =>
+          Number(product.reorderPoint) > 0 &&
+          quantity <= Number(product.reorderPoint),
       )
-      .map((row: any) => ({
-        ...row.product,
-        quantity: Number(row.quantity),
-        reorderPoint: Number(row.product.reorderPoint),
-        minimumStock: Number(row.product.minimumStock),
+      .map(({ product, quantity }) => ({
+        ...product,
+        quantity,
+        reorderPoint: Number(product.reorderPoint),
+        minimumStock: Number(product.minimumStock),
       }));
   }
 }

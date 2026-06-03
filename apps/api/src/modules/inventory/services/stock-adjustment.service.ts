@@ -23,13 +23,21 @@ export class StockAdjustmentService {
     const product = await db.product.findUnique({ where: { id: dto.productId } });
     if (!product) throw new NotFoundException(`Product ${dto.productId} not found.`);
 
+    // Normalize lot number: empty or whitespace becomes null
+    const lotNumber = dto.lotNumber?.trim() ? dto.lotNumber.trim() : null;
+
+    // Validate that lot-controlled items MUST have a lot number
+    if (product.requiresBatchAndExpiryTracking && !lotNumber) {
+      throw new BadRequestException(`Lot number is required for batch-tracked product "${product.name}".`);
+    }
+
     // Find the current balance for the lot in the securely extracted branch
     const balance = await db.branchStockBalance.findFirst({
       where: {
         clinicId,
         branchId,
         productId: dto.productId,
-        lotNumber: dto.lotNumber ?? null,
+        lotNumber,
       },
     });
 
@@ -48,7 +56,7 @@ export class StockAdjustmentService {
         referenceType: 'MANUAL',
         referenceId: `ADJ-${Date.now()}`,
         actorId,
-        lotNumber: dto.lotNumber ?? null,
+        lotNumber,
         reasonCode: dto.reasonCode ?? null,
         overrideReason: dto.notes ?? null,
         status: 'PENDING_APPROVAL',

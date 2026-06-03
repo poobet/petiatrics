@@ -205,16 +205,16 @@ export class StockService {
       throw new BadRequestException(`Cannot modify stock for service item "${product.name}".`);
     }
 
+    const lotNumber = dto.lotNumber?.trim() ? dto.lotNumber.trim() : null;
+
     if (product.requiresBatchAndExpiryTracking) {
-      if (!dto.lotNumber) {
+      if (!lotNumber) {
         throw new BadRequestException(`Lot number is required for "${product.name}".`);
       }
       if (!dto.expiryDate) {
         throw new BadRequestException(`Expiry date is required for "${product.name}".`);
       }
     }
-
-    const lotNumber = dto.lotNumber ?? null;
     const expiryDate = dto.expiryDate ? new Date(dto.expiryDate) : null;
 
     return this.prisma.$transaction(async (tx: any) => {
@@ -318,7 +318,7 @@ export class StockService {
     const lots = await this.getIssuableLots(clinicId, branchId, dto.productId);
     const fefoLot = lots[0] ?? null;
 
-    const chosenLotNumber = dto.lotNumber ?? null;
+    const chosenLotNumber = dto.lotNumber?.trim() ? dto.lotNumber.trim() : null;
 
     // Find the specific balance row to deduct from
     const balance = await db.branchStockBalance.findFirst({
