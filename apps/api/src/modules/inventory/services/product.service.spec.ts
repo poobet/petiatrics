@@ -31,6 +31,7 @@ function buildPrismaMock() {
     taxCode: { findUnique: jest.fn() },
     businessPartner: { findFirst: jest.fn() },
     itemUnitConversion: { deleteMany: jest.fn() },
+    productAccessory: { deleteMany: jest.fn() },
   };
 }
 
@@ -118,6 +119,22 @@ describe('ProductService', () => {
       await service.create(CLINIC_ID, validCreateDto({ itemType: ItemType.SERVICE }));
       expect(prisma.product.create).toHaveBeenCalled();
     });
+
+    it('creates a product with accessories relations', async () => {
+      const dto = validCreateDto({
+        accessories: [{ childProductId: 'prod-child-001', quantityRatio: 1.5 }],
+      });
+      await service.create(CLINIC_ID, dto);
+      expect(prisma.product.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            parentProductAccessories: {
+              create: [{ childProductId: 'prod-child-001', quantityRatio: 1.5 }],
+            },
+          }),
+        }),
+      );
+    });
   });
 
   // ─── findAll() ─────────────────────────────────────────────────────────────
@@ -184,7 +201,36 @@ describe('ProductService', () => {
       const product = { id: 'p1', clinicId: CLINIC_ID };
       prisma.product.findUnique.mockResolvedValue(product);
       const result = await service.findById(CLINIC_ID, 'p1');
-      expect(result).toEqual(product);
+      expect(result).toEqual({ ...product, accessories: [] });
+    });
+  });
+
+  // ─── update() ──────────────────────────────────────────────────────────────
+
+  describe('update()', () => {
+    beforeEach(() => {
+      prisma.product.findUnique.mockResolvedValue({ id: 'prod-001', clinicId: CLINIC_ID });
+      prisma.product.update.mockResolvedValue({ id: 'prod-001', code: 'MED-001', name: 'Test Medication' });
+    });
+
+    it('updates product and replaces accessories', async () => {
+      const dto = {
+        name: 'Updated Name',
+        accessories: [{ childProductId: 'prod-child-002', quantityRatio: 2.0 }],
+      };
+      await service.update(CLINIC_ID, 'prod-001', dto);
+      expect(prisma.productAccessory.deleteMany).toHaveBeenCalledWith({ where: { parentProductId: 'prod-001' } });
+      expect(prisma.product.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'prod-001' },
+          data: expect.objectContaining({
+            name: 'Updated Name',
+            parentProductAccessories: {
+              create: [{ childProductId: 'prod-child-002', quantityRatio: 2.0 }],
+            },
+          }),
+        }),
+      );
     });
   });
 

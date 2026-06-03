@@ -65,6 +65,18 @@ enum StockMovementReason {
   DISPENSE
   REPLENISH
   MANUAL_ADJUSTMENT
+  GOODS_RECEIPT
+  GOODS_ISSUE
+}
+
+enum StockMovementStatus {
+  COMMITTED
+  PENDING_APPROVAL
+  REJECTED
+}
+
+enum StockAlertType {
+  LOW_STOCK
 }
 
 enum StockMovementRefType {
@@ -136,6 +148,7 @@ model Clinic {
   products            Product[]
   stockMovements      StockMovement[]
   branchStockBalances BranchStockBalance[]
+  stockAlerts         StockAlert[]
   invoices            Invoice[]
   businessPartners    BusinessPartner[]
   bpGroups            BpGroup[]
@@ -195,10 +208,12 @@ model User {
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
 
-  clinic          Clinic?          @relation(fields: [clinicId], references: [id])
-  businessPartner BusinessPartner? @relation(fields: [businessPartnerId], references: [id])
-  userBranches    UserBranch[]
-  appointments    Appointment[]    @relation("VetAppointments")
+  clinic                  Clinic?          @relation(fields: [clinicId], references: [id])
+  businessPartner         BusinessPartner? @relation(fields: [businessPartnerId], references: [id])
+  userBranches            UserBranch[]
+  appointments            Appointment[]    @relation("VetAppointments")
+  stockMovements          StockMovement[]  @relation("StockMovementActor")
+  approvedStockMovements  StockMovement[]  @relation("StockMovementApprover")
 
   @@index([clinicId])
   @@index([email])
@@ -514,7 +529,10 @@ model Product {
   defaultSupplier BusinessPartner?    @relation("ProductDefaultSupplier", fields: [defaultSupplierId], references: [id])
   stockMovements      StockMovement[]
   branchStockBalances BranchStockBalance[]
+  stockAlerts         StockAlert[]
   unitConversions     ItemUnitConversion[]
+  parentProductAccessories       ProductAccessory[] @relation("ParentProductRelations")
+  childProductAccessories        ProductAccessory[] @relation("ChildProductRelations")
 
   @@unique([clinicId, code])
   @@unique([clinicId, sku])
@@ -529,20 +547,25 @@ model Product {
 // ─── BranchStockBalance ──────────────────────────────────────────────────────
 
 model BranchStockBalance {
-  id        String   @id @default(uuid())
-  clinicId  String
-  branchId  String
-  productId String
-  quantity  Decimal  @default(0) @db.Decimal(10, 3)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String    @id @default(uuid())
+  clinicId   String
+  branchId   String
+  productId  String
+  lotNumber  String?                         // null = non-lot-tracked item
+  expiryDate DateTime?                       // used for FEFO ordering
+  quantity   Decimal   @default(0) @db.Decimal(10, 3)
+  version    Int       @default(0)           // optimistic lock counter
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   clinic  Clinic  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   branch  Branch  @relation(fields: [branchId], references: [id])
   product Product @relation(fields: [productId], references: [id])
 
-  @@unique([clinicId, branchId, productId])
+  // lotNumber included; null-lot uniqueness enforced via raw SQL partial unique index in migration
+  @@unique([clinicId, branchId, productId, lotNumber])
   @@index([clinicId, branchId])
+  @@index([clinicId, productId])
   @@index([productId])
   @@map("branch_stock_balances")
 }
@@ -562,29 +585,60 @@ model ClinicItemSequence {
 // ─── StockMovement (Immutable Ledger) ────────────────────────────────────────
 
 model StockMovement {
-  id             String               @id @default(uuid())
+  id             String              @id @default(uuid())
   clinicId       String
   branchId       String?
   productId      String
   idempotencyKey String?
-  delta          Decimal              @db.Decimal(10, 3)
-  quantityBefore Decimal              @db.Decimal(10, 3)
-  quantityAfter  Decimal              @db.Decimal(10, 3)
+  delta          Decimal             @db.Decimal(10, 3)
+  quantityBefore Decimal             @db.Decimal(10, 3)
+  quantityAfter  Decimal             @db.Decimal(10, 3)
   reason         StockMovementReason
   referenceType  StockMovementRefType
   referenceId    String
   actorId        String
-  createdAt      DateTime             @default(now())
+  // Lot tracking (new)
+  lotNumber      String?
+  expiryDate     DateTime?
+  overrideReason String?             // populated on FEFO/expiry override
+  reasonCode     String?             // write-off classification: COUNT_DISCREPANCY, DAMAGED, EXPIRED
+  approverId     String?             // populated when adjustment approved
+  status         StockMovementStatus @default(COMMITTED)
+  createdAt      DateTime            @default(now())
 
-  clinic  Clinic  @relation(fields: [clinicId], references: [id])
-  branch  Branch? @relation(fields: [branchId], references: [id])
-  product Product @relation(fields: [productId], references: [id])
+  clinic   Clinic  @relation(fields: [clinicId], references: [id])
+  branch   Branch? @relation(fields: [branchId], references: [id])
+  product  Product @relation(fields: [productId], references: [id])
+  actor    User    @relation("StockMovementActor", fields: [actorId], references: [id])
+  approver User?   @relation("StockMovementApprover", fields: [approverId], references: [id])
 
   @@unique([clinicId, idempotencyKey])
   @@index([clinicId])
   @@index([clinicId, branchId, createdAt])
   @@index([clinicId, productId])
+  @@index([clinicId, status])
   @@map("stock_movements")
+}
+
+// ─── StockAlert ──────────────────────────────────────────────────────────────
+
+model StockAlert {
+  id          String        @id @default(uuid())
+  clinicId    String
+  branchId    String
+  productId   String
+  alertType   StockAlertType
+  isActive    Boolean       @default(true)
+  triggeredAt DateTime      @default(now())
+  resolvedAt  DateTime?
+
+  clinic  Clinic  @relation(fields: [clinicId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([clinicId, branchId, productId, alertType])
+  @@index([clinicId, isActive])
+  @@index([clinicId, branchId, isActive])
+  @@map("stock_alerts")
 }
 
 // ─── Invoice ─────────────────────────────────────────────────────────────────
@@ -635,4 +689,23 @@ model InvoiceLineItem {
 
   @@index([invoiceId])
   @@map("invoice_line_items")
+}
+
+// ─── ProductAccessory (Parent-Child relation) ────────────────────────────────
+
+model ProductAccessory {
+  id              String   @id @default(uuid())
+  parentProductId String
+  childProductId  String
+  quantityRatio   Decimal  @db.Decimal(10, 3) @default(1.0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  parentProduct   Product  @relation("ParentProductRelations", fields: [parentProductId], references: [id], onDelete: Cascade)
+  childProduct    Product  @relation("ChildProductRelations", fields: [childProductId], references: [id], onDelete: Cascade)
+
+  @@unique([parentProductId, childProductId])
+  @@index([parentProductId])
+  @@index([childProductId])
+  @@map("product_accessories")
 }

@@ -7,13 +7,29 @@ import { Button } from '@petiatrics/ui/button';
 import { Input } from '@petiatrics/ui/input';
 import { Textarea } from '@petiatrics/ui/textarea';
 import { Label } from '@petiatrics/ui/label';
+import ItemSearchCombobox from '@/components/inventory/item-search-combobox';
 
 interface Prescription {
   drug: string;
   dosage: string;
   frequency: string;
   duration: string;
+  inventoryLinked?: boolean;
 }
+
+function calculateChildDosage(parentDosage: string, ratio: number): string {
+  const match = parentDosage.match(/^(\d+(?:\.\d+)?)\s*(.*)$/);
+  if (match) {
+    const parentQty = parseFloat(match[1]);
+    const childQty = parentQty * ratio;
+    const unit = match[2];
+    const formattedQty = Number(childQty.toFixed(3));
+    return unit ? `${formattedQty} ${unit}` : `${formattedQty}`;
+  }
+  return `${parentDosage} (x${ratio})`;
+}
+
+
 
 export default function NewVisitPage() {
   const router = useRouter();
@@ -34,13 +50,48 @@ export default function NewVisitPage() {
     duration: '',
   });
   const [vetId, setVetId] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const handleProductSelect = async (item: any) => {
+    try {
+      const details = await apiClient.get<any>(`/inventory/products/${item.id}`);
+      setSelectedProduct(details);
+      setNewRx((prev) => ({
+        ...prev,
+        drug: details.name,
+      }));
+    } catch (err) {
+      console.error('Failed to fetch product details', err);
+      setNewRx((prev) => ({
+        ...prev,
+        drug: item.name,
+      }));
+    }
+  };
+
   const addPrescription = () => {
     if (!newRx.drug || !newRx.dosage) return;
-    setPrescriptions([...prescriptions, { ...newRx, inventoryLinked: false } as any]);
+
+    const mainRx = { ...newRx, inventoryLinked: !!selectedProduct };
+    const additionalRxs: Prescription[] = [];
+
+    if (selectedProduct && selectedProduct.accessories && selectedProduct.accessories.length > 0) {
+      selectedProduct.accessories.forEach((acc: any) => {
+        additionalRxs.push({
+          drug: acc.name,
+          dosage: calculateChildDosage(newRx.dosage, acc.quantityRatio),
+          frequency: newRx.frequency,
+          duration: newRx.duration,
+          inventoryLinked: true,
+        });
+      });
+    }
+
+    setPrescriptions([...prescriptions, mainRx, ...additionalRxs]);
     setNewRx({ drug: '', dosage: '', frequency: '', duration: '' });
+    setSelectedProduct(null);
   };
 
   const removePrescription = (index: number) => {
@@ -64,7 +115,7 @@ export default function NewVisitPage() {
           soap,
           prescriptions: prescriptions.map((rx) => ({
             ...rx,
-            inventoryLinked: false,
+            inventoryLinked: rx.inventoryLinked ?? false,
           })),
         },
       );
@@ -139,11 +190,17 @@ export default function NewVisitPage() {
             </div>
           ))}
           <div className="grid grid-cols-2 gap-2">
-            <Input
-              placeholder="Drug name"
-              value={newRx.drug}
-              onChange={(e) => setNewRx({ ...newRx, drug: e.target.value })}
-            />
+            <div className="relative">
+              <ItemSearchCombobox
+                placeholder="Search drug/service…"
+                itemType=""
+                onSelect={handleProductSelect}
+                onChange={(val) => {
+                  setNewRx((prev) => ({ ...prev, drug: val }));
+                  setSelectedProduct(null);
+                }}
+              />
+            </div>
             <Input
               placeholder="Dosage"
               value={newRx.dosage}

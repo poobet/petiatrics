@@ -1,6 +1,6 @@
-import { Schema, Document, model, models } from 'mongoose';
+import mongoose from 'mongoose';
 
-export interface IPetProfile extends Document {
+export interface IPetProfile extends mongoose.Document {
   clinicId: string;
   ownerUserId: string;
   name: string;
@@ -13,7 +13,7 @@ export interface IPetProfile extends Document {
   updatedAt: Date;
 }
 
-const PetProfileSchema = new Schema<IPetProfile>(
+const PetProfileSchema = new mongoose.Schema<IPetProfile>(
   {
     clinicId: { type: String, required: true, index: true },
     ownerUserId: { type: String, required: true, index: true },
@@ -36,4 +36,4 @@ PetProfileSchema.index({ clinicId: 1, ownerUserId: 1 });
 
 export { PetProfileSchema };
 export const PetProfileModel =
-  models['PetProfile'] ?? model<IPetProfile>('PetProfile', PetProfileSchema);
+  mongoose.models['PetProfile'] ?? mongoose.model<IPetProfile>('PetProfile', PetProfileSchema);

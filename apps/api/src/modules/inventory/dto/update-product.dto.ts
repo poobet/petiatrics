@@ -9,7 +9,7 @@ import {
   IsUUID,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ItemUnitConversionDto } from './create-product.dto';
+import { ItemUnitConversionDto, ProductAccessoryDto } from './create-product.dto';
 
 export class UpdateProductDto {
   @IsOptional()
@@ -77,6 +77,11 @@ export class UpdateProductDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
+  reorderThreshold?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
   minimumStock?: number;
 
   @IsOptional()
@@ -86,4 +91,10 @@ export class UpdateProductDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProductAccessoryDto)
+  accessories?: ProductAccessoryDto[];
 }

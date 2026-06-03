@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import ItemForm from './item-form';
 import { ItemType } from '@petiatrics/types';
 import type { ItemFormReferenceData } from './item-form-types';
@@ -12,7 +12,7 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }));
 // ─── Mock api-client ──────────────────────────────────────────────────────────
 
 vi.mock('../../lib/api-client', () => ({
-  apiClient: { post: vi.fn(), patch: vi.fn() },
+  apiClient: { post: vi.fn(), patch: vi.fn(), get: vi.fn() },
   ApiError: class ApiError extends Error {
     constructor(public readonly body: unknown, message: string) { super(message); }
   },
@@ -29,6 +29,34 @@ const REFS: ItemFormReferenceData = {
   suppliers: [],
 };
 
+const EXISTING_ITEM = {
+  id: 'prod-001',
+  clinicId: 'clinic-001',
+  code: 'MED-001',
+  name: 'Test Drug',
+  itemType: ItemType.STOCKED_GOOD,
+  isActive: true,
+  categoryId: 'cat-001',
+  baseUnitId: 'unit-001',
+  standardCost: 80,
+  baseSellingPrice: 150,
+  isTaxInclusive: false,
+  isControlledSubstance: false,
+  requiresBatchAndExpiryTracking: false,
+  genericName: null,
+  defaultTaxCodeId: null,
+  defaultSupplierId: null,
+  defaultDoctorFee: null,
+  quantity: 50,
+  reorderPoint: 10,
+  minimumStock: 5,
+  sku: 'SKU-00001',
+  barcode: null,
+  conversions: [],
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('ItemForm', () => {
@@ -36,6 +64,7 @@ describe('ItemForm', () => {
     vi.clearAllMocks();
     (apiClient.post as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'p1' });
     (apiClient.patch as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'p1' });
+    (apiClient.get as ReturnType<typeof vi.fn>).mockResolvedValue({ data: [] });
   });
 
   describe('Tab navigation', () => {
@@ -45,6 +74,12 @@ describe('ItemForm', () => {
       expect(screen.getByRole('button', { name: /units/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /pricing/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /clinic/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /stock/i })).not.toBeInTheDocument();
+    });
+
+    it('shows stock tab in edit mode only', () => {
+      render(<ItemForm refs={REFS} initial={EXISTING_ITEM as any} />);
+      expect(screen.getByRole('button', { name: /stock/i })).toBeInTheDocument();
     });
 
     it('shows general tab content by default', () => {
@@ -122,34 +157,6 @@ describe('ItemForm', () => {
   });
 
   describe('Edit mode', () => {
-    const EXISTING_ITEM = {
-      id: 'prod-001',
-      clinicId: 'clinic-001',
-      code: 'MED-001',
-      name: 'Test Drug',
-      itemType: ItemType.STOCKED_GOOD,
-      isActive: true,
-      categoryId: 'cat-001',
-      baseUnitId: 'unit-001',
-      standardCost: 80,
-      baseSellingPrice: 150,
-      isTaxInclusive: false,
-      isControlledSubstance: false,
-      requiresBatchAndExpiryTracking: false,
-      genericName: null,
-      defaultTaxCodeId: null,
-      defaultSupplierId: null,
-      defaultDoctorFee: null,
-      quantity: 50,
-      reorderPoint: 10,
-      minimumStock: 5,
-      sku: 'SKU-00001',
-      barcode: null,
-      conversions: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
     it('pre-fills fields from initial data', () => {
       render(<ItemForm refs={REFS} initial={EXISTING_ITEM as any} />);
       expect(screen.getByDisplayValue('MED-001')).toBeInTheDocument();
@@ -159,6 +166,14 @@ describe('ItemForm', () => {
     it('disables item code field in edit mode', () => {
       render(<ItemForm refs={REFS} initial={EXISTING_ITEM as any} />);
       expect(screen.getByLabelText(/item code/i)).toBeDisabled();
+    });
+
+    it('loads stock balances when stock tab is selected in edit mode', async () => {
+      render(<ItemForm refs={REFS} initial={EXISTING_ITEM as any} />);
+      fireEvent.click(screen.getByRole('button', { name: /stock/i }));
+      await waitFor(() => {
+        expect(apiClient.get).toHaveBeenCalledWith(expect.stringContaining('/inventory/stock-balances?productId=prod-001'));
+      });
     });
 
     it('calls apiClient.patch on save', async () => {

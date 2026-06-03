@@ -33,7 +33,47 @@ export class InvoiceService {
     const db = scopedPrisma(this.prisma, clinicId);
     const taxRateBps = dto.taxRateBps ?? 700;
 
-    const lineItemsWithTotals = dto.lineItems.map((item) => {
+    const expandedLineItems: Array<{
+      itemType: 'SERVICE' | 'PRODUCT';
+      description: string;
+      quantity: number;
+      unitPriceMinor: number;
+      sourceReferenceId?: string;
+    }> = [];
+
+    for (const item of dto.lineItems) {
+      expandedLineItems.push(item);
+
+      if (item.itemType === 'PRODUCT' && item.sourceReferenceId) {
+        const accessories = await this.prisma.productAccessory.findMany({
+          where: { parentProductId: item.sourceReferenceId },
+          include: {
+            childProduct: {
+              select: {
+                id: true,
+                name: true,
+                itemType: true,
+                baseSellingPrice: true,
+              },
+            },
+          },
+        });
+
+        for (const acc of accessories) {
+          if (acc.childProduct) {
+            expandedLineItems.push({
+              itemType: acc.childProduct.itemType === 'SERVICE' ? 'SERVICE' : 'PRODUCT',
+              description: acc.childProduct.name,
+              quantity: Number(item.quantity) * Number(acc.quantityRatio),
+              unitPriceMinor: Math.round(Number(acc.childProduct.baseSellingPrice) * 100),
+              sourceReferenceId: acc.childProduct.id,
+            });
+          }
+        }
+      }
+    }
+
+    const lineItemsWithTotals = expandedLineItems.map((item) => {
       const subtotalMinor = Math.round(item.quantity * item.unitPriceMinor);
       return { ...item, subtotalMinor };
     });
@@ -42,7 +82,7 @@ export class InvoiceService {
     const taxTotalMinor = Math.round(subtotalMinor * taxRateBps / 10_000);
     const totalMinor = subtotalMinor + taxTotalMinor;
 
-    const invoice = await db.$transaction(async (tx) => {
+    const invoice = await db.$transaction(async (tx: any) => {
       return tx.invoice.create({
         data: {
           clinicId,

@@ -4,29 +4,43 @@
  * Requires: DATABASE_URL and MONGO_URI env variables
  */
 
+import * as dotenv from 'dotenv';
+import * as path from 'path';
 import { PrismaClient } from '@prisma/client';
-import mongoose from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { PetProfileSchema } from '../mongo/pet-profile.schema';
 import { VisitRecordSchema } from '../mongo/visit-record.schema';
 import { VaccinationRecordSchema } from '../mongo/vaccination-record.schema';
 
-const prisma = new PrismaClient();
+dotenv.config({
+  path: path.resolve(process.cwd(), '../../.env'),
+});
 
-// Mongoose model registrations (safe to re-register during seeding)
-const PetProfile =
-  mongoose.models['PetProfile'] ?? mongoose.model('PetProfile', PetProfileSchema);
-const VisitRecord =
-  mongoose.models['VisitRecord'] ?? mongoose.model('VisitRecord', VisitRecordSchema);
-const VaccinationRecord =
-  mongoose.models['VaccinationRecord'] ??
-  mongoose.model('VaccinationRecord', VaccinationRecordSchema);
+const prisma = new PrismaClient();
+let mongoose: any;
+let PetProfile: any;
+let VisitRecord: any;
+let VaccinationRecord: any;
+
+async function initMongoose() {
+  const mongooseModule = await import('mongoose');
+  mongoose = (mongooseModule as any).default ?? mongooseModule;
+
+  PetProfile =
+    mongoose.models['PetProfile'] ?? mongoose.model('PetProfile', PetProfileSchema);
+  VisitRecord =
+    mongoose.models['VisitRecord'] ?? mongoose.model('VisitRecord', VisitRecordSchema);
+  VaccinationRecord =
+    mongoose.models['VaccinationRecord'] ??
+    mongoose.model('VaccinationRecord', VaccinationRecordSchema);
+}
 
 async function hashPassword(plain: string): Promise<string> {
   return bcrypt.hash(plain, 10);
 }
 
 async function main() {
+  await initMongoose();
   const MONGO_URI = process.env.MONGO_URI ?? 'mongodb://localhost:27017/petiatrics';
   await mongoose.connect(MONGO_URI);
   console.log('✓ MongoDB connected');
@@ -348,6 +362,7 @@ async function main() {
       const visitData = [
         {
           clinicId: clinic.id,
+          branchId: branchMain.id,
           patientId: petIds[0],
           vetId,
           visitDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
@@ -373,6 +388,7 @@ async function main() {
         },
         {
           clinicId: clinic.id,
+          branchId: branchMain.id,
           patientId: petIds.length > 1 ? petIds[1] : petIds[0],
           vetId,
           visitDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),

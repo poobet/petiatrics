@@ -4,6 +4,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaClient } from '@prisma/client';
 import { StockService } from './stock.service';
 import { InventoryWriteGuardService } from './inventory-write-guard.service';
+import { StockAlertService } from './stock-alert.service';
 
 // Make scopedPrisma a pass-through
 jest.mock('@petiatrics/database', () => ({
@@ -55,6 +56,7 @@ describe('StockService', () => {
         InventoryWriteGuardService,
         { provide: PrismaClient, useValue: prisma },
         { provide: EventEmitter2, useValue: events },
+        { provide: StockAlertService, useValue: { upsertAlert: jest.fn(), resolveAlert: jest.fn() } },
       ],
     }).compile();
 

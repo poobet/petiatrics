@@ -48,7 +48,7 @@ export const BarChartExample: Story = {
         <CartesianGrid vertical={false} />
         <XAxis dataKey="month" tickLine={false} axisLine={false} />
         <YAxis tickLine={false} axisLine={false} />
-        <ChartTooltip content={<ChartTooltipContent />} />
+        <ChartTooltip content={<ChartTooltipContent {...({} as any)} />} />
         <ChartLegend content={(props) => <ChartLegendContent {...(props as any)} />} />
         <Bar dataKey="visits" fill="var(--color-visits)" radius={4} />
         <Bar dataKey="vaccinations" fill="var(--color-vaccinations)" radius={4} />
@@ -64,7 +64,7 @@ export const LineChartExample: Story = {
         <CartesianGrid vertical={false} />
         <XAxis dataKey="month" tickLine={false} axisLine={false} />
         <YAxis tickLine={false} axisLine={false} />
-        <ChartTooltip content={<ChartTooltipContent />} />
+        <ChartTooltip content={<ChartTooltipContent {...({} as any)} />} />
         <Line
           type="monotone"
           dataKey="visits"
@@ -91,7 +91,7 @@ export const AreaChartExample: Story = {
         <CartesianGrid vertical={false} />
         <XAxis dataKey="month" tickLine={false} axisLine={false} />
         <YAxis tickLine={false} axisLine={false} />
-        <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
+        <ChartTooltip content={<ChartTooltipContent {...({ indicator: "line" } as any)} />} />
         <Area
           type="monotone"
           dataKey="visits"

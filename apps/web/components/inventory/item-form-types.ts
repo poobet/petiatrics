@@ -21,6 +21,15 @@ export interface ItemConversionFormValue {
   ratioToBase: number | '';
 }
 
+export interface ItemAccessoryFormValue {
+  childProductId: string;
+  name?: string;
+  code?: string;
+  sku?: string;
+  itemType?: ItemType;
+  quantityRatio: number | '';
+}
+
 export interface ItemFormValues {
   code: string;
   name: string;
@@ -41,6 +50,7 @@ export interface ItemFormValues {
   sku: string;
   barcode: string;
   conversions: ItemConversionFormValue[];
+  accessories: ItemAccessoryFormValue[];
 }
 
 export const ITEM_FORM_DEFAULTS: ItemFormValues = {
@@ -63,4 +73,5 @@ export const ITEM_FORM_DEFAULTS: ItemFormValues = {
   sku: '',
   barcode: '',
   conversions: [],
+  accessories: [],
 };

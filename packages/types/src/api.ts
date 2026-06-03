@@ -347,6 +347,21 @@ export interface ItemUnitConversionPayload {
   ratioToBase: number;
 }
 
+export interface ItemAccessoryResponse {
+  childProductId: string;
+  name?: string;
+  code?: string;
+  sku?: string | null;
+  itemType?: ItemType;
+  baseSellingPrice?: number;
+  quantityRatio: number;
+}
+
+export interface ItemAccessoryPayload {
+  childProductId: string;
+  quantityRatio: number;
+}
+
 export interface ItemSummaryResponse {
   id: string;
   code: string;
@@ -368,6 +383,7 @@ export interface ItemSummaryResponse {
 
 export interface ItemDetailResponse extends ItemSummaryResponse {
   conversions: ItemUnitConversionResponse[];
+  accessories?: ItemAccessoryResponse[];
   genericName: string | null;
   defaultDoctorFee: number | null;
   defaultSupplierId: string | null;
@@ -388,6 +404,7 @@ export interface CreateItemPayload {
   categoryId: string;
   baseUnitId: string;
   conversions?: ItemUnitConversionPayload[];
+  accessories?: ItemAccessoryPayload[];
   standardCost: number;
   baseSellingPrice: number;
   isTaxInclusive?: boolean;
@@ -407,6 +424,7 @@ export interface UpdateItemPayload {
   categoryId?: string;
   baseUnitId?: string;
   conversions?: ItemUnitConversionPayload[];
+  accessories?: ItemAccessoryPayload[];
   standardCost?: number;
   baseSellingPrice?: number;
   isTaxInclusive?: boolean;

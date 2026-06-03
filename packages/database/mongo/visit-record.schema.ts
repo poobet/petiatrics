@@ -1,4 +1,4 @@
-import { Schema, Document, model, models, Types } from 'mongoose';
+import mongoose from 'mongoose';
 
 export type VisitStatus = 'draft' | 'finalized' | 'amended';
 
@@ -23,10 +23,10 @@ export interface ISOAP {
   plan: string;
 }
 
-export interface IVisitRecord extends Document {
+export interface IVisitRecord extends mongoose.Document {
   clinicId: string;
   branchId: string;
-  patientId: Types.ObjectId;
+  patientId: mongoose.Types.ObjectId;
   appointmentId?: string | null; // UUID of Appointment in PostgreSQL
   vetId: string; // UUID of User in PostgreSQL
   visitDate: Date;
@@ -42,7 +42,7 @@ export interface IVisitRecord extends Document {
   updatedAt: Date;
 }
 
-const PrescriptionSchema = new Schema<IPrescription>(
+const PrescriptionSchema = new mongoose.Schema<IPrescription>(
   {
     drug: { type: String, required: true },
     dosage: { type: String, required: true },
@@ -54,7 +54,7 @@ const PrescriptionSchema = new Schema<IPrescription>(
   { _id: false },
 );
 
-const AttachmentSchema = new Schema<IAttachment>(
+const AttachmentSchema = new mongoose.Schema<IAttachment>(
   {
     type: { type: String, enum: ['lab_result', 'imaging', 'file'], required: true },
     url: { type: String, required: true },
@@ -62,7 +62,7 @@ const AttachmentSchema = new Schema<IAttachment>(
   { _id: false },
 );
 
-const SOAPSchema = new Schema<ISOAP>(
+const SOAPSchema = new mongoose.Schema<ISOAP>(
   {
     subjective: { type: String, default: '' },
     objective: { type: String, default: '' },
@@ -72,11 +72,11 @@ const SOAPSchema = new Schema<ISOAP>(
   { _id: false },
 );
 
-const VisitRecordSchema = new Schema<IVisitRecord>(
+const VisitRecordSchema = new mongoose.Schema<IVisitRecord>(
   {
     clinicId: { type: String, required: true, index: true },
     branchId: { type: String, required: true, index: true },
-    patientId: { type: Schema.Types.ObjectId, required: true, ref: 'PetProfile' },
+    patientId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'PetProfile' },
     appointmentId: { type: String, default: null },
     vetId: { type: String, required: true },
     visitDate: { type: Date, required: true, default: Date.now },
@@ -105,4 +105,4 @@ VisitRecordSchema.index({ clinicId: 1, status: 1 });
 
 export { VisitRecordSchema };
 export const VisitRecordModel =
-  models['VisitRecord'] ?? model<IVisitRecord>('VisitRecord', VisitRecordSchema);
+  mongoose.models['VisitRecord'] ?? mongoose.model<IVisitRecord>('VisitRecord', VisitRecordSchema);
