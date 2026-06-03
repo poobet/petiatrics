@@ -35,7 +35,7 @@ export default async function PetVisitDetailPage({ params }: PageProps) {
   if (!sid) notFound();
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
-  const res = await fetch(`${apiUrl}/api/v1/patients/${id}/visits/${visitId}`, {
+  const res = await fetch(`${apiUrl}/api/v1/owner/pets/${id}/records/${visitId}`, {
     headers: { Cookie: `petiatrics_sid=${sid}` },
     cache: 'no-store',
   });
