@@ -67,7 +67,7 @@ export default function VisitDetailClient({
     setError(null);
     try {
       const updated = await apiClient.post<VisitRecord>(
-        `/api/v1/patients/${patientId}/visits/${visit._id}/finalize`,
+        `/patients/${patientId}/visits/${visit._id}/finalize`,
         {},
       );
       setVisit(updated);
@@ -85,7 +85,7 @@ export default function VisitDetailClient({
     setError(null);
     try {
       const updated = await apiClient.post<VisitRecord>(
-        `/api/v1/patients/${patientId}/visits/${visit._id}/amend`,
+        `/patients/${patientId}/visits/${visit._id}/amend`,
         { amendmentReason: amendReason.trim() },
       );
       setVisit(updated);

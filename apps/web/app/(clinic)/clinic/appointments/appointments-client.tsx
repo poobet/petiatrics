@@ -56,7 +56,7 @@ export default function AppointmentsClient() {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiClient.get<Appointment[]>(`/api/v1/appointments?date=${date}`);
+      const data = await apiClient.get<Appointment[]>(`/appointments?date=${date}`);
       setAppointments(data);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to load appointments');

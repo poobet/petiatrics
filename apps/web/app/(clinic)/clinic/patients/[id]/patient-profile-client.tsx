@@ -49,14 +49,14 @@ export default function PatientProfileClient({ patient }: { patient: Patient }) 
     if (tab === 'visits' && visits.length === 0) {
       setLoadingVisits(true);
       apiClient
-        .get<VisitRecord[]>(`/api/v1/patients/${patient._id}/visits`)
+        .get<VisitRecord[]>(`/patients/${patient._id}/visits`)
         .then(setVisits)
         .finally(() => setLoadingVisits(false));
     }
     if (tab === 'vaccinations' && vaccinations.length === 0) {
       setLoadingVax(true);
       apiClient
-        .get<VaccinationRecord[]>(`/api/v1/patients/${patient._id}/vaccinations`)
+        .get<VaccinationRecord[]>(`/patients/${patient._id}/vaccinations`)
         .then(setVaccinations)
         .finally(() => setLoadingVax(false));
     }

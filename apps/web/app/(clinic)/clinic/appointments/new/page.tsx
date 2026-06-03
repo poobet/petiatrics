@@ -34,7 +34,7 @@ export default function NewAppointmentPage() {
     const scheduledAt = new Date(`${form.scheduledAt}T${form.scheduledTime}:00`);
 
     try {
-      await apiClient.post('/api/v1/appointments', {
+      await apiClient.post('/appointments', {
         patientId: form.patientId,
         ownerUserId: form.ownerUserId,
         vetUserId: form.vetUserId || undefined,

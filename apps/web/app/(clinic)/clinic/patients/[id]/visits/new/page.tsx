@@ -108,7 +108,7 @@ export default function NewVisitPage() {
     setError(null);
     try {
       const visit = await apiClient.post<{ _id: string }>(
-        `/api/v1/patients/${patientId}/visits`,
+        `/patients/${patientId}/visits`,
         {
           vetId,
           chiefComplaint,

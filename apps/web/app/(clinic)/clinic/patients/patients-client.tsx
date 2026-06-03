@@ -41,7 +41,7 @@ export default function PatientsClient() {
     setError(null);
     try {
       const params = q ? `?search=${encodeURIComponent(q)}` : '';
-      const data = await apiClient.get<Patient[]>(`/api/v1/patients${params}`);
+      const data = await apiClient.get<Patient[]>(`/patients${params}`);
       setPatients(data);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to load patients');
@@ -59,7 +59,7 @@ export default function PatientsClient() {
     setSubmitting(true);
     setFormError(null);
     try {
-      await apiClient.post('/api/v1/patients', {
+      await apiClient.post('/patients', {
         ...form,
         weightKg: form.weightKg ? parseFloat(form.weightKg) : undefined,
       });
