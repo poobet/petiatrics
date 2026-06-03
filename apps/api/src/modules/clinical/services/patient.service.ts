@@ -72,4 +72,8 @@ export class PatientService {
     if (!doc) throw new NotFoundException(`Patient ${id} not found.`);
     return doc;
   }
+
+  async findAllByOwner(clinicId: string, ownerUserId: string): Promise<IPetProfile[]> {
+    return this.findAll(clinicId, undefined, ownerUserId);
+  }
 }

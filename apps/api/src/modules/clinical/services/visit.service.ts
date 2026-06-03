@@ -7,7 +7,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Model, Types } from 'mongoose';
-import { IVisitRecord, MODEL_NAMES } from '@petiatrics/database';
+import { IVisitRecord, IPetProfile, MODEL_NAMES } from '@petiatrics/database';
 import { withClinic } from '@petiatrics/database';
 import { VisitFinalizedEvent } from '../../../common/events/domain-events';
 import { StockService } from '../../inventory/services/stock.service';
@@ -57,15 +57,25 @@ export class VisitService {
   constructor(
     @InjectModel(MODEL_NAMES.VISIT_RECORD)
     private readonly visitModel: Model<IVisitRecord>,
+    @InjectModel(MODEL_NAMES.PET_PROFILE)
+    private readonly petProfileModel: Model<IPetProfile>,
     private readonly events: EventEmitter2,
     private readonly stockService: StockService,
   ) {}
 
   async create(clinicId: string, dto: CreateVisitDto): Promise<IVisitRecord> {
+    const pet = await this.petProfileModel
+      .findOne({ _id: dto.patientId, clinicId })
+      .exec();
+    if (!pet) {
+      throw new NotFoundException(`Patient ${dto.patientId} not found.`);
+    }
+
     const doc = new this.visitModel({
       clinicId,
       branchId: dto.branchId,
       patientId: dto.patientId,
+      ownerUserId: pet.ownerUserId, // Enforce relationship binding
       vetId: dto.vetId,
       chiefComplaint: dto.chiefComplaint,
       soap: dto.soap ?? {},
