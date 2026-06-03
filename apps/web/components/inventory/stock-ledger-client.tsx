@@ -3,11 +3,12 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { format } from 'date-fns';
 import { apiClient } from '@/lib/api-client';
 import { useSessionStore } from '@/lib/session-store';
 import StockLedgerTable, { type MovementHistoryRow, type ProductSummaryRow } from '@/components/inventory/stock-ledger-table';
 import LowStockBanner from '@/components/inventory/low-stock-banner';
-import { Button } from '@petiatrics/ui';
+import { Button, Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@petiatrics/ui';
 
 interface StockBalance {
   id: string;
@@ -37,7 +38,7 @@ export default function StockLedgerClient() {
   const [balances, setBalances] = useState<StockBalance[]>([]);
   const [loading, setLoading] = useState(false);
   const [lowStockOnly, setLowStockOnly] = useState(false);
-  const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<ProductSummaryRow | null>(null);
   const [movementHistory, setMovementHistory] = useState<Record<string, MovementHistoryRow[]>>({});
   const [movementLoadingFor, setMovementLoadingFor] = useState<string | null>(null);
 
@@ -84,11 +85,9 @@ export default function StockLedgerClient() {
     async (productId: string) => {
       if (!activeBranchId) return;
       if (movementHistory[productId]) {
-        setExpandedProductId(productId);
         return;
       }
 
-      setExpandedProductId(productId);
       setMovementLoadingFor(productId);
       try {
         const params = new URLSearchParams({ productId, page: '1', limit: '100' });
@@ -106,17 +105,17 @@ export default function StockLedgerClient() {
     [activeBranchId, movementHistory],
   );
 
-  const toggleDetails = (productId: string) => {
-    if (expandedProductId === productId) {
-      setExpandedProductId(null);
-      return;
-    }
-    void fetchMovements(productId);
+  const handleViewDetails = (product: ProductSummaryRow) => {
+    setSelectedProduct(product);
+    void fetchMovements(product.productId);
   };
 
   useEffect(() => {
     fetchBalances();
   }, [fetchBalances]);
+
+  const selectedProductMovements = selectedProduct ? (movementHistory[selectedProduct.productId] ?? []) : [];
+  const selectedProductLoading = selectedProduct ? movementLoadingFor === selectedProduct.productId : false;
 
   return (
     <div className="space-y-4">
@@ -146,13 +145,81 @@ export default function StockLedgerClient() {
 
       <StockLedgerTable
         summaryRows={groupedProducts}
-        detailRows={movementHistory}
-        expandedProductIds={expandedProductId ? [expandedProductId] : []}
-        onToggleDetails={toggleDetails}
-        detailLoadingProductId={movementLoadingFor}
+        onViewDetails={handleViewDetails}
         loading={loading}
       />
+
+      <Sheet open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
+        <SheetContent className="sm:max-w-xl w-[90vw] md:w-[600px] h-full flex flex-col p-6">
+          <SheetHeader className="pb-4 border-b">
+            <SheetTitle className="text-xl font-bold">{selectedProduct?.productName}</SheetTitle>
+            <SheetDescription className="text-sm text-muted-foreground mt-1">
+              {selectedProduct?.sku ? `SKU: ${selectedProduct.sku} | ` : ''}
+              {t('columns.totalQuantity')}: <span className="font-semibold text-foreground font-mono">{selectedProduct?.totalQuantity.toLocaleString()}</span>
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto py-4">
+            {selectedProductLoading ? (
+              <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+                {t('loading')}
+              </div>
+            ) : selectedProductMovements.length > 0 ? (
+              <div className="overflow-x-auto rounded-lg border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 sticky top-0">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium">{t('columns.date')}</th>
+                      <th className="px-3 py-2 text-left font-medium">{t('columns.action')}</th>
+                      <th className="px-3 py-2 text-left font-medium">{t('columns.lotNumber')}</th>
+                      <th className="px-3 py-2 text-right font-medium">{t('columns.quantityChanged')}</th>
+                      <th className="px-3 py-2 text-left font-medium">{t('columns.user')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedProductMovements.map((movement) => {
+                      const typeLabel =
+                        movement.movementType === 'GOODS_RECEIPT' ||
+                        movement.reason === 'REPLENISH' ||
+                        movement.referenceType === 'REPLENISHMENT'
+                          ? t('actions.receipt')
+                          : movement.movementType === 'GOODS_ISSUE' ||
+                            movement.reason === 'DISPENSE' ||
+                            movement.referenceType === 'VISIT_RECORD'
+                          ? t('actions.issue')
+                          : movement.reason === 'MANUAL_ADJUSTMENT'
+                          ? t('actions.adjust')
+                          : movement.reason ?? movement.status ?? t('unknownAction');
+                      const quantity = movement.quantityChange ?? movement.delta ?? movement.quantity ?? 0;
+                      const user = movement.actor?.name ?? '—';
+
+                      return (
+                        <tr key={movement.id} className="border-t hover:bg-muted/10 transition-colors">
+                          <td className="px-3 py-2 text-muted-foreground text-xs">
+                            {movement.createdAt ? format(new Date(movement.createdAt), 'dd MMM yyyy HH:mm') : '—'}
+                          </td>
+                          <td className="px-3 py-2">{typeLabel}</td>
+                          <td className="px-3 py-2 text-muted-foreground font-mono text-xs">{movement.lotNumber ?? '—'}</td>
+                          <td className="px-3 py-2 text-right font-mono font-medium">
+                            <span className={quantity >= 0 ? 'text-emerald-600' : 'text-rose-600'}>
+                              {quantity >= 0 ? `+${quantity}` : quantity}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-xs">{user}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+                {t('noMovementHistory')}
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
-

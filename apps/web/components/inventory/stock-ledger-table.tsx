@@ -51,6 +51,7 @@ interface Props {
   showStatusColumn?: boolean;
   hideItemColumn?: boolean;
   emptyMessage?: string;
+  onViewDetails?: (product: ProductSummaryRow) => void;
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -72,6 +73,7 @@ export default function StockLedgerTable({
   showStatusColumn = true,
   hideItemColumn = false,
   emptyMessage,
+  onViewDetails,
 }: Props) {
   const t = useTranslations('inventory.stock.ledger');
   const message = emptyMessage ?? t('noMovements');
@@ -102,77 +104,18 @@ export default function StockLedgerTable({
             </tr>
           </thead>
           <tbody>
-            {summaryRows.map((summary) => {
-              const expanded = expandedProductIds.includes(summary.productId);
-              const movementRows = detailRows[summary.productId] ?? [];
-              const loadingDetails = detailLoadingProductId === summary.productId;
-
-              return (
-                <Fragment key={summary.productId}>
-                  <tr className="border-t hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 font-medium">{summary.productName}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{summary.sku ?? '—'}</td>
-                    <td className="px-4 py-3 text-right font-mono">{summary.totalQuantity.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right">
-                      <Button size="sm" variant="outline" onClick={() => onToggleDetails?.(summary.productId)}>
-                        {expanded ? t('actions.hideDetails') : t('actions.viewDetails')}
-                      </Button>
-                    </td>
-                  </tr>
-                  {expanded && (
-                    <tr className="bg-slate-50">
-                      <td colSpan={4} className="px-4 py-4">
-                        {loadingDetails ? (
-                          <div className="text-center text-sm text-muted-foreground">{t('loading')}</div>
-                        ) : movementRows.length > 0 ? (
-                          <div className="overflow-x-auto rounded-lg border bg-white">
-                            <table className="w-full text-sm">
-                              <thead className="bg-muted/50">
-                                <tr>
-                                  <th className="px-3 py-2 text-left font-medium">{t('columns.date')}</th>
-                                  <th className="px-3 py-2 text-left font-medium">{t('columns.action')}</th>
-                                  <th className="px-3 py-2 text-left font-medium">{t('columns.lotNumber')}</th>
-                                  <th className="px-3 py-2 text-right font-medium">{t('columns.quantityChanged')}</th>
-                                  <th className="px-3 py-2 text-left font-medium">{t('columns.user')}</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {movementRows.map((movement) => {
-                                  const typeLabel =
-                                    movement.movementType === 'GOODS_RECEIPT' || movement.reason === 'REPLENISH' || movement.referenceType === 'REPLENISHMENT'
-                                      ? t('actions.receipt')
-                                      : movement.movementType === 'GOODS_ISSUE' || movement.reason === 'DISPENSE' || movement.referenceType === 'VISIT_RECORD'
-                                      ? t('actions.issue')
-                                      : movement.reason === 'MANUAL_ADJUSTMENT'
-                                      ? t('actions.adjust')
-                                      : movement.reason ?? movement.status ?? t('unknownAction');
-                                  const quantity = movement.quantityChange ?? movement.delta ?? movement.quantity ?? 0;
-                                  const user = movement.actor?.name ?? '—';
-
-                                  return (
-                                    <tr key={movement.id} className="border-t hover:bg-muted/10 transition-colors">
-                                      <td className="px-3 py-2 text-muted-foreground">
-                                        {movement.createdAt ? format(new Date(movement.createdAt), 'dd MMM yyyy HH:mm') : '—'}
-                                      </td>
-                                      <td className="px-3 py-2">{typeLabel}</td>
-                                      <td className="px-3 py-2 text-muted-foreground">{movement.lotNumber ?? '—'}</td>
-                                      <td className="px-3 py-2 text-right font-mono">{quantity >= 0 ? `+${quantity}` : quantity}</td>
-                                      <td className="px-3 py-2">{user}</td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        ) : (
-                          <div className="text-sm text-muted-foreground">{t('noMovementHistory')}</div>
-                        )}
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
-              );
-            })}
+            {summaryRows.map((summary) => (
+              <tr key={summary.productId} className="border-t hover:bg-muted/30 transition-colors">
+                <td className="px-4 py-3 font-medium">{summary.productName}</td>
+                <td className="px-4 py-3 text-muted-foreground">{summary.sku ?? '—'}</td>
+                <td className="px-4 py-3 text-right font-mono">{summary.totalQuantity.toLocaleString()}</td>
+                <td className="px-4 py-3 text-right">
+                  <Button size="sm" variant="outline" onClick={() => onViewDetails?.(summary)}>
+                    {t('actions.viewDetails')}
+                  </Button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
