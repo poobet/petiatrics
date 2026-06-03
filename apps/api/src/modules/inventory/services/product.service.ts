@@ -26,6 +26,20 @@ const PRODUCT_INCLUDE_DETAIL = {
   unitConversions: {
     include: { unit: { select: { id: true, name: true, symbol: true, isActive: true } } },
   },
+  parentProductAccessories: {
+    include: {
+      childProduct: {
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          sku: true,
+          itemType: true,
+          baseSellingPrice: true,
+        },
+      },
+    },
+  },
 } as const;
 
 @Injectable()
@@ -66,6 +80,24 @@ export class ProductService {
     if (existing) throw new ConflictException(`Barcode "${barcode}" is already assigned to another item.`);
   }
 
+  private mapProductResponse(product: any) {
+    if (!product) return product;
+    const { parentProductAccessories, ...rest } = product;
+    const accessories = parentProductAccessories?.map((pa: any) => ({
+      childProductId: pa.childProductId,
+      name: pa.childProduct?.name,
+      code: pa.childProduct?.code,
+      sku: pa.childProduct?.sku,
+      itemType: pa.childProduct?.itemType,
+      baseSellingPrice: pa.childProduct ? Number(pa.childProduct.baseSellingPrice) : undefined,
+      quantityRatio: Number(pa.quantityRatio),
+    })) ?? [];
+    return {
+      ...rest,
+      accessories,
+    };
+  }
+
   // ─── CRUD ──────────────────────────────────────────────────────────────────
 
   async create(clinicId: string, dto: CreateProductDto) {
@@ -89,11 +121,11 @@ export class ProductService {
     // Auto-assign SKU if not supplied
     const sku = dto.sku ?? (await this.skuSequence.nextSku(clinicId));
 
-    const { conversions, reorderThreshold, ...rest } = dto;
+    const { conversions, accessories, reorderThreshold, ...rest } = dto;
     const reorderPoint = rest.reorderPoint ?? reorderThreshold;
     const db = scopedPrisma(this.prisma, clinicId);
 
-    return db.product.create({
+    const product = await db.product.create({
       data: {
         clinicId,
         ...rest,
@@ -103,9 +135,19 @@ export class ProductService {
         unitConversions: conversions?.length
           ? { create: conversions.map((c) => ({ unitId: c.unitId, ratioToBase: c.ratioToBase })) }
           : undefined,
+        parentProductAccessories: accessories?.length
+          ? {
+              create: accessories.map((a) => ({
+                childProductId: a.childProductId,
+                quantityRatio: a.quantityRatio,
+              })),
+            }
+          : undefined,
       },
       include: PRODUCT_INCLUDE_DETAIL,
     });
+
+    return this.mapProductResponse(product);
   }
 
   async findAll(clinicId: string, branchId: string, query: ListProductsDto = {}) {
@@ -147,12 +189,15 @@ export class ProductService {
       byProductId.set(row.productId, currentQty + Number(row.quantity));
     }
 
-    const mappedItems = items.map((item: any) => ({
-      ...item,
-      quantity: item.itemType === ItemType.SERVICE ? null : (byProductId.get(item.id) ?? 0),
-      reorderPoint: Number(item.reorderPoint),
-      minimumStock: Number(item.minimumStock),
-    }));
+    const mappedItems = items.map((item: any) => {
+      const mapped = this.mapProductResponse(item);
+      return {
+        ...mapped,
+        quantity: item.itemType === ItemType.SERVICE ? null : (byProductId.get(item.id) ?? 0),
+        reorderPoint: Number(item.reorderPoint),
+        minimumStock: Number(item.minimumStock),
+      };
+    });
 
     return { items: mappedItems, total, page, perPage };
   }
@@ -164,7 +209,7 @@ export class ProductService {
       include: PRODUCT_INCLUDE_DETAIL,
     });
     if (!product) throw new NotFoundException(`Item "${id}" not found.`);
-    return product;
+    return this.mapProductResponse(product);
   }
 
   async update(clinicId: string, id: string, dto: UpdateProductDto) {
@@ -184,7 +229,7 @@ export class ProductService {
       await this.assertBarcodeUnique(dto.barcode, id);
     }
 
-    const { conversions, reorderThreshold, ...rest } = dto;
+    const { conversions, accessories, reorderThreshold, ...rest } = dto;
     const reorderPoint = rest.reorderPoint ?? reorderThreshold;
     const db = scopedPrisma(this.prisma, clinicId);
 
@@ -193,7 +238,12 @@ export class ProductService {
       await this.prisma.itemUnitConversion.deleteMany({ where: { productId: id } });
     }
 
-    return db.product.update({
+    // Delete and recreate accessories when provided
+    if (accessories !== undefined) {
+      await this.prisma.productAccessory.deleteMany({ where: { parentProductId: id } });
+    }
+
+    const product = await db.product.update({
       where: { id },
       data: {
         ...rest,
@@ -201,9 +251,19 @@ export class ProductService {
         unitConversions: conversions?.length
           ? { create: conversions.map((c) => ({ unitId: c.unitId, ratioToBase: c.ratioToBase })) }
           : undefined,
+        parentProductAccessories: accessories?.length
+          ? {
+              create: accessories.map((a) => ({
+                childProductId: a.childProductId,
+                quantityRatio: a.quantityRatio,
+              })),
+            }
+          : undefined,
       },
       include: PRODUCT_INCLUDE_DETAIL,
     });
+
+    return this.mapProductResponse(product);
   }
 
   async deactivate(clinicId: string, id: string) {
@@ -218,7 +278,7 @@ export class ProductService {
       include: PRODUCT_INCLUDE_DETAIL,
     });
     if (!product) throw new NotFoundException(`No active item found with barcode "${barcode}".`);
-    return product;
+    return this.mapProductResponse(product);
   }
 
   /** Returns stocked goods with branch quantity \u2264 reorderPoint (reorderPoint > 0 only). */
