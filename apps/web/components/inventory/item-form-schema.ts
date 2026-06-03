@@ -30,6 +30,16 @@ export function validateItemForm(values: ItemFormValues): ValidationError[] {
     }
   }
 
+  for (let i = 0; i < values.accessories.length; i++) {
+    const a = values.accessories[i];
+    if (!a.childProductId) {
+      errors.push({ field: `accessories.${i}.childProductId`, message: `Accessory ${i + 1}: child product is required.` });
+    }
+    if (a.quantityRatio === '' || Number(a.quantityRatio) <= 0) {
+      errors.push({ field: `accessories.${i}.quantityRatio`, message: `Accessory ${i + 1}: ratio must be > 0.` });
+    }
+  }
+
   return errors;
 }
 
@@ -61,5 +71,8 @@ export function toApiPayload(values: ItemFormValues) {
     conversions: values.conversions
       .filter((c) => c.unitId && Number(c.ratioToBase) > 0)
       .map((c) => ({ unitId: c.unitId, ratioToBase: Number(c.ratioToBase) })),
+    accessories: values.accessories
+      .filter((a) => a.childProductId && Number(a.quantityRatio) > 0)
+      .map((a) => ({ childProductId: a.childProductId, quantityRatio: Number(a.quantityRatio) })),
   };
 }

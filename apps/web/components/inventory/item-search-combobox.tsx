@@ -14,9 +14,16 @@ interface Item {
 interface Props {
   onSelect: (item: Item) => void;
   placeholder?: string;
+  itemType?: string;
+  onChange?: (val: string) => void;
 }
 
-export default function ItemSearchCombobox({ onSelect, placeholder = 'Search items…' }: Props) {
+export default function ItemSearchCombobox({
+  onSelect,
+  placeholder = 'Search items…',
+  itemType = 'STOCKED_GOOD',
+  onChange,
+}: Props) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Item[]>([]);
   const [open, setOpen] = useState(false);
@@ -26,14 +33,15 @@ export default function ItemSearchCombobox({ onSelect, placeholder = 'Search ite
   const search = useCallback(async (q: string) => {
     if (q.length < 2) { setResults([]); return; }
     try {
+      const typeParam = itemType ? `&itemType=${itemType}` : '';
       const res = await apiClient.get<{ data?: Item[]; items?: Item[] }>(
-        `/inventory/products?search=${encodeURIComponent(q)}&itemType=STOCKED_GOOD&perPage=20`,
+        `/inventory/products?search=${encodeURIComponent(q)}${typeParam}&perPage=20`,
         );
       setResults((res as any)?.data ?? (res as any)?.items ?? []);
     } catch {
       setResults([]);
     }
-  }, []);
+  }, [itemType]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -42,6 +50,7 @@ export default function ItemSearchCombobox({ onSelect, placeholder = 'Search ite
     clearTimeout(timeoutRef.current ?? undefined);
     timeoutRef.current = setTimeout(() => search(val), 250);
     setOpen(true);
+    onChange?.(val);
   };
 
   const handleSelect = (item: Item) => {
