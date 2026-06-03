@@ -362,6 +362,7 @@ async function main() {
       const visitData = [
         {
           clinicId: clinic.id,
+          branchId: branchMain.id,
           patientId: petIds[0],
           vetId,
           visitDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
@@ -387,6 +388,7 @@ async function main() {
         },
         {
           clinicId: clinic.id,
+          branchId: branchMain.id,
           patientId: petIds.length > 1 ? petIds[1] : petIds[0],
           vetId,
           visitDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
