@@ -27,6 +27,7 @@ export interface IVisitRecord extends mongoose.Document {
   clinicId: string;
   branchId: string;
   patientId: mongoose.Types.ObjectId;
+  ownerUserId: string; // UUID of owner User in PostgreSQL
   appointmentId?: string | null; // UUID of Appointment in PostgreSQL
   vetId: string; // UUID of User in PostgreSQL
   visitDate: Date;
@@ -77,6 +78,7 @@ const VisitRecordSchema = new mongoose.Schema<IVisitRecord>(
     clinicId: { type: String, required: true, index: true },
     branchId: { type: String, required: true, index: true },
     patientId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'PetProfile' },
+    ownerUserId: { type: String, required: true, index: true },
     appointmentId: { type: String, default: null },
     vetId: { type: String, required: true },
     visitDate: { type: Date, required: true, default: Date.now },
@@ -99,7 +101,7 @@ const VisitRecordSchema = new mongoose.Schema<IVisitRecord>(
   },
 );
 
-VisitRecordSchema.index({ clinicId: 1, patientId: 1 });
+VisitRecordSchema.index({ clinicId: 1, patientId: 1, ownerUserId: 1 });
 VisitRecordSchema.index({ clinicId: 1, vetId: 1 });
 VisitRecordSchema.index({ clinicId: 1, status: 1 });
 

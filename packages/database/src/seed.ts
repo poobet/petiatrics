@@ -356,7 +356,7 @@ async function main() {
 
   // ── 5. Visit Records (MongoDB) ────────────────────────────────────────────
   const vetId = staffUsers['VET'];
-  if (petIds.length > 0 && vetId) {
+  if (petIds.length > 0 && vetId && ownerUser) {
     const existingVisits = await VisitRecord.find({ clinicId: clinic.id }).lean();
     if (existingVisits.length === 0) {
       const visitData = [
@@ -364,6 +364,7 @@ async function main() {
           clinicId: clinic.id,
           branchId: branchMain.id,
           patientId: petIds[0],
+          ownerUserId: ownerUser.id,
           vetId,
           visitDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
           soap: {
@@ -390,6 +391,7 @@ async function main() {
           clinicId: clinic.id,
           branchId: branchMain.id,
           patientId: petIds.length > 1 ? petIds[1] : petIds[0],
+          ownerUserId: ownerUser.id,
           vetId,
           visitDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
           soap: {
