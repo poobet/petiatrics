@@ -22,6 +22,15 @@ export class ItemUnitConversionDto {
   ratioToBase!: number;
 }
 
+export class ProductAccessoryDto {
+  @IsUUID()
+  childProductId!: string;
+
+  @IsNumber()
+  @Min(0.001)
+  quantityRatio!: number;
+}
+
 export class CreateProductDto {
   @IsString()
   @IsNotEmpty()
@@ -105,4 +114,10 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   barcode?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProductAccessoryDto)
+  accessories?: ProductAccessoryDto[];
 }
