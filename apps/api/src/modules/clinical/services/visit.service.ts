@@ -8,7 +8,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Model, Types } from 'mongoose';
 import { IVisitRecord, IPetProfile, MODEL_NAMES } from '@petiatrics/database';
-import { withClinic } from '@petiatrics/database';
 import { VisitFinalizedEvent } from '../../../common/events/domain-events';
 import { StockService } from '../../inventory/services/stock.service';
 
@@ -182,14 +181,14 @@ export class VisitService {
 
   async findByPatient(clinicId: string, patientId: string): Promise<IVisitRecord[]> {
     return this.visitModel
-      .find({ clinicId, patientId, ...withClinic(clinicId) })
+      .find({ clinicId, patientId })
       .sort({ visitDate: -1 })
       .exec();
   }
 
   async getOne(clinicId: string, visitId: string): Promise<IVisitRecord> {
     const doc = await this.visitModel
-      .findOne({ _id: visitId, ...withClinic(clinicId) })
+      .findOne({ _id: visitId, clinicId })
       .exec();
     if (!doc) throw new NotFoundException(`Visit ${visitId} not found.`);
     return doc;

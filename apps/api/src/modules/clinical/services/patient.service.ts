@@ -5,7 +5,6 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { IPetProfile, MODEL_NAMES } from '@petiatrics/database';
-import { withClinic } from '@petiatrics/database';
 
 export interface CreatePatientDto {
   name: string;
@@ -39,7 +38,7 @@ export class PatientService {
   }
 
   async findAll(clinicId: string, search?: string, ownerUserId?: string): Promise<IPetProfile[]> {
-    const filter: Record<string, unknown> = withClinic(clinicId);
+    const filter: Record<string, unknown> = { clinicId };
     if (search) {
       filter['name'] = { $regex: search, $options: 'i' };
     }
@@ -51,7 +50,7 @@ export class PatientService {
 
   async findById(clinicId: string, id: string): Promise<IPetProfile> {
     const doc = await this.petProfileModel
-      .findOne({ _id: id, ...withClinic(clinicId) })
+      .findOne({ _id: id, clinicId })
       .exec();
     if (!doc) throw new NotFoundException(`Patient ${id} not found.`);
     return doc;
@@ -64,7 +63,7 @@ export class PatientService {
   ): Promise<IPetProfile> {
     const doc = await this.petProfileModel
       .findOneAndUpdate(
-        { _id: id, ...withClinic(clinicId) },
+        { _id: id, clinicId },
         { $set: dto },
         { new: true },
       )
