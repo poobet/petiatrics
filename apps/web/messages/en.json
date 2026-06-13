@@ -101,6 +101,8 @@
     "businessPartners": "Business Partners",
     "audit": "Audit Log",
     "settings": "Settings",
+    "settingsGeneral": "General",
+    "rolePermissions": "Roles & Permissions",
     "mobileApp": "Mobile App",
     "mobileAppSubtitle": "Owner mobile view"
   },

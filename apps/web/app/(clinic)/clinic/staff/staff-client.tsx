@@ -28,14 +28,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@petiatrics/ui';
-import { Checkbox } from '@petiatrics/ui';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@petiatrics/ui';
-import { MoreHorizontal, Plus, Loader2, Shield } from 'lucide-react';
+import { MoreHorizontal, Plus, Loader2 } from 'lucide-react';
 import { apiClient } from '../../../../lib/api-client';
 import { useSessionStore } from '../../../../lib/session-store';
 
@@ -49,56 +48,7 @@ interface StaffUser {
   permissions?: string[];
 }
 
-const PERMISSION_GROUPS = [
-  {
-    title: 'Clinical Permissions',
-    permissions: [
-      { id: 'VIEW_PATIENTS', label: 'View Patients', desc: 'Allows searching, viewing, and reading patient profiles.' },
-      { id: 'EDIT_PATIENTS', label: 'Edit Patients', desc: 'Allows creating, updating, and deleting patient profiles.' },
-      { id: 'MANAGE_VISITS', label: 'Manage Visits', desc: 'Allows creating, updating, and finalizing SOAP visit notes.' },
-      { id: 'MANAGE_VACCINATIONS', label: 'Manage Vaccinations', desc: 'Allows administering and logging vaccinations.' },
-    ],
-  },
-  {
-    title: 'Inventory Permissions',
-    permissions: [
-      { id: 'VIEW_INVENTORY', label: 'View Inventory', desc: 'Allows viewing stock balances, product catalog, and ledger.' },
-      { id: 'MANAGE_INVENTORY', label: 'Manage Inventory', desc: 'Allows performing stock adjustments and goods receipt.' },
-    ],
-  },
-  {
-    title: 'Billing Permissions',
-    permissions: [
-      { id: 'VIEW_BILLING', label: 'View Billing', desc: 'Allows reading invoices, payment history, and financial logs.' },
-      { id: 'MANAGE_BILLING', label: 'Manage Billing', desc: 'Allows creating, paying, and voiding invoices.' },
-    ],
-  },
-  {
-    title: 'Settings Permissions',
-    permissions: [
-      { id: 'MANAGE_SETTINGS', label: 'Manage Settings', desc: 'Allows managing clinic settings, branches, and staff permission matrices.' },
-    ],
-  },
-];
 
-const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
-  CLINIC_OWNER: [
-    'VIEW_PATIENTS', 'EDIT_PATIENTS', 'MANAGE_VISITS', 'MANAGE_VACCINATIONS',
-    'VIEW_INVENTORY', 'MANAGE_INVENTORY', 'VIEW_BILLING', 'MANAGE_BILLING', 'MANAGE_SETTINGS'
-  ],
-  VET: [
-    'VIEW_PATIENTS', 'EDIT_PATIENTS', 'MANAGE_VISITS', 'MANAGE_VACCINATIONS', 'VIEW_INVENTORY'
-  ],
-  ASSISTANT: [
-    'VIEW_PATIENTS', 'VIEW_INVENTORY', 'VIEW_BILLING'
-  ],
-  STAFF: [
-    'VIEW_PATIENTS', 'VIEW_INVENTORY', 'VIEW_BILLING'
-  ],
-  CASHIER: [
-    'VIEW_PATIENTS', 'VIEW_INVENTORY', 'VIEW_BILLING', 'MANAGE_BILLING'
-  ],
-};
 
 export default function StaffPageClient() {
   const t = useTranslations('staff');
@@ -115,53 +65,9 @@ export default function StaffPageClient() {
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
-  const [rolePermissionsOpen, setRolePermissionsOpen] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<string>('VET');
-  const [rolePermissionsList, setRolePermissionsList] = useState<any[]>([]);
-  const [loadingRolePermissions, setLoadingRolePermissions] = useState(false);
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
-  const [updatingPermissions, setUpdatingPermissions] = useState(false);
 
-  async function fetchRolePermissions() {
-    setLoadingRolePermissions(true);
-    try {
-      const list = await apiClient.get<any[]>('/clinic/staff/role-permissions');
-      setRolePermissionsList(list);
-      const override = list.find((item) => item.role === selectedRole);
-      setSelectedPermissions(override ? override.permissions : (DEFAULT_ROLE_PERMISSIONS[selectedRole] || []));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingRolePermissions(false);
-    }
-  }
 
-  async function handleSaveRolePermissions() {
-    setUpdatingPermissions(true);
-    try {
-      const updated = await apiClient.put<any>(`/clinic/staff/roles/${selectedRole}/permissions`, {
-        permissions: selectedPermissions,
-      });
-      setRolePermissionsList((prev) => {
-        const index = prev.findIndex((item) => item.role === selectedRole);
-        if (index > -1) {
-          return prev.map((item) => (item.role === selectedRole ? updated : item));
-        } else {
-          return [...prev, updated];
-        }
-      });
-      setRolePermissionsOpen(false);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setUpdatingPermissions(false);
-    }
-  }
 
-  useEffect(() => {
-    const override = rolePermissionsList.find((item) => item.role === selectedRole);
-    setSelectedPermissions(override ? override.permissions : (DEFAULT_ROLE_PERMISSIONS[selectedRole] || []));
-  }, [selectedRole, rolePermissionsList]);
 
   useEffect(() => {
     apiClient
@@ -225,17 +131,6 @@ export default function StaffPageClient() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setRolePermissionsOpen(true);
-              fetchRolePermissions();
-            }}
-          >
-            <Shield className="w-4 h-4 mr-2" />
-            Manage Role Permissions
-          </Button>
 
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
@@ -371,85 +266,7 @@ export default function StaffPageClient() {
         </Table>
       </div>
 
-      {/* Manage Role Permissions Dialog */}
-      <Dialog open={rolePermissionsOpen} onOpenChange={setRolePermissionsOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Manage Role Permissions</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-6 mt-4">
-            <p className="text-sm text-gray-500">
-              Configure granular module-level permissions for each role. When updated, all staff members assigned to the role will inherit these settings.
-            </p>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">Select Role to Configure</Label>
-              <Select value={selectedRole} onValueChange={setSelectedRole}>
-                <SelectTrigger className="w-full md:w-64">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="VET">{t('roles.vet')}</SelectItem>
-                  <SelectItem value="ASSISTANT">{t('roles.receptionist')} (ASSISTANT)</SelectItem>
-                  <SelectItem value="CASHIER">{t('roles.receptionist')} (CASHIER)</SelectItem>
-                  <SelectItem value="STAFF">{t('roles.receptionist')} (STAFF)</SelectItem>
-                  <SelectItem value="CLINIC_OWNER">{t('roles.clinic_admin')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {loadingRolePermissions ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {PERMISSION_GROUPS.map((group) => (
-                  <div key={group.title} className="space-y-3">
-                    <h3 className="text-sm font-semibold text-gray-900 border-b pb-1.5">{group.title}</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {group.permissions.map((perm) => {
-                        const isChecked = selectedPermissions.includes(perm.id);
-                        return (
-                          <div key={perm.id} className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
-                            <Checkbox
-                              id={perm.id}
-                              checked={isChecked}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setSelectedPermissions(prev => [...prev, perm.id]);
-                                } else {
-                                  setSelectedPermissions(prev => prev.filter(p => p !== perm.id));
-                                }
-                              }}
-                            />
-                            <div className="space-y-1">
-                              <Label htmlFor={perm.id} className="text-sm font-medium leading-none cursor-pointer">
-                                {perm.label}
-                              </Label>
-                              <p className="text-xs text-gray-500 leading-normal">{perm.desc}</p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="flex justify-end gap-3 border-t pt-4">
-              <Button variant="outline" onClick={() => setRolePermissionsOpen(false)} disabled={updatingPermissions}>
-                {tCommon('cancel')}
-              </Button>
-              <Button onClick={handleSaveRolePermissions} disabled={updatingPermissions || loadingRolePermissions}>
-                {updatingPermissions && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {tCommon('save')}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

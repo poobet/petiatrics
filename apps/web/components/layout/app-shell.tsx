@@ -26,6 +26,7 @@ import {
   Search,
   Briefcase,
   ChevronRight,
+  Shield,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@petiatrics/ui';
 import { Button } from '@petiatrics/ui';
@@ -42,7 +43,7 @@ import type { AuthProfile } from '@petiatrics/types';
 import { BranchSelector } from './branch-selector';
 import { useSessionStore } from '../../lib/session-store';
 
-type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'products' | 'stockLedger' | 'goodsReceipt' | 'goodsIssue' | 'adjustments' | 'billing' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings';
+type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'products' | 'stockLedger' | 'goodsReceipt' | 'goodsIssue' | 'adjustments' | 'billing' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings' | 'settingsGeneral' | 'rolePermissions';
 
 interface SubNavItem {
   key: NavKey;
@@ -63,21 +64,21 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { key: 'dashboard', href: '/clinic/dashboard', icon: LayoutDashboard },
   { key: 'appointments', href: '/clinic/appointments', icon: Calendar },
-  { key: 'patients', href: '/clinic/patients', icon: PawPrint, requiredPermission: 'VIEW_PATIENTS' },
+  { key: 'patients', href: '/clinic/patients', icon: PawPrint, requiredPermission: 'PATIENT:VIEW' },
   { key: 'clients', href: '/clients', icon: Users },
-  { key: 'medicalRecords', href: '/medical-records', icon: FileText, requiredPermission: 'VIEW_PATIENTS' },
+  { key: 'medicalRecords', href: '/medical-records', icon: FileText, requiredPermission: 'PATIENT:VIEW' },
   {
     key: 'inventory',
     icon: Package,
     subItems: [
-      { key: 'products', href: '/clinic/inventory/products', icon: Package, requiredPermission: 'VIEW_INVENTORY' },
-      { key: 'stockLedger', href: '/clinic/inventory/stock-ledger', icon: Archive, requiredPermission: 'VIEW_INVENTORY' },
-      { key: 'goodsReceipt', href: '/clinic/inventory/receipt', icon: Boxes, requiredPermission: 'MANAGE_INVENTORY' },
-      { key: 'goodsIssue', href: '/clinic/inventory/issue', icon: Archive, requiredPermission: 'MANAGE_INVENTORY' },
-      { key: 'adjustments', href: '/clinic/inventory/adjustments', icon: Boxes, requiredPermission: 'MANAGE_INVENTORY' },
+      { key: 'products', href: '/clinic/inventory/products', icon: Package, requiredPermission: 'INVENTORY:VIEW' },
+      { key: 'stockLedger', href: '/clinic/inventory/stock-ledger', icon: Archive, requiredPermission: 'INVENTORY:VIEW' },
+      { key: 'goodsReceipt', href: '/clinic/inventory/receipt', icon: Boxes, requiredPermission: 'INVENTORY:ADD' },
+      { key: 'goodsIssue', href: '/clinic/inventory/issue', icon: Archive, requiredPermission: 'INVENTORY:ADD' },
+      { key: 'adjustments', href: '/clinic/inventory/adjustments', icon: Boxes, requiredPermission: 'INVENTORY:EDIT' },
     ],
   },
-  { key: 'billing', href: '/clinic/billing', icon: CreditCard, requiredPermission: 'VIEW_BILLING' },
+  { key: 'billing', href: '/clinic/billing', icon: CreditCard, requiredPermission: 'BILLING:VIEW' },
   {
     key: 'staff',
     href: '/clinic/staff',
@@ -96,8 +97,19 @@ const NAV_ITEMS: NavItem[] = [
     icon: ClipboardList,
     roles: ['CLINIC_OWNER', 'SUPER_ADMIN'],
   },
-  { key: 'mobileApp', href: '/mobile-app', icon: Smartphone },
-  { key: 'settings', href: '/clinic/settings', icon: Settings },
+  {
+    key: 'settings',
+    icon: Settings,
+    subItems: [
+      { key: 'settingsGeneral', href: '/clinic/settings', icon: Settings },
+      {
+        key: 'rolePermissions',
+        href: '/clinic/settings/roles',
+        icon: Shield,
+        requiredPermission: 'SETTINGS:MANAGE',
+      },
+    ],
+  },
 ];
 
 interface AppShellProps {
