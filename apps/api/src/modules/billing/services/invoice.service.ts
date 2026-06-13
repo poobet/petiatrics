@@ -7,19 +7,30 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaClient } from '@prisma/client';
 import { scopedPrisma } from '@petiatrics/database';
 import { InvoiceCreatedEvent, InvoicePaidEvent, VisitFinalizedEvent } from '../../../common/events/domain-events';
+import { TaxEngineService } from './tax-engine.service';
+
+export interface CreateInvoiceLineItemDto {
+  itemType: 'SERVICE' | 'PRODUCT';
+  description: string;
+  quantity: number;
+  unitPriceMinor: number;
+  /** Product ID — required for PRODUCT type lines to resolve VAT and dispensing compliance. */
+  sourceReferenceId?: string;
+}
 
 export interface CreateInvoiceDto {
-  visitId: string;
-  patientId: string;
-  ownerUserId: string;
-  lineItems: Array<{
-    itemType: 'SERVICE' | 'PRODUCT';
-    description: string;
-    quantity: number;
-    unitPriceMinor: number;
-    sourceReferenceId?: string;
-  }>;
-  taxRateBps?: number; // basis points, default 700 = 7%
+  /** MongoDB VisitRecord._id. If absent → OTC/Retail context. */
+  visitId?: string | null;
+  /** MongoDB PetProfile._id. Optional for OTC. */
+  patientId?: string | null;
+  /** Owner user ID. Optional for OTC. */
+  ownerUserId?: string | null;
+  lineItems: CreateInvoiceLineItemDto[];
+  /**
+   * @deprecated Use per-line VAT via TaxEngineService.
+   * Kept for backward-compatibility with visit-event created invoices.
+   */
+  taxRateBps?: number;
 }
 
 @Injectable()
@@ -27,19 +38,15 @@ export class InvoiceService {
   constructor(
     private readonly prisma: PrismaClient,
     private readonly events: EventEmitter2,
+    private readonly taxEngine: TaxEngineService,
   ) {}
 
   async create(clinicId: string, dto: CreateInvoiceDto) {
     const db = scopedPrisma(this.prisma, clinicId);
-    const taxRateBps = dto.taxRateBps ?? 700;
+    const isClinicContext = !!dto.visitId;
 
-    const expandedLineItems: Array<{
-      itemType: 'SERVICE' | 'PRODUCT';
-      description: string;
-      quantity: number;
-      unitPriceMinor: number;
-      sourceReferenceId?: string;
-    }> = [];
+    // ── 1. Expand accessories ────────────────────────────────────────────────
+    const expandedLineItems: Array<CreateInvoiceLineItemDto & { expandedFromId?: string }> = [];
 
     for (const item of dto.lineItems) {
       expandedLineItems.push(item);
@@ -67,40 +74,83 @@ export class InvoiceService {
               quantity: Number(item.quantity) * Number(acc.quantityRatio),
               unitPriceMinor: Math.round(Number(acc.childProduct.baseSellingPrice) * 100),
               sourceReferenceId: acc.childProduct.id,
+              expandedFromId: item.sourceReferenceId,
             });
           }
         }
       }
     }
 
-    const lineItemsWithTotals = expandedLineItems.map((item) => {
-      const subtotalMinor = Math.round(item.quantity * item.unitPriceMinor);
-      return { ...item, subtotalMinor };
-    });
+    // ── 2. Compliance check + per-line tax resolution ────────────────────────
+    const lineItemsWithTax: Array<
+      CreateInvoiceLineItemDto & {
+        subtotalMinor: number;
+        vatRateBps: number;
+        vatTotalMinor: number;
+      }
+    > = [];
 
-    const subtotalMinor = lineItemsWithTotals.reduce((acc, li) => acc + li.subtotalMinor, 0);
-    const taxTotalMinor = Math.round(subtotalMinor * taxRateBps / 10_000);
+    for (const item of expandedLineItems) {
+      let vatRateBps = 700; // default fallback
+      const isTaxInclusive = false; // product prices are always exclusive in this system
+
+      if (item.itemType === 'PRODUCT' && item.sourceReferenceId) {
+        const taxProfile = await this.taxEngine.getProductTaxProfile(item.sourceReferenceId);
+        if (taxProfile) {
+          // Compliance gate — throws BadRequestException if blocked
+          this.taxEngine.assertDispensingPermission(taxProfile, isClinicContext);
+          // Resolve per-line VAT
+          vatRateBps = this.taxEngine.resolveVatRateBps(taxProfile, isClinicContext);
+        }
+      } else if (item.itemType === 'SERVICE') {
+        // Services always attract standard 7% VAT in both contexts
+        vatRateBps = 700;
+      }
+
+      const { subtotalMinor, vatTotalMinor } = this.taxEngine.computeLineTax(
+        item.unitPriceMinor,
+        item.quantity,
+        vatRateBps,
+        isTaxInclusive,
+      );
+
+      lineItemsWithTax.push({
+        ...item,
+        subtotalMinor,
+        vatRateBps,
+        vatTotalMinor,
+      });
+    }
+
+    // ── 3. Header totals (summed from line-level) ────────────────────────────
+    const subtotalMinor = lineItemsWithTax.reduce((acc, li) => acc + li.subtotalMinor, 0);
+    const taxTotalMinor = lineItemsWithTax.reduce((acc, li) => acc + li.vatTotalMinor, 0);
     const totalMinor = subtotalMinor + taxTotalMinor;
+    // Header taxRateBps is stored as blended/composite rate for reporting
+    const blendedRateBps = subtotalMinor > 0 ? Math.round((taxTotalMinor / subtotalMinor) * 10_000) : 0;
 
+    // ── 4. Persist ───────────────────────────────────────────────────────────
     const invoice = await db.$transaction(async (tx: any) => {
       return tx.invoice.create({
         data: {
           clinicId,
-          visitId: dto.visitId,
-          patientId: dto.patientId,
-          ownerUserId: dto.ownerUserId,
+          visitId: dto.visitId ?? null,
+          patientId: dto.patientId ?? null,
+          ownerUserId: dto.ownerUserId ?? null,
           subtotalMinor,
-          taxRateBps,
+          taxRateBps: blendedRateBps,
           taxTotalMinor,
           totalMinor,
           status: 'DRAFT',
           lineItems: {
-            create: lineItemsWithTotals.map((li) => ({
+            create: lineItemsWithTax.map((li) => ({
               itemType: li.itemType,
               description: li.description,
               quantity: li.quantity,
               unitPriceMinor: li.unitPriceMinor,
               subtotalMinor: li.subtotalMinor,
+              vatRateBps: li.vatRateBps,
+              vatTotalMinor: li.vatTotalMinor,
               sourceReferenceId: li.sourceReferenceId,
             })),
           },
@@ -112,7 +162,7 @@ export class InvoiceService {
     this.events.emit('invoice.created', new InvoiceCreatedEvent(
       clinicId,
       invoice.id,
-      dto.ownerUserId,
+      dto.ownerUserId ?? '',
       totalMinor,
     ));
 
@@ -120,7 +170,7 @@ export class InvoiceService {
   }
 
   async createFromVisitEvent(event: VisitFinalizedEvent) {
-    // Auto-create draft invoice with no line items (cashier adds items manually)
+    // Auto-create draft invoice with no line items (cashier adds items manually at POS)
     const db = scopedPrisma(this.prisma, event.clinicId);
 
     // Avoid duplicate invoice for same visit
@@ -132,7 +182,7 @@ export class InvoiceService {
         clinicId: event.clinicId,
         visitId: event.visitId,
         patientId: event.patientId,
-        ownerUserId: '',
+        ownerUserId: null,
         subtotalMinor: 0,
         taxRateBps: 700,
         taxTotalMinor: 0,

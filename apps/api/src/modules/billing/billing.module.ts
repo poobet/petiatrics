@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { InvoiceService } from './services/invoice.service';
+import { TaxEngineService } from './services/tax-engine.service';
 import { BillingVisitFinalizedListener } from './listeners/visit-finalized.listener';
 import { InvoiceController } from './controllers/invoice.controller';
 import { ReportController } from './controllers/report.controller';
@@ -20,9 +21,10 @@ import { ReportController } from './controllers/report.controller';
   controllers: [InvoiceController, ReportController],
   providers: [
     { provide: PrismaClient, useFactory: () => new PrismaClient() },
+    TaxEngineService,
     InvoiceService,
     BillingVisitFinalizedListener,
   ],
-  exports: [],
+  exports: [TaxEngineService],
 })
 export class BillingModule {}

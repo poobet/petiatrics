@@ -106,7 +106,7 @@ export class ProductController {
   @Put(':id/branch-settings')
   @Roles(...WRITE_ROLES)
   @Permissions('INVENTORY:EDIT')
-  @Audit({ entity: 'ProductBranchSetting', operation: 'upsert' })
+  @Audit({ entity: 'ProductBranchSetting', operation: 'update' })
   upsertBranchSettings(
     @Param('id') id: string,
     @Body() body: { settings: UpsertBranchSettingDto[] },
