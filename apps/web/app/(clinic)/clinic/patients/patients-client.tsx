@@ -89,7 +89,11 @@ export default function PatientsClient() {
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
         />
-        {canAddPatient && <Button onClick={() => setShowAdd(true)}>+ Add Patient</Button>}
+        {canAddPatient && (
+          <Link href="/clinic/patients/new">
+            <Button>+ Add Patient</Button>
+          </Link>
+        )}
       </div>
 
       {error && (
