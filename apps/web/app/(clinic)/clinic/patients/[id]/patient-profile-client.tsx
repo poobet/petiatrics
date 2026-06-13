@@ -89,7 +89,7 @@ export default function PatientProfileClient({ patient }: { patient: Patient }) 
             </div>
           </div>
         </div>
-        <Link href={`/patients/${patient._id}/visits/new`}>
+        <Link href={`/clinic/patients/${patient._id}/visits/new`}>
           <Button>+ New Visit</Button>
         </Link>
       </div>
@@ -133,7 +133,7 @@ export default function PatientProfileClient({ patient }: { patient: Patient }) 
               {visits.map((v) => (
                 <Link
                   key={v._id}
-                  href={`/patients/${patient._id}/visits/${v._id}`}
+                  href={`/clinic/patients/${patient._id}/visits/${v._id}`}
                   className="block rounded-lg border p-4 hover:bg-muted/30 transition-colors"
                 >
                   <div className="flex items-center justify-between">

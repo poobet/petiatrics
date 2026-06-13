@@ -158,7 +158,7 @@ export default function ClientDetailClient({ params }: { params: Promise<{ id: s
                       {pet.weightKg != null ? `${pet.weightKg} kg` : '—'}
                     </td>
                     <td className="px-4 py-2.5 text-right">
-                      <Link href={`/patients/${pet._id}`} className="text-primary hover:underline text-xs font-semibold">
+                      <Link href={`/clinic/patients/${pet._id}`} className="text-primary hover:underline text-xs font-semibold">
                         View History
                       </Link>
                     </td>

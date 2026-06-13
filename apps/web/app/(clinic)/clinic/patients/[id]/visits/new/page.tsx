@@ -119,7 +119,7 @@ export default function NewVisitPage() {
           })),
         },
       );
-      router.push(`/patients/${patientId}/visits/${visit._id}`);
+      router.push(`/clinic/patients/${patientId}/visits/${visit._id}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to create visit');
       setSubmitting(false);
@@ -226,7 +226,7 @@ export default function NewVisitPage() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push(`/patients/${patientId}`)}
+            onClick={() => router.push(`/clinic/patients/${patientId}`)}
           >
             Cancel
           </Button>

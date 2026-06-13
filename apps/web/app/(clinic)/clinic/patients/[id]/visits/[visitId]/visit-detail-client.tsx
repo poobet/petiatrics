@@ -120,7 +120,7 @@ export default function VisitDetailClient({
               Amend
             </Button>
           )}
-          <Link href={`/patients/${patientId}`}>
+          <Link href={`/clinic/patients/${patientId}`}>
             <Button variant="ghost">← Back</Button>
           </Link>
         </div>

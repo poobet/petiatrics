@@ -139,7 +139,7 @@ export default function PatientsClient() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Link
-                      href={`/patients/${p._id}`}
+                      href={`/clinic/patients/${p._id}`}
                       className="text-primary underline-offset-4 hover:underline text-sm"
                     >
                       View
