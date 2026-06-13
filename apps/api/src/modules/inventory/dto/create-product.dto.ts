@@ -11,7 +11,7 @@ import {
   IsUUID,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ItemType } from '@petiatrics/types';
+import { ItemType, DefaultVatType, WhtRate, DispensingCategory } from '@petiatrics/types';
 
 export class ItemUnitConversionDto {
   @IsUUID()
@@ -120,4 +120,54 @@ export class CreateProductDto {
   @ValidateNested({ each: true })
   @Type(() => ProductAccessoryDto)
   accessories?: ProductAccessoryDto[];
+
+  // ── Compliance & Tax fields (POS Dynamic Tax Engine) ──────────────────────
+  @IsOptional()
+  @IsEnum(DefaultVatType)
+  defaultVatType?: DefaultVatType;
+
+  @IsOptional()
+  @IsEnum(WhtRate)
+  whtRate?: WhtRate;
+
+  @IsOptional()
+  @IsEnum(DispensingCategory)
+  dispensingCategory?: DispensingCategory;
+
+  // ── GL Account mappings ────────────────────────────────────────────────────
+  @IsOptional()
+  @IsUUID()
+  revenueAccountId?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  cogsAccountId?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  inventoryAssetAccountId?: string | null;
+
+  // ── Per-branch settings (upserted alongside create) ───────────────────────
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpsertBranchSettingDto)
+  branchSettings?: UpsertBranchSettingDto[];
+}
+
+export class UpsertBranchSettingDto {
+  @IsUUID()
+  branchId!: string;
+
+  @IsBoolean()
+  isActive!: boolean;
+
+  @IsNumber()
+  @Min(0)
+  retailPrice!: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  movingAverageCost?: number;
 }

@@ -20,7 +20,7 @@ const PRODUCT_INCLUDE = {
   defaultSupplier: { select: { id: true, name: true } },
 } as const;
 
-/** Extended include that also loads unit conversions. */
+/** Extended include that also loads unit conversions and branch settings. */
 const PRODUCT_INCLUDE_DETAIL = {
   ...PRODUCT_INCLUDE,
   unitConversions: {
@@ -39,6 +39,9 @@ const PRODUCT_INCLUDE_DETAIL = {
         },
       },
     },
+  },
+  branchSettings: {
+    select: { id: true, branchId: true, isActive: true, retailPrice: true, movingAverageCost: true },
   },
 } as const;
 
@@ -121,7 +124,7 @@ export class ProductService {
     // Auto-assign SKU if not supplied
     const sku = dto.sku ?? (await this.skuSequence.nextSku(clinicId));
 
-    const { conversions, accessories, reorderThreshold, ...rest } = dto;
+    const { conversions, accessories, reorderThreshold, branchSettings, ...rest } = dto;
     const reorderPoint = rest.reorderPoint ?? reorderThreshold;
     const db = scopedPrisma(this.prisma, clinicId);
 
@@ -146,6 +149,11 @@ export class ProductService {
       },
       include: PRODUCT_INCLUDE_DETAIL,
     });
+
+    // Upsert per-branch settings when provided
+    if (branchSettings?.length) {
+      await this.upsertBranchSettings(product.id, branchSettings);
+    }
 
     return this.mapProductResponse(product);
   }
@@ -229,7 +237,7 @@ export class ProductService {
       await this.assertBarcodeUnique(dto.barcode, id);
     }
 
-    const { conversions, accessories, reorderThreshold, ...rest } = dto;
+    const { conversions, accessories, reorderThreshold, branchSettings, ...rest } = dto;
     const reorderPoint = rest.reorderPoint ?? reorderThreshold;
     const db = scopedPrisma(this.prisma, clinicId);
 
@@ -263,6 +271,11 @@ export class ProductService {
       include: PRODUCT_INCLUDE_DETAIL,
     });
 
+    // Upsert per-branch settings when provided
+    if (branchSettings?.length) {
+      await this.upsertBranchSettings(id, branchSettings);
+    }
+
     return this.mapProductResponse(product);
   }
 
@@ -281,7 +294,7 @@ export class ProductService {
     return this.mapProductResponse(product);
   }
 
-  /** Returns stocked goods with branch quantity \u2264 reorderPoint (reorderPoint > 0 only). */
+  /** Returns stocked goods with branch quantity <= reorderPoint (reorderPoint > 0 only). */
   async getLowStock(clinicId: string, branchId: string) {
     const db = scopedPrisma(this.prisma, clinicId);
     const balances = await db.branchStockBalance.findMany({
@@ -315,5 +328,41 @@ export class ProductService {
         reorderPoint: Number(product.reorderPoint),
         minimumStock: Number(product.minimumStock),
       }));
+  }
+
+  /**
+   * Upsert per-branch pricing/activation settings for a product.
+   * Called internally after create/update, or directly from the controller.
+   */
+  async upsertBranchSettings(
+    productId: string,
+    settings: Array<{ branchId: string; isActive: boolean; retailPrice: number; movingAverageCost?: number }>,
+  ) {
+    const ops = settings.map((s) =>
+      this.prisma.productBranchSetting.upsert({
+        where: { productId_branchId: { productId, branchId: s.branchId } },
+        create: {
+          productId,
+          branchId: s.branchId,
+          isActive: s.isActive,
+          retailPrice: s.retailPrice,
+          movingAverageCost: s.movingAverageCost ?? 0,
+        },
+        update: {
+          isActive: s.isActive,
+          retailPrice: s.retailPrice,
+          ...(s.movingAverageCost !== undefined ? { movingAverageCost: s.movingAverageCost } : {}),
+        },
+      }),
+    );
+    return this.prisma.$transaction(ops);
+  }
+
+  /** Retrieve branch-specific settings for a product. */
+  async getBranchSettings(productId: string) {
+    return this.prisma.productBranchSetting.findMany({
+      where: { productId },
+      select: { id: true, branchId: true, isActive: true, retailPrice: true, movingAverageCost: true, updatedAt: true },
+    });
   }
 }

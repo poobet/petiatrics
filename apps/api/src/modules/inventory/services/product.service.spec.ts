@@ -3,7 +3,7 @@ import { ConflictException, NotFoundException, BadRequestException } from '@nest
 import { PrismaClient } from '@prisma/client';
 import { ProductService } from './product.service';
 import { SkuSequenceService } from './sku-sequence.service';
-import type { CreateProductDto } from '../dto/create-product.dto';
+import { CreateProductDto } from '../dto/create-product.dto';
 import { ItemType } from '@petiatrics/types';
 
 // Make scopedPrisma pass-through so tests work against the same mock prisma object
@@ -32,6 +32,8 @@ function buildPrismaMock() {
     businessPartner: { findFirst: jest.fn() },
     itemUnitConversion: { deleteMany: jest.fn() },
     productAccessory: { deleteMany: jest.fn() },
+    productBranchSetting: { upsert: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
+    $transaction: jest.fn().mockImplementation((ops) => Promise.all(ops)),
   };
 }
 

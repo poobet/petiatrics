@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -20,6 +21,7 @@ import { ProductService } from '../services/product.service';
 import { CreateProductDto } from '../dto/create-product.dto';
 import { UpdateProductDto } from '../dto/update-product.dto';
 import { ListProductsDto } from '../dto/list-products.dto';
+import { UpsertBranchSettingDto } from '../dto/create-product.dto';
 
 const READ_ROLES = [Role.CLINIC_OWNER, Role.VET, Role.ASSISTANT, Role.CASHIER, Role.STAFF];
 const WRITE_ROLES = [Role.CLINIC_OWNER];
@@ -92,5 +94,23 @@ export class ProductController {
   @Permissions('INVENTORY:VIEW')
   findByBarcode(@TenantId() clinicId: string, @Param('barcode') barcode: string) {
     return this.productService.findByBarcode(clinicId, barcode);
+  }
+
+  @Get(':id/branch-settings')
+  @Roles(...READ_ROLES)
+  @Permissions('INVENTORY:VIEW')
+  getBranchSettings(@Param('id') id: string) {
+    return this.productService.getBranchSettings(id);
+  }
+
+  @Put(':id/branch-settings')
+  @Roles(...WRITE_ROLES)
+  @Permissions('INVENTORY:EDIT')
+  @Audit({ entity: 'ProductBranchSetting', operation: 'upsert' })
+  upsertBranchSettings(
+    @Param('id') id: string,
+    @Body() body: { settings: UpsertBranchSettingDto[] },
+  ) {
+    return this.productService.upsertBranchSettings(id, body.settings);
   }
 }
