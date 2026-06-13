@@ -118,4 +118,46 @@ describe('PermissionsGuard', () => {
 
     expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
   });
+
+  it('should return true if user is CUSTOMER and all required permissions are read-only', () => {
+    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(['PATIENT:VIEW', 'VISIT:VIEW']);
+
+    const request = {
+      userContext: {
+        role: Role.CUSTOMER,
+        permissions: [],
+      },
+    };
+
+    const context = {
+      getHandler: () => {},
+      getClass: () => {},
+      switchToHttp: () => ({
+        getRequest: () => request,
+      }),
+    } as unknown as ExecutionContext;
+
+    expect(guard.canActivate(context)).toBe(true);
+  });
+
+  it('should throw ForbiddenException if user is CUSTOMER and any required permission is write', () => {
+    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(['PATIENT:VIEW', 'PATIENT:EDIT']);
+
+    const request = {
+      userContext: {
+        role: Role.CUSTOMER,
+        permissions: [],
+      },
+    };
+
+    const context = {
+      getHandler: () => {},
+      getClass: () => {},
+      switchToHttp: () => ({
+        getRequest: () => request,
+      }),
+    } as unknown as ExecutionContext;
+
+    expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
+  });
 });
