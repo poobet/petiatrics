@@ -35,8 +35,9 @@ export class PatientController {
   findAll(
     @TenantId() clinicId: string,
     @Query('search') search?: string,
+    @Query('ownerUserId') ownerUserId?: string,
   ) {
-    return this.patientService.findAll(clinicId, search);
+    return this.patientService.findAll(clinicId, search, ownerUserId);
   }
 
   @Get(':id')
