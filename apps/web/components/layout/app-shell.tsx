@@ -65,7 +65,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'dashboard', href: '/clinic/dashboard', icon: LayoutDashboard },
   { key: 'appointments', href: '/clinic/appointments', icon: Calendar },
   { key: 'patients', href: '/clinic/patients', icon: PawPrint, requiredPermission: 'PATIENT:VIEW' },
-  { key: 'clients', href: '/clients', icon: Users },
+  { key: 'clients', href: '/clinic/clients', icon: Users, requiredPermission: 'PATIENT:VIEW' },
   { key: 'medicalRecords', href: '/medical-records', icon: FileText, requiredPermission: 'PATIENT:VIEW' },
   {
     key: 'inventory',
