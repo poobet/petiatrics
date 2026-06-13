@@ -28,6 +28,7 @@ export interface IVisitRecord extends mongoose.Document {
   branchId: string;
   patientId: mongoose.Types.ObjectId;
   ownerUserId: string; // UUID of owner User in PostgreSQL
+  billingBusinessPartnerId?: string | null; // UUID of BusinessPartner in PostgreSQL (B2B/Insurance billing override)
   appointmentId?: string | null; // UUID of Appointment in PostgreSQL
   vetId: string; // UUID of User in PostgreSQL
   visitDate: Date;
@@ -79,6 +80,7 @@ const VisitRecordSchema = new mongoose.Schema<IVisitRecord>(
     branchId: { type: String, required: true, index: true },
     patientId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'PetProfile' },
     ownerUserId: { type: String, required: true, index: true },
+    billingBusinessPartnerId: { type: String, default: null }, // Overrides ownerUserId as the billing entity (B2B/Insurance)
     appointmentId: { type: String, default: null },
     vetId: { type: String, required: true },
     visitDate: { type: Date, required: true, default: Date.now },

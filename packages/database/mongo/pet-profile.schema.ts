@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 export interface IPetProfile extends mongoose.Document {
   clinicId: string;
   ownerUserId: string;
+  businessPartnerId?: string | null; // UUID of BusinessPartner in PostgreSQL (corporate entity: Police K9, Shelter, etc.)
   name: string;
   species: string;
   breed: string;
@@ -17,6 +18,7 @@ const PetProfileSchema = new mongoose.Schema<IPetProfile>(
   {
     clinicId: { type: String, required: true, index: true },
     ownerUserId: { type: String, required: true, index: true },
+    businessPartnerId: { type: String, default: null }, // Links pet to a corporate entity for B2B billing/management
     name: { type: String, required: true },
     species: { type: String, required: true },
     breed: { type: String, required: true },
