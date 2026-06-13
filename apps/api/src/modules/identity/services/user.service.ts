@@ -70,7 +70,6 @@ export class UserService {
           clinicId: input.clinicId,
           status: UserStatus.ACTIVE as any,
           mustChangePassword: true,
-          permissions: DEFAULT_ROLE_PERMISSIONS[input.role as Role] || [],
         },
       });
 
@@ -114,7 +113,6 @@ export class UserService {
           clinicId: dto.clinicId,
           invitedBy: dto.invitedBy,
           status: UserStatus.INVITED as unknown as any,
-          permissions: DEFAULT_ROLE_PERMISSIONS[dto.role as Role] || [],
         },
       });
 
@@ -279,7 +277,6 @@ export class UserService {
           role: Role.CUSTOMER as any,
           clinicId: dto.clinicId,
           status: UserStatus.ACTIVE as any,
-          permissions: DEFAULT_ROLE_PERMISSIONS[Role.CUSTOMER] || [],
         },
       });
 
@@ -290,13 +287,31 @@ export class UserService {
   }
 
   /**
-   * Update permissions for a staff member.
+   * Get all custom role permissions for the clinic.
    */
-  async updatePermissions(userId: string, clinicId: string, permissions: string[]): Promise<User> {
-    await this.findOneInClinic(userId, clinicId);
-    return this.prisma.user.update({
-      where: { id: userId },
-      data: { permissions },
+  async getRolePermissions(clinicId: string): Promise<any[]> {
+    return this.prisma.clinicRolePermission.findMany({
+      where: { clinicId },
+    });
+  }
+
+  /**
+   * Update permissions for a specific role in the clinic.
+   */
+  async updateRolePermissions(clinicId: string, role: Role, permissions: string[]): Promise<any> {
+    return this.prisma.clinicRolePermission.upsert({
+      where: {
+        clinicId_role: {
+          clinicId,
+          role: role as any,
+        },
+      },
+      update: { permissions },
+      create: {
+        clinicId,
+        role: role as any,
+        permissions,
+      },
     });
   }
 }

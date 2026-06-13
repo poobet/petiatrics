@@ -78,21 +78,30 @@ export class StaffController {
   }
 
   /**
-   * PUT /api/v1/clinic/staff/:id/permissions
-   * Update staff permissions matrix.
+   * GET /api/v1/clinic/staff/role-permissions
+   * Retrieve the clinic's custom role permissions list.
    */
-  @Put(':id/permissions')
+  @Get('role-permissions')
+  getRolePermissions(@TenantId() clinicId: string) {
+    return this.users.getRolePermissions(clinicId);
+  }
+
+  /**
+   * PUT /api/v1/clinic/staff/roles/:role/permissions
+   * Update permissions for a specific role in the clinic.
+   */
+  @Put('roles/:role/permissions')
   @HttpCode(HttpStatus.OK)
-  @Audit({ entity: 'users', operation: 'update' })
-  updatePermissions(
-    @Param('id') id: string,
+  @Audit({ entity: 'clinic_role_permissions', operation: 'update' })
+  updateRolePermissions(
+    @Param('role') role: Role,
     @Body() dto: { permissions: string[] },
     @TenantId() clinicId: string,
   ) {
     if (!dto || !Array.isArray(dto.permissions)) {
       throw new BadRequestException('permissions must be a string array');
     }
-    return this.users.updatePermissions(id, clinicId, dto.permissions);
+    return this.users.updateRolePermissions(clinicId, role, dto.permissions);
   }
 
   /**

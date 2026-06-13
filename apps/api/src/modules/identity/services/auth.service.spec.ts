@@ -59,6 +59,10 @@ function makePrismaMock(user: ReturnType<typeof makeUser> | null = makeUser()) {
     businessPartner: {
       findFirst: jest.fn().mockResolvedValue(null),
     },
+    clinicRolePermission: {
+      findFirst: jest.fn().mockResolvedValue(null),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
   };
 }
 

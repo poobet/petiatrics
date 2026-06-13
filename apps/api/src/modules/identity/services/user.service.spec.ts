@@ -51,6 +51,10 @@ describe('UserService', () => {
         update: jest.fn().mockResolvedValue({}),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
+      clinicRolePermission: {
+        findMany: jest.fn().mockResolvedValue([]),
+        upsert: jest.fn().mockImplementation(({ create }) => Promise.resolve(create)),
+      },
     };
 
     const module = await Test.createTestingModule({
@@ -170,27 +174,44 @@ describe('UserService', () => {
     });
   });
 
-  describe('updatePermissions', () => {
-    it('updates user permissions successfully if user exists in clinic', async () => {
-      prismaMock.user.findFirst = jest.fn().mockResolvedValue({ id: 'user-1', clinicId: 'clinic-1' });
-      prismaMock.user.update = jest.fn().mockResolvedValue({ id: 'user-1', permissions: ['VIEW_PATIENTS'] });
+  describe('getRolePermissions', () => {
+    it('returns custom role permissions for clinic', async () => {
+      prismaMock.clinicRolePermission.findMany = jest.fn().mockResolvedValue([
+        { id: 'perm-1', role: 'VET', permissions: ['VIEW_PATIENTS'] }
+      ]);
 
-      const result = await service.updatePermissions('user-1', 'clinic-1', ['VIEW_PATIENTS']);
-      
-      expect(prismaMock.user.findFirst).toHaveBeenCalled();
-      expect(prismaMock.user.update).toHaveBeenCalledWith({
-        where: { id: 'user-1' },
-        data: { permissions: ['VIEW_PATIENTS'] },
+      const result = await service.getRolePermissions('clinic-1');
+
+      expect(prismaMock.clinicRolePermission.findMany).toHaveBeenCalledWith({
+        where: { clinicId: 'clinic-1' }
       });
-      expect(result.permissions).toEqual(['VIEW_PATIENTS']);
+      expect(result).toHaveLength(1);
+      expect(result[0].role).toBe('VET');
     });
+  });
 
-    it('throws NotFoundException if user does not exist in clinic', async () => {
-      prismaMock.user.findFirst = jest.fn().mockResolvedValue(null);
+  describe('updateRolePermissions', () => {
+    it('upserts role permissions for clinic successfully', async () => {
+      const mockResult = { clinicId: 'clinic-1', role: 'VET', permissions: ['VIEW_PATIENTS'] };
+      prismaMock.clinicRolePermission.upsert = jest.fn().mockResolvedValue(mockResult);
 
-      await expect(
-        service.updatePermissions('user-1', 'clinic-1', ['VIEW_PATIENTS']),
-      ).rejects.toThrow(NotFoundException);
+      const result = await service.updateRolePermissions('clinic-1', Role.VET, ['VIEW_PATIENTS']);
+
+      expect(prismaMock.clinicRolePermission.upsert).toHaveBeenCalledWith({
+        where: {
+          clinicId_role: {
+            clinicId: 'clinic-1',
+            role: 'VET'
+          }
+        },
+        update: { permissions: ['VIEW_PATIENTS'] },
+        create: {
+          clinicId: 'clinic-1',
+          role: 'VET',
+          permissions: ['VIEW_PATIENTS']
+        }
+      });
+      expect(result).toEqual(mockResult);
     });
   });
 });

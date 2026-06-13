@@ -158,9 +158,21 @@ export class AuthService {
     }
 
     const userRole = user.role as unknown as Role;
-    const permissions = user.permissions && user.permissions.length > 0
-      ? user.permissions
-      : DEFAULT_ROLE_PERMISSIONS[userRole] || [];
+    let permissions: string[] = [];
+    if (user.clinicId) {
+      const rolePerm = await this.prisma.clinicRolePermission.findFirst({
+        where: {
+          clinicId: user.clinicId,
+          role: user.role,
+        },
+      });
+      if (rolePerm) {
+        permissions = rolePerm.permissions;
+      }
+    }
+    if (permissions.length === 0) {
+      permissions = DEFAULT_ROLE_PERMISSIONS[userRole] || [];
+    }
 
     const userContext: UserContext = {
       userId: user.id,
