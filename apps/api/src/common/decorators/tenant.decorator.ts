@@ -9,14 +9,16 @@ import { UserContext } from '@petiatrics/types';
  *   @Get('patients')
  *   list(@TenantId() clinicId: string) { ... }
  */
+import { Role } from '@petiatrics/types';
+
 export const TenantId = createParamDecorator(
-  (_data: unknown, ctx: ExecutionContext): string => {
+  (_data: unknown, ctx: ExecutionContext): string | null => {
     const request = ctx.switchToHttp().getRequest<Request & { userContext?: UserContext }>();
     const clinicId = request.userContext?.clinicId;
-    if (!clinicId) {
+    if (!clinicId && request.userContext?.role !== Role.CUSTOMER) {
       throw new Error('TenantId decorator used on a route without a session context.');
     }
-    return clinicId;
+    return clinicId ?? null;
   },
 );
 

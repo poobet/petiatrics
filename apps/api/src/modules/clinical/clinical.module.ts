@@ -15,6 +15,7 @@ import { PatientController } from './controllers/patient.controller';
 import { VisitController } from './controllers/visit.controller';
 import { VaccinationController } from './controllers/vaccination.controller';
 import { OwnerController } from './controllers/owner.controller';
+import { PrismaClient } from '@prisma/client';
 
 /**
  * ClinicalModule — US2: Electronic Medical Records
@@ -36,7 +37,12 @@ import { OwnerController } from './controllers/owner.controller';
     InventoryModule,
   ],
   controllers: [PatientController, VisitController, VaccinationController, OwnerController],
-  providers: [PatientService, VisitService, VaccinationService],
+  providers: [
+    PatientService,
+    VisitService,
+    VaccinationService,
+    { provide: PrismaClient, useFactory: () => new PrismaClient() },
+  ],
   exports: [PatientService, VisitService, VaccinationService],
 })
 export class ClinicalModule {}

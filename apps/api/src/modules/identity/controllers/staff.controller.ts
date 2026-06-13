@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -8,6 +9,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
 } from '@nestjs/common';
 import {
   UserService,
@@ -16,6 +18,7 @@ import {
 import { ClinicService } from '../services/clinic.service';
 import { CreateStaffDto } from '../dto/create-staff.dto';
 import { Roles } from '../../../common/guards/roles.decorator';
+import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { TenantId, CurrentUser } from '../../../common/decorators/tenant.decorator';
 import { Role } from '@petiatrics/types';
 import type { UserContext } from '@petiatrics/types';
@@ -73,6 +76,34 @@ export class StaffController {
     @TenantId() clinicId: string,
   ) {
     return this.users.updateRole(id, clinicId, dto);
+  }
+
+  /**
+   * GET /api/v1/clinic/staff/role-permissions
+   * Retrieve the clinic's custom role permissions list.
+   */
+  @Get('role-permissions')
+  getRolePermissions(@TenantId() clinicId: string) {
+    return this.users.getRolePermissions(clinicId);
+  }
+
+  /**
+   * PUT /api/v1/clinic/staff/roles/:role/permissions
+   * Update permissions for a specific role in the clinic.
+   */
+  @Put('roles/:role/permissions')
+  @HttpCode(HttpStatus.OK)
+  @Permissions('SETTINGS:MANAGE')
+  @Audit({ entity: 'clinic_role_permissions', operation: 'update' })
+  updateRolePermissions(
+    @Param('role') role: Role,
+    @Body() dto: { permissions: string[] },
+    @TenantId() clinicId: string,
+  ) {
+    if (!dto || !Array.isArray(dto.permissions)) {
+      throw new BadRequestException('permissions must be a string array');
+    }
+    return this.users.updateRolePermissions(clinicId, role, dto.permissions);
   }
 
   /**

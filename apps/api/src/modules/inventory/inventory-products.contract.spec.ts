@@ -154,9 +154,9 @@ describe('Item Master API Contracts', () => {
       expect(isItemCategoryShape(CATEGORY_FIXTURE)).toBe(true);
     });
 
-    it('includes revenueGlCode and expenseGlCode (nullable)', () => {
-      expect('revenueGlCode' in CATEGORY_FIXTURE).toBe(true);
-      expect('expenseGlCode' in CATEGORY_FIXTURE).toBe(true);
+    it('includes revenueGlAccountId and expenseGlAccountId (nullable)', () => {
+      expect('revenueGlAccountId' in CATEGORY_FIXTURE).toBe(true);
+      expect('expenseGlAccountId' in CATEGORY_FIXTURE).toBe(true);
     });
   });
 

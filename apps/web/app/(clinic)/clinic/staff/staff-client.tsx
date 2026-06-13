@@ -45,7 +45,10 @@ interface StaffUser {
   email: string | null;
   role: string;
   status: string;
+  permissions?: string[];
 }
+
+
 
 export default function StaffPageClient() {
   const t = useTranslations('staff');
@@ -61,6 +64,10 @@ export default function StaffPageClient() {
   const [role, setRole] = useState('VET');
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+
+
+
+
 
   useEffect(() => {
     apiClient
@@ -123,13 +130,15 @@ export default function StaffPageClient() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm">
-              <Plus className="w-4 h-4 mr-2" />
-              {t('new')}
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm">
+                <Plus className="w-4 h-4 mr-2" />
+                {t('new')}
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{t('new')}</DialogTitle>
@@ -197,6 +206,7 @@ export default function StaffPageClient() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -255,6 +265,8 @@ export default function StaffPageClient() {
           </TableBody>
         </Table>
       </div>
+
+
     </div>
   );
 }

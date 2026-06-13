@@ -11,7 +11,9 @@ import {
 import { Request, Response } from 'express';
 import { AuthService, LoginDto } from '../services/auth.service';
 import { ClinicService } from '../services/clinic.service';
+import { UserService } from '../services/user.service';
 import { RegisterRequestDto } from '../dto/register-request.dto';
+import { RegisterCustomerDto } from '../dto/register-customer.dto';
 import { Public } from '../../../common/decorators/public.decorator';
 import { CurrentUser } from '../../../common/decorators/tenant.decorator';
 import type { UserContext, AuthProfile } from '@petiatrics/types';
@@ -22,7 +24,19 @@ export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly clinics: ClinicService,
+    private readonly users: UserService,
   ) {}
+
+  /**
+   * POST /api/v1/auth/register-customer
+   * Public endpoint — customer/pet owner self-registration. Creates user + linked BP.
+   */
+  @Public()
+  @Post('register-customer')
+  @HttpCode(HttpStatus.CREATED)
+  registerCustomer(@Body() dto: RegisterCustomerDto) {
+    return this.users.registerCustomer(dto);
+  }
 
   /**
    * POST /api/v1/auth/register-request
@@ -91,10 +105,12 @@ export class AuthController {
       username: user.username,
       mustChangePassword: user.mustChangePassword,
       role: user.role,
+      permissions: user.permissions ?? [],
       clinicName: user.clinicName ?? null,
       clinicSlug: user.clinicSlug ?? null,
       branches: user.authorizedBranches ?? [],
       preferredLocale: user.preferredLocale,
+      businessPartnerId: user.businessPartnerId ?? null,
       currencyCode: user.currencyCode ?? null,
     };
   }

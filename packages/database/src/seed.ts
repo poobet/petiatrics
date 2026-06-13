@@ -12,6 +12,30 @@ import { PetProfileSchema } from '../mongo/pet-profile.schema';
 import { VisitRecordSchema } from '../mongo/visit-record.schema';
 import { VaccinationRecordSchema } from '../mongo/vaccination-record.schema';
 
+const ROLE_PERMISSIONS: Record<string, string[]> = {
+  SUPER_ADMIN: [
+    'VIEW_PATIENTS', 'EDIT_PATIENTS', 'MANAGE_VISITS', 'MANAGE_VACCINATIONS',
+    'VIEW_INVENTORY', 'MANAGE_INVENTORY', 'VIEW_BILLING', 'MANAGE_BILLING', 'MANAGE_SETTINGS'
+  ],
+  CLINIC_OWNER: [
+    'VIEW_PATIENTS', 'EDIT_PATIENTS', 'MANAGE_VISITS', 'MANAGE_VACCINATIONS',
+    'VIEW_INVENTORY', 'MANAGE_INVENTORY', 'VIEW_BILLING', 'MANAGE_BILLING', 'MANAGE_SETTINGS'
+  ],
+  VET: [
+    'VIEW_PATIENTS', 'EDIT_PATIENTS', 'MANAGE_VISITS', 'MANAGE_VACCINATIONS', 'VIEW_INVENTORY'
+  ],
+  ASSISTANT: [
+    'VIEW_PATIENTS', 'VIEW_INVENTORY', 'VIEW_BILLING'
+  ],
+  STAFF: [
+    'VIEW_PATIENTS', 'VIEW_INVENTORY', 'VIEW_BILLING'
+  ],
+  CASHIER: [
+    'VIEW_PATIENTS', 'VIEW_INVENTORY', 'VIEW_BILLING', 'MANAGE_BILLING'
+  ],
+  CUSTOMER: []
+};
+
 dotenv.config({
   path: path.resolve(process.cwd(), '../../.env'),
 });
@@ -332,7 +356,52 @@ async function main() {
     console.log('✓ UserBranch:', role, '→ main branch only');
   }
 
-  const ownerUser = await prisma.user.findUnique({ where: { email: 'owner@happypaws.io' } });
+  // Seed BpGroup for Customer seq numbering
+  const customerBpGroup = await prisma.bpGroup.upsert({
+    where: { clinicId_prefix: { clinicId: clinic.id, prefix: 'C-' } },
+    update: {},
+    create: {
+      clinicId: clinic.id,
+      name: 'Customers',
+      prefix: 'C-',
+      currentSequence: 1,
+    },
+  });
+
+  // Seed Customer User
+  const customerUser = await prisma.user.upsert({
+    where: { email: 'customer@happypaws.io' },
+    update: {},
+    create: {
+      email: 'customer@happypaws.io',
+      name: 'Happy Paws Customer',
+      username: 'customer@happy-paws',
+      passwordHash: await hashPassword('Password@1'),
+      role: 'CUSTOMER',
+      status: 'ACTIVE',
+      clinicId: clinic.id,
+    },
+  });
+  console.log('✓ User:', customerUser.email, '→ CUSTOMER');
+
+  // Seed Customer BusinessPartner
+  const customerBp = await prisma.businessPartner.upsert({
+    where: { clinicId_linkedUserId: { clinicId: clinic.id, linkedUserId: customerUser.id } },
+    update: {},
+    create: {
+      clinicId: clinic.id,
+      type: 'CUSTOMER',
+      name: customerUser.name,
+      email: customerUser.email,
+      code: 'C-0001',
+      groupId: customerBpGroup.id,
+      linkedUserId: customerUser.id,
+      isActive: true,
+    },
+  });
+  console.log('✓ BusinessPartner linked for Customer:', customerBp.code);
+
+  const ownerUser = customerUser;
 
   // ── 4. Pet Profiles (MongoDB) ─────────────────────────────────────────────
   const existingPets = await PetProfile.find({ clinicId: clinic.id }).lean();
@@ -624,6 +693,7 @@ async function main() {
   console.log('  Assistant (ASSISTANT):        assistant@happypaws.io / Password@1 → /clinic [1 branch]');
   console.log('  Cashier (CASHIER):            cashier@happypaws.io / Password@1  → /clinic [1 branch]');
   console.log('  Staff (STAFF):                staff@happypaws.io / Password@1    → /clinic [1 branch]');
+  console.log('  Customer (CUSTOMER):          customer@happypaws.io / Password@1 → /owner-portal');
 }
 
 main()

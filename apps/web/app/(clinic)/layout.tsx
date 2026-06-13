@@ -5,6 +5,7 @@ import { AppShell } from '../../components/layout/app-shell';
 import { StoreHydrator } from '../../components/layout/store-hydrator';
 import { apiClient, ApiError } from '../../lib/api-client';
 import type { AuthProfile } from '@petiatrics/types';
+import { Role } from '@petiatrics/types';
 
 export const metadata: Metadata = {
   title: 'Petiatrics — Clinic Portal',
@@ -40,6 +41,10 @@ export default async function ClinicLayout({
   }
 
   // Force password change before accessing any other clinic page
+  if (user.role === Role.CUSTOMER) {
+    redirect('/my');
+  }
+
   if (user.mustChangePassword) {
     const headerStore = await headers();
     const pathname = headerStore.get('x-pathname') ?? headerStore.get('x-invoke-path') ?? '';

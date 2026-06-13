@@ -1,0 +1,26 @@
+/** Canonical MODULE:ACTION permission strings used across backend and frontend. */
+export const PERMISSIONS = {
+  // Patients
+  PATIENT_VIEW: 'PATIENT:VIEW',
+  PATIENT_EDIT: 'PATIENT:EDIT',
+  // Visits
+  VISIT_VIEW: 'VISIT:VIEW',
+  VISIT_ADD: 'VISIT:ADD',
+  VISIT_EDIT: 'VISIT:EDIT',
+  // Vaccinations
+  VACCINATION_ADD: 'VACCINATION:ADD',
+  // Inventory
+  INVENTORY_VIEW: 'INVENTORY:VIEW',
+  INVENTORY_ADD: 'INVENTORY:ADD',
+  INVENTORY_EDIT: 'INVENTORY:EDIT',
+  INVENTORY_DELETE: 'INVENTORY:DELETE',
+  // Billing
+  BILLING_VIEW: 'BILLING:VIEW',
+  BILLING_ADD: 'BILLING:ADD',
+  BILLING_EDIT: 'BILLING:EDIT',
+  BILLING_VOID: 'BILLING:VOID',
+  // Settings
+  SETTINGS_MANAGE: 'SETTINGS:MANAGE',
+} as const;
+
+export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];

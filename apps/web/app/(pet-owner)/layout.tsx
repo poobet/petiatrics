@@ -6,6 +6,7 @@ import type { AuthProfile } from '@petiatrics/types';
 import { Role } from '@petiatrics/types';
 import Link from 'next/link';
 import { Home, Calendar, FileText, CreditCard, Bell } from 'lucide-react';
+import { CustomerLogoutButton } from '../../components/layout/customer-logout';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -58,8 +59,9 @@ export default async function PetOwnerLayout({
     redirect('/login');
   }
 
-  // Pet-owner portal: allow clinic staff roles and SUPER_ADMIN (who can access all pages)
+  // Pet-owner portal: allow CUSTOMER role, clinic staff roles, and SUPER_ADMIN (who can access all pages)
   if (
+    user.role !== Role.CUSTOMER &&
     user.role !== Role.STAFF &&
     user.role !== Role.ASSISTANT &&
     user.role !== Role.CASHIER &&
@@ -72,10 +74,11 @@ export default async function PetOwnerLayout({
     <div className="min-h-screen bg-gray-50 flex flex-col max-w-md mx-auto">
       {/* Top App Bar */}
       <header className="bg-white border-b px-4 py-3 flex items-center justify-between sticky top-0 z-10">
-        <span className="font-bold text-blue-600 text-lg">🐾 Petiatrics</span>
-        <div className="flex items-center gap-2">
-          <Bell className="w-5 h-5 text-gray-400" />
-          <span className="text-sm text-gray-600">{user.email}</span>
+        <span className="font-bold text-blue-600 text-lg shrink-0">🐾 Petiatrics</span>
+        <div className="flex items-center gap-2 overflow-hidden">
+          <Bell className="w-5 h-5 text-gray-400 shrink-0" />
+          <span className="text-sm text-gray-600 truncate max-w-[110px]" title={user.email ?? undefined}>{user.email}</span>
+          <CustomerLogoutButton />
         </div>
       </header>
 

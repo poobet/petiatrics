@@ -21,7 +21,6 @@ function makeUser(overrides: Partial<{
   mustChangePassword: boolean;
   name: string;
   preferredLocale: string;
-  businessPartnerId: string | null;
   clinic: Record<string, unknown> | null;
   userBranches: unknown[];
 }> = {}) {
@@ -38,7 +37,6 @@ function makeUser(overrides: Partial<{
     mustChangePassword: false,
     name: 'Test User',
     preferredLocale: Locale.EN,
-    businessPartnerId: null,
     clinic: { id: 'clinic-1', name: 'Test Clinic', slug: 'test-clinic', status: 'ACTIVE', settings: {} },
     userBranches: [{ branch: { id: 'branch-1', name: 'Main' } }],
     ...overrides,
@@ -57,6 +55,13 @@ function makePrismaMock(user: ReturnType<typeof makeUser> | null = makeUser()) {
     },
     clinic: {
       findUnique: jest.fn().mockResolvedValue(null),
+    },
+    businessPartner: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    clinicRolePermission: {
+      findFirst: jest.fn().mockResolvedValue(null),
+      findMany: jest.fn().mockResolvedValue([]),
     },
   };
 }
@@ -148,9 +153,7 @@ describe('AuthService', () => {
     });
 
     it('returns businessPartnerId in profile when user has BP linkage', async () => {
-      prismaMock.user.findFirst = jest.fn().mockResolvedValue(
-        makeUser({ businessPartnerId: 'bp-1' }),
-      );
+      prismaMock.businessPartner.findFirst = jest.fn().mockResolvedValue({ id: 'bp-1' });
       const result = await service.login({ identifier: 'test@clinic.com', password: 'Password1!' });
       expect(result.profile.businessPartnerId).toBe('bp-1');
     });

@@ -9,6 +9,7 @@ import { Badge } from '@petiatrics/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@petiatrics/ui/dialog';
 import { Label } from '@petiatrics/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@petiatrics/ui/select';
+import { usePermission } from '@/lib/use-permission';
 
 interface Patient {
   _id: string;
@@ -35,6 +36,8 @@ export default function PatientsClient() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const canAddPatient = usePermission('PATIENT:EDIT');
 
   const loadPatients = async (q?: string) => {
     setLoading(true);
@@ -86,7 +89,11 @@ export default function PatientsClient() {
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
         />
-        <Button onClick={() => setShowAdd(true)}>+ Add Patient</Button>
+        {canAddPatient && (
+          <Link href="/clinic/patients/new">
+            <Button>+ Add Patient</Button>
+          </Link>
+        )}
       </div>
 
       {error && (
@@ -132,7 +139,7 @@ export default function PatientsClient() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Link
-                      href={`/patients/${p._id}`}
+                      href={`/clinic/patients/${p._id}`}
                       className="text-primary underline-offset-4 hover:underline text-sm"
                     >
                       View

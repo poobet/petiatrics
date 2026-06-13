@@ -101,6 +101,8 @@
     "businessPartners": "คู่ค้าธุรกิจ",
     "audit": "บันทึกการตรวจสอบ",
     "settings": "การตั้งค่า",
+    "settingsGeneral": "ทั่วไป",
+    "rolePermissions": "บทบาท & สิทธิ์",
     "mobileApp": "แอปเจ้าของสัตว์",
     "mobileAppSubtitle": "มุมมองมือถือ"
   },

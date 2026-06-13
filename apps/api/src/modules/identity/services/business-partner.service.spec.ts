@@ -330,7 +330,7 @@ describe('BusinessPartnerService', () => {
 
   describe('create — BpGroup code generation', () => {
     it('generates a code and increments sequence when groupId is supplied', async () => {
-      const mockGroup = { id: 'grp-1', prefix: 'C-', current_sequence: 3 };
+      const mockGroup = { id: 'grp-1', prefix: 'C-', currentSequence: 3 };
       // The $queryRaw on the tx must return the group row
       const bpRecord = makeBp({ groupId: 'grp-1', code: 'C-0004' });
       prismaMock = makePrisma(bpRecord);

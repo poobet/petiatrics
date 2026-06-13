@@ -12,6 +12,32 @@ import type { UserContext, AuthProfile } from '@petiatrics/types';
 
 const BCRYPT_ROUNDS = 12;
 
+export const DEFAULT_ROLE_PERMISSIONS: Record<Role, string[]> = {
+  [Role.SUPER_ADMIN]: [
+    'PATIENT:VIEW', 'PATIENT:EDIT',
+    'VISIT:VIEW', 'VISIT:ADD', 'VISIT:EDIT', 'VACCINATION:ADD',
+    'INVENTORY:VIEW', 'INVENTORY:ADD', 'INVENTORY:EDIT', 'INVENTORY:DELETE',
+    'BILLING:VIEW', 'BILLING:ADD', 'BILLING:EDIT', 'BILLING:VOID',
+    'SETTINGS:MANAGE',
+  ],
+  [Role.CLINIC_OWNER]: [
+    'PATIENT:VIEW', 'PATIENT:EDIT',
+    'VISIT:VIEW', 'VISIT:ADD', 'VISIT:EDIT', 'VACCINATION:ADD',
+    'INVENTORY:VIEW', 'INVENTORY:ADD', 'INVENTORY:EDIT', 'INVENTORY:DELETE',
+    'BILLING:VIEW', 'BILLING:ADD', 'BILLING:EDIT', 'BILLING:VOID',
+    'SETTINGS:MANAGE',
+  ],
+  [Role.VET]: [
+    'PATIENT:VIEW', 'PATIENT:EDIT',
+    'VISIT:VIEW', 'VISIT:ADD', 'VISIT:EDIT', 'VACCINATION:ADD',
+    'INVENTORY:VIEW',
+  ],
+  [Role.ASSISTANT]: ['PATIENT:VIEW', 'VISIT:VIEW', 'INVENTORY:VIEW', 'BILLING:VIEW'],
+  [Role.STAFF]: ['PATIENT:VIEW', 'INVENTORY:VIEW', 'BILLING:VIEW'],
+  [Role.CASHIER]: ['PATIENT:VIEW', 'BILLING:VIEW', 'BILLING:ADD', 'BILLING:EDIT', 'BILLING:VOID'],
+  [Role.CUSTOMER]: [],
+};
+
 function assertPasswordPolicy(password: string): void {
   if (password.length < 8) throw new ConflictException('Password must be at least 8 characters.');
   if (!/[A-Z]/.test(password)) throw new ConflictException('Password must contain at least one uppercase letter.');
@@ -124,18 +150,45 @@ export class AuthService {
       name: ub.branch.name,
     }));
 
+    let resolvedBpId: string | null = null;
+    if (user.clinicId) {
+      const bp = await this.prisma.businessPartner.findFirst({
+        where: { clinicId: user.clinicId, linkedUserId: user.id, isActive: true },
+        select: { id: true },
+      });
+      if (bp) resolvedBpId = bp.id;
+    }
+
+    const userRole = user.role as unknown as Role;
+    let permissions: string[] = [];
+    if (user.clinicId) {
+      const rolePerm = await this.prisma.clinicRolePermission.findFirst({
+        where: {
+          clinicId: user.clinicId,
+          role: user.role,
+        },
+      });
+      if (rolePerm) {
+        permissions = rolePerm.permissions;
+      }
+    }
+    if (permissions.length === 0) {
+      permissions = DEFAULT_ROLE_PERMISSIONS[userRole] || [];
+    }
+
     const userContext: UserContext = {
       userId: user.id,
       clinicId: user.clinicId ?? null,
       clinicName: user.clinic?.name ?? null,
       clinicSlug: user.clinic?.slug ?? null,
-      role: user.role as unknown as Role,
+      role: userRole,
+      permissions,
       email: user.email,
       username: user.username,
       mustChangePassword: user.mustChangePassword,
       preferredLocale: (user.preferredLocale as unknown as Locale) ?? Locale.TH,
       authorizedBranches,
-      businessPartnerId: user.businessPartnerId ?? null,
+      businessPartnerId: resolvedBpId,
       currencyCode: user.clinic?.currencyCode ?? 'THB',
     };
 
@@ -149,12 +202,13 @@ export class AuthService {
       email: user.email,
       username: user.username,
       mustChangePassword: user.mustChangePassword,
-      role: user.role as unknown as Role,
+      role: userRole,
+      permissions,
       clinicName: user.clinic?.name ?? null,
       clinicSlug: user.clinic?.slug ?? null,
       branches: authorizedBranches,
       preferredLocale: (user.preferredLocale as unknown as Locale) ?? Locale.TH,
-      businessPartnerId: user.businessPartnerId ?? null,
+      businessPartnerId: resolvedBpId,
       currencyCode: user.clinic?.currencyCode ?? 'THB',
     };
 

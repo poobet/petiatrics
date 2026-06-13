@@ -26,6 +26,7 @@ import {
   Search,
   Briefcase,
   ChevronRight,
+  Shield,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@petiatrics/ui';
 import { Button } from '@petiatrics/ui';
@@ -42,12 +43,13 @@ import type { AuthProfile } from '@petiatrics/types';
 import { BranchSelector } from './branch-selector';
 import { useSessionStore } from '../../lib/session-store';
 
-type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'products' | 'stockLedger' | 'goodsReceipt' | 'goodsIssue' | 'adjustments' | 'billing' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings';
+type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'products' | 'stockLedger' | 'goodsReceipt' | 'goodsIssue' | 'adjustments' | 'billing' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings' | 'settingsGeneral' | 'rolePermissions';
 
 interface SubNavItem {
   key: NavKey;
   href: string;
   icon: React.ElementType;
+  requiredPermission?: string;
 }
 
 interface NavItem {
@@ -55,27 +57,28 @@ interface NavItem {
   href?: string;
   icon: React.ElementType;
   roles?: string[];
+  requiredPermission?: string;
   subItems?: SubNavItem[];
 }
 
 const NAV_ITEMS: NavItem[] = [
   { key: 'dashboard', href: '/clinic/dashboard', icon: LayoutDashboard },
   { key: 'appointments', href: '/clinic/appointments', icon: Calendar },
-  { key: 'patients', href: '/clinic/patients', icon: PawPrint },
-  { key: 'clients', href: '/clients', icon: Users },
-  { key: 'medicalRecords', href: '/medical-records', icon: FileText },
+  { key: 'patients', href: '/clinic/patients', icon: PawPrint, requiredPermission: 'PATIENT:VIEW' },
+  { key: 'clients', href: '/clinic/clients', icon: Users, requiredPermission: 'PATIENT:VIEW' },
+  { key: 'medicalRecords', href: '/medical-records', icon: FileText, requiredPermission: 'PATIENT:VIEW' },
   {
     key: 'inventory',
     icon: Package,
     subItems: [
-      { key: 'products', href: '/clinic/inventory/products', icon: Package },
-      { key: 'stockLedger', href: '/clinic/inventory/stock-ledger', icon: Archive },
-      { key: 'goodsReceipt', href: '/clinic/inventory/receipt', icon: Boxes },
-      { key: 'goodsIssue', href: '/clinic/inventory/issue', icon: Archive },
-      { key: 'adjustments', href: '/clinic/inventory/adjustments', icon: Boxes },
+      { key: 'products', href: '/clinic/inventory/products', icon: Package, requiredPermission: 'INVENTORY:VIEW' },
+      { key: 'stockLedger', href: '/clinic/inventory/stock-ledger', icon: Archive, requiredPermission: 'INVENTORY:VIEW' },
+      { key: 'goodsReceipt', href: '/clinic/inventory/receipt', icon: Boxes, requiredPermission: 'INVENTORY:ADD' },
+      { key: 'goodsIssue', href: '/clinic/inventory/issue', icon: Archive, requiredPermission: 'INVENTORY:ADD' },
+      { key: 'adjustments', href: '/clinic/inventory/adjustments', icon: Boxes, requiredPermission: 'INVENTORY:EDIT' },
     ],
   },
-  { key: 'billing', href: '/clinic/billing', icon: CreditCard },
+  { key: 'billing', href: '/clinic/billing', icon: CreditCard, requiredPermission: 'BILLING:VIEW' },
   {
     key: 'staff',
     href: '/clinic/staff',
@@ -94,8 +97,19 @@ const NAV_ITEMS: NavItem[] = [
     icon: ClipboardList,
     roles: ['CLINIC_OWNER', 'SUPER_ADMIN'],
   },
-  { key: 'mobileApp', href: '/mobile-app', icon: Smartphone },
-  { key: 'settings', href: '/clinic/settings', icon: Settings },
+  {
+    key: 'settings',
+    icon: Settings,
+    subItems: [
+      { key: 'settingsGeneral', href: '/clinic/settings', icon: Settings },
+      {
+        key: 'rolePermissions',
+        href: '/clinic/settings/roles',
+        icon: Shield,
+        requiredPermission: 'SETTINGS:MANAGE',
+      },
+    ],
+  },
 ];
 
 interface AppShellProps {
@@ -136,9 +150,18 @@ export function AppShell({ children, user }: AppShellProps) {
     setExpandedNav(prev => ({ ...prev, [key]: !prev[key] }));
   }
 
-  function canAccess(item: NavItem) {
-    if (!item.roles) return true;
-    return item.roles.includes(user.role);
+  function canAccess(item: NavItem | SubNavItem): boolean {
+    if ('roles' in item && item.roles && !item.roles.includes(user.role)) {
+      return false;
+    }
+    if (item.requiredPermission) {
+      if (user.role === 'SUPER_ADMIN') return true;
+      const userPermissions = user.permissions || [];
+      if (!userPermissions.includes(item.requiredPermission)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   async function handleLocaleSwitch(locale: string) {
@@ -208,6 +231,9 @@ export function AppShell({ children, user }: AppShellProps) {
 
             // If item has sub-items, render as expandable menu
             if (item.subItems) {
+              const visibleSubItems = item.subItems.filter(canAccess);
+              if (visibleSubItems.length === 0) return null;
+
               return (
                 <div key={item.key}>
                   <button
@@ -236,7 +262,7 @@ export function AppShell({ children, user }: AppShellProps) {
                   {/* Sub-menu items */}
                   {isExpanded && (
                     <div className="mt-1 space-y-0.5 pl-2">
-                      {item.subItems.map((subItem) => {
+                      {visibleSubItems.map((subItem) => {
                         const SubIcon = subItem.icon;
                         const subActive = isActive(subItem.href);
                         return (

@@ -1,0 +1,165 @@
+<h2>US7: Dynamic, UI-Configurable Permissions Settings Mockup</h2>
+<p class="subtitle">Clinic Owner UI for configuring granular, module-level access for individual staff members.</p>
+
+<div class="mockup" style="max-width: 1000px; margin: 0 auto 2rem auto;">
+  <div class="mockup-header" style="background: var(--bg-tertiary); display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1rem;">
+    <span>Staff Settings & Permissions Matrix</span>
+    <span style="font-family: monospace; color: var(--accent);">Happy Paws Veterinary Clinic (Main Branch)</span>
+  </div>
+  <div class="mockup-body" style="padding: 0; display: flex; background: var(--bg-primary); min-height: 500px;">
+    
+    <!-- MOCK SIDEBAR: Staff List -->
+    <div style="width: 260px; background: var(--bg-secondary); border-right: 1px solid var(--border); display: flex; flex-direction: column;">
+      <div style="padding: 1rem; border-bottom: 1px solid var(--border); font-size: 0.8rem; font-weight: bold; color: var(--text-secondary); text-transform: uppercase;">
+        Staff Members
+      </div>
+      <div style="flex: 1; display: flex; flex-direction: column;">
+        <div style="padding: 0.75rem 1rem; background: var(--selected-bg); border-left: 4px solid var(--accent); cursor: pointer; display: flex; flex-direction: column; gap: 0.2rem;">
+          <span style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">Dr. Jane Smith</span>
+          <span style="font-size: 0.75rem; color: var(--text-secondary);">vet@happypaws.io · Vet</span>
+        </div>
+        <div style="padding: 0.75rem 1rem; border-bottom: 1px solid rgba(0,0,0,0.05); cursor: pointer; display: flex; flex-direction: column; gap: 0.2rem; hover: background-color: var(--bg-primary);">
+          <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-primary);">Assistant Sarah</span>
+          <span style="font-size: 0.75rem; color: var(--text-secondary);">assistant@happypaws.io · Assistant</span>
+        </div>
+        <div style="padding: 0.75rem 1rem; border-bottom: 1px solid rgba(0,0,0,0.05); cursor: pointer; display: flex; flex-direction: column; gap: 0.2rem;">
+          <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-primary);">Cashier Mike</span>
+          <span style="font-size: 0.75rem; color: var(--text-secondary);">cashier@happypaws.io · Cashier</span>
+        </div>
+      </div>
+      <div style="padding: 1rem; border-top: 1px solid var(--border); text-align: center;">
+        <button class="mock-button" style="width: 100%; font-size: 0.8rem;">+ Add New Staff</button>
+      </div>
+    </div>
+
+    <!-- MOCK CONTENT: Selected Staff Permission Editor -->
+    <div style="flex: 1; padding: 1.5rem; background: var(--bg-secondary); display: flex; flex-direction: column; gap: 1.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">
+        <div>
+          <h3 style="margin-bottom: 0.2rem;">Edit Permissions: Dr. Jane Smith</h3>
+          <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">Role: <span style="font-weight: 600;">VET</span> · System permissions override standard role defaults dynamically.</p>
+        </div>
+        <span style="background: var(--success); color: white; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 500;">Active Linkage</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+        
+        <!-- Clinical Section -->
+        <div>
+          <h4 style="font-size: 0.8rem; font-weight: bold; color: var(--accent); text-transform: uppercase; margin-bottom: 0.75rem; border-bottom: 1px dashed var(--border); padding-bottom: 0.25rem;">Clinical & Medical Modules</h4>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer;">
+              <input type="checkbox" checked style="margin-top: 0.25rem; scale: 1.15;" />
+              <div style="display: flex; flex-direction: column;">
+                <span style="font-weight: 500; font-size: 0.85rem;">View Patient Profiles (<code>VIEW_PATIENTS</code>)</span>
+                <span style="font-size: 0.75rem; color: var(--text-secondary);">Read-only access to search and view pet clinical profiles.</span>
+              </div>
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer;">
+              <input type="checkbox" checked style="margin-top: 0.25rem; scale: 1.15;" />
+              <div style="display: flex; flex-direction: column;">
+                <span style="font-weight: 500; font-size: 0.85rem;">Edit Patient Profiles (<code>EDIT_PATIENTS</code>)</span>
+                <span style="font-size: 0.75rem; color: var(--text-secondary);">Create, update, and manage patient demographics and notes.</span>
+              </div>
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer;">
+              <input type="checkbox" checked style="margin-top: 0.25rem; scale: 1.15;" />
+              <div style="display: flex; flex-direction: column;">
+                <span style="font-weight: 500; font-size: 0.85rem;">Manage Visit Records (<code>MANAGE_VISITS</code>)</span>
+                <span style="font-size: 0.75rem; color: var(--text-secondary);">Create visit SOAP notes, issue prescriptions, and view medical histories.</span>
+              </div>
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer;">
+              <input type="checkbox" checked style="margin-top: 0.25rem; scale: 1.15;" />
+              <div style="display: flex; flex-direction: column;">
+                <span style="font-weight: 500; font-size: 0.85rem;">Administer Vaccinations (<code>MANAGE_VACCINATIONS</code>)</span>
+                <span style="font-size: 0.75rem; color: var(--text-secondary);">Log, update, and track vaccination details and next dues.</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Inventory Section -->
+        <div>
+          <h4 style="font-size: 0.8rem; font-weight: bold; color: var(--accent); text-transform: uppercase; margin-bottom: 0.75rem; border-bottom: 1px dashed var(--border); padding-bottom: 0.25rem;">Inventory & Products</h4>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer;">
+              <input type="checkbox" checked style="margin-top: 0.25rem; scale: 1.15;" />
+              <div style="display: flex; flex-direction: column;">
+                <span style="font-weight: 500; font-size: 0.85rem;">View Inventory (<code>VIEW_INVENTORY</code>)</span>
+                <span style="font-size: 0.75rem; color: var(--text-secondary);">View stock balances, reorder points, and transaction ledger logs.</span>
+              </div>
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer;">
+              <input type="checkbox" style="margin-top: 0.25rem; scale: 1.15;" />
+              <div style="display: flex; flex-direction: column;">
+                <span style="font-weight: 500; font-size: 0.85rem;">Manage Stock Adjustments (<code>MANAGE_INVENTORY</code>)</span>
+                <span style="font-size: 0.75rem; color: var(--text-secondary);">Receive goods, do write-offs, resolve audits, and adjust quantities.</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Billing Section -->
+        <div>
+          <h4 style="font-size: 0.8rem; font-weight: bold; color: var(--accent); text-transform: uppercase; margin-bottom: 0.75rem; border-bottom: 1px dashed var(--border); padding-bottom: 0.25rem;">Billing & Invoices</h4>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer;">
+              <input type="checkbox" style="margin-top: 0.25rem; scale: 1.15;" />
+              <div style="display: flex; flex-direction: column;">
+                <span style="font-weight: 500; font-size: 0.85rem;">View Billing Invoices (<code>VIEW_BILLING</code>)</span>
+                <span style="font-size: 0.75rem; color: var(--text-secondary);">Read invoices, check payments, and view finance summaries.</span>
+              </div>
+            </label>
+            <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer;">
+              <input type="checkbox" style="margin-top: 0.25rem; scale: 1.15;" />
+              <div style="display: flex; flex-direction: column;">
+                <span style="font-weight: 500; font-size: 0.85rem;">Process Billing Invoices (<code>MANAGE_BILLING</code>)</span>
+                <span style="font-size: 0.75rem; color: var(--text-secondary);">Generate invoices, record payments, void invoices, or override partners.</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem; border-top: 1px solid var(--border); padding-top: 1rem; margin-top: auto;">
+        <button class="mock-button" style="background: transparent; color: var(--text-primary); border: 1px solid var(--border);">Cancel</button>
+        <button class="mock-button" style="background: var(--accent);">Save Permission Config</button>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<h3>Proposed Database Schema Options</h3>
+<p class="subtitle">Choose the architecture path to store permissions in PostgreSQL. Click your choice below.</p>
+
+<div class="options">
+  
+  <div class="option" data-choice="array" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Postgres Native String Array on User (Recommended)</h3>
+      <p>Store permissions as a native Postgres <code>text[]</code> array directly on the <code>User</code> model (e.g., <code>permissions String[]</code> in schema.prisma). Very fast, matches current single-user-tenant linkage model, requires zero extra join tables, and extremely simple to query and cache.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="relation" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Granular Database Relation Table (Join Table)</h3>
+      <p>Create a dedicated <code>UserPermission</code> model referencing <code>User</code> and individual permission records. Follows relational normalization strictly, but increases DB query joins on every guard check, adding implementation overhead without substantial runtime benefits.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="tenant_role" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Tenant-Scoped Role Permission Mapping Table</h3>
+      <p>Store permission arrays on a separate <code>ClinicRole</code> configuration table, mapping roles dynamically (e.g., VET gets permissions X, Y, Z for Clinic A, but VET gets X, Y for Clinic B). Maximum flexibility, but higher state-management complexity.</p>
+    </div>
+  </div>
+
+</div>
