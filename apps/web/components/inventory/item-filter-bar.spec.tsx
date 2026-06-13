@@ -90,7 +90,7 @@ describe('ItemFilterBar', () => {
     const onChange = vi.fn();
     const existing: ItemFilters = {
       ...DEFAULT_FILTERS,
-      itemType: ItemType.STOCKED_GOOD,
+      itemType: ItemType.INVENTORY,
       categoryId: 'cat-001',
     };
     render(
@@ -100,7 +100,7 @@ describe('ItemFilterBar', () => {
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
         search: 'drug',
-        itemType: ItemType.STOCKED_GOOD,
+        itemType: ItemType.INVENTORY,
         categoryId: 'cat-001',
       }),
     );

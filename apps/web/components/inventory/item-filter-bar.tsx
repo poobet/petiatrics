@@ -42,7 +42,7 @@ export default function ItemFilterBar({ filters, categories, onChange }: Props) 
         className="border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
         <option value="">All types</option>
-        <option value={ItemType.STOCKED_GOOD}>Stocked Good</option>
+        <option value={ItemType.INVENTORY}>Stocked Good</option>
         <option value={ItemType.SERVICE}>Service</option>
       </select>
 

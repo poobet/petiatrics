@@ -288,7 +288,7 @@ export class ProductService {
       where: {
         clinicId,
         branchId,
-        product: { isActive: true, itemType: ItemType.STOCKED_GOOD },
+        product: { isActive: true, itemType: ItemType.INVENTORY },
       },
       include: { product: { include: PRODUCT_INCLUDE } },
     });

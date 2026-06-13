@@ -43,7 +43,7 @@ function validCreateDto(overrides: Partial<CreateProductDto> = {}): CreateProduc
   return {
     code: 'MED-001',
     name: 'Test Medication',
-    itemType: ItemType.STOCKED_GOOD,
+    itemType: ItemType.INVENTORY,
     categoryId: CATEGORY_ID,
     baseUnitId: UNIT_ID,
     standardCost: 100,
@@ -143,7 +143,7 @@ describe('ProductService', () => {
     beforeEach(() => {
       prisma.product.count.mockResolvedValue(2);
       prisma.product.findMany.mockResolvedValue([
-        { id: 'p1', name: 'Medication A', itemType: 'STOCKED_GOOD', isActive: true },
+        { id: 'p1', name: 'Medication A', itemType: 'INVENTORY', isActive: true },
         { id: 'p2', name: 'Service B', itemType: 'SERVICE', isActive: true },
       ]);
     });
@@ -259,8 +259,8 @@ describe('ProductService', () => {
   describe('getLowStock()', () => {
     it('returns only stocked goods at or below threshold via branch balance', async () => {
       prisma.branchStockBalance.findMany.mockResolvedValue([
-        { productId: 'p1', quantity: 3, product: { id: 'p1', reorderPoint: 5, minimumStock: 0, itemType: 'STOCKED_GOOD', isActive: true } },
-        { productId: 'p2', quantity: 10, product: { id: 'p2', reorderPoint: 5, minimumStock: 0, itemType: 'STOCKED_GOOD', isActive: true } },
+        { productId: 'p1', quantity: 3, product: { id: 'p1', reorderPoint: 5, minimumStock: 0, itemType: 'INVENTORY', isActive: true } },
+        { productId: 'p2', quantity: 10, product: { id: 'p2', reorderPoint: 5, minimumStock: 0, itemType: 'INVENTORY', isActive: true } },
       ]);
       const result = await service.getLowStock(CLINIC_ID, 'branch-1');
       expect(result).toHaveLength(1);

@@ -54,19 +54,19 @@ export function toApiPayload(values: ItemFormValues) {
     genericName: values.genericName.trim() || null,
     isControlledSubstance: values.isControlledSubstance,
     requiresBatchAndExpiryTracking:
-      values.itemType === ItemType.STOCKED_GOOD ? values.requiresBatchAndExpiryTracking : false,
+      values.itemType === ItemType.INVENTORY ? values.requiresBatchAndExpiryTracking : false,
     standardCost: Number(values.standardCost) || 0,
     baseSellingPrice: Number(values.baseSellingPrice) || 0,
     isTaxInclusive: values.isTaxInclusive,
     defaultTaxCodeId: values.defaultTaxCodeId || null,
     defaultSupplierId:
-      values.itemType === ItemType.STOCKED_GOOD ? values.defaultSupplierId || null : null,
+      values.itemType === ItemType.INVENTORY ? values.defaultSupplierId || null : null,
     defaultDoctorFee:
       values.itemType === ItemType.SERVICE ? (Number(values.defaultDoctorFee) || null) : null,
     reorderPoint:
-      values.itemType === ItemType.STOCKED_GOOD ? Number(values.reorderPoint) || 0 : 0,
+      values.itemType === ItemType.INVENTORY ? Number(values.reorderPoint) || 0 : 0,
     minimumStock:
-      values.itemType === ItemType.STOCKED_GOOD ? Number(values.minimumStock) || 0 : 0,
+      values.itemType === ItemType.INVENTORY ? Number(values.minimumStock) || 0 : 0,
     barcode: values.barcode.trim() || null,
     conversions: values.conversions
       .filter((c) => c.unitId && Number(c.ratioToBase) > 0)

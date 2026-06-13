@@ -21,7 +21,7 @@ interface Props {
 export default function ItemSearchCombobox({
   onSelect,
   placeholder = 'Search items…',
-  itemType = 'STOCKED_GOOD',
+  itemType = 'INVENTORY',
   onChange,
 }: Props) {
   const [query, setQuery] = useState('');

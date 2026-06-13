@@ -34,7 +34,7 @@ const EXISTING_ITEM = {
   clinicId: 'clinic-001',
   code: 'MED-001',
   name: 'Test Drug',
-  itemType: ItemType.STOCKED_GOOD,
+  itemType: ItemType.INVENTORY,
   isActive: true,
   categoryId: 'cat-001',
   baseUnitId: 'unit-001',

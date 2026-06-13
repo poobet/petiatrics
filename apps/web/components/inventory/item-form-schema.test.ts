@@ -11,7 +11,7 @@ function validStockedGood(overrides: Partial<ItemFormValues> = {}): ItemFormValu
     ...ITEM_FORM_DEFAULTS,
     code: 'MED-001',
     name: 'Test Medication',
-    itemType: ItemType.STOCKED_GOOD,
+    itemType: ItemType.INVENTORY,
     categoryId: 'cat-001',
     baseUnitId: 'unit-001',
     standardCost: 100,
@@ -139,7 +139,7 @@ describe('toApiPayload()', () => {
     expect(payload.defaultSupplierId).toBeNull();
   });
 
-  it('sets defaultDoctorFee=null for STOCKED_GOOD items', () => {
+  it('sets defaultDoctorFee=null for INVENTORY items', () => {
     const payload = toApiPayload(validStockedGood({ defaultDoctorFee: 200 }));
     expect(payload.defaultDoctorFee).toBeNull();
   });

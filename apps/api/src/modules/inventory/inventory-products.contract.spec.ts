@@ -24,7 +24,7 @@ function isItemSummaryShape(obj: unknown): boolean {
     typeof r['id'] === 'string' &&
     typeof r['code'] === 'string' &&
     typeof r['name'] === 'string' &&
-    (r['itemType'] === ItemType.STOCKED_GOOD || r['itemType'] === ItemType.SERVICE) &&
+    (r['itemType'] === ItemType.INVENTORY || r['itemType'] === ItemType.SERVICE) &&
     typeof r['isActive'] === 'boolean'
   );
 }
@@ -59,7 +59,7 @@ const SUMMARY_FIXTURE: ItemSummaryResponse = {
   sku: 'SKU-00001',
   barcode: null,
   name: 'Metronidazole 250mg',
-  itemType: ItemType.STOCKED_GOOD,
+  itemType: ItemType.INVENTORY,
   isActive: true,
   standardCost: 80,
   baseSellingPrice: 150,
@@ -119,8 +119,8 @@ describe('Item Master API Contracts', () => {
       expect(isItemSummaryShape(broken)).toBe(false);
     });
 
-    it('itemType must be STOCKED_GOOD or SERVICE', () => {
-      const valid1 = { ...SUMMARY_FIXTURE, itemType: ItemType.STOCKED_GOOD };
+    it('itemType must be INVENTORY or SERVICE', () => {
+      const valid1 = { ...SUMMARY_FIXTURE, itemType: ItemType.INVENTORY };
       const valid2 = { ...SUMMARY_FIXTURE, itemType: ItemType.SERVICE };
       const invalid = { ...SUMMARY_FIXTURE, itemType: 'UNKNOWN' };
       expect(isItemSummaryShape(valid1)).toBe(true);

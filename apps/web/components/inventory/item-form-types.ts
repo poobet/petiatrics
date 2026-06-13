@@ -56,7 +56,7 @@ export interface ItemFormValues {
 export const ITEM_FORM_DEFAULTS: ItemFormValues = {
   code: '',
   name: '',
-  itemType: ItemType.STOCKED_GOOD,
+  itemType: ItemType.INVENTORY,
   categoryId: '',
   baseUnitId: '',
   genericName: '',

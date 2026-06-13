@@ -83,7 +83,7 @@ describe('StockService', () => {
     });
 
     it('increases branch balance on replenishment', async () => {
-      const product = { id: 'p1', name: 'Metronidazole', itemType: 'STOCKED_GOOD', quantity: 10, reorderPoint: 5, minimumStock: 0 };
+      const product = { id: 'p1', name: 'Metronidazole', itemType: 'INVENTORY', quantity: 10, reorderPoint: 5, minimumStock: 0 };
       prisma.product.findUnique.mockResolvedValue(product);
 
       await service.replenish(CLINIC_ID, { branchId: BRANCH_ID, productId: 'p1', quantity: 5, referenceId: 'PO-001', actorId: 'user-1' });
@@ -111,7 +111,7 @@ describe('StockService', () => {
     });
 
     it('throws BadRequestException when insufficient stock', async () => {
-      prisma.product.findUnique.mockResolvedValue({ id: 'p1', name: 'Drug', itemType: 'STOCKED_GOOD', quantity: 2 });
+      prisma.product.findUnique.mockResolvedValue({ id: 'p1', name: 'Drug', itemType: 'INVENTORY', quantity: 2 });
       prisma.branchStockBalance.findUnique.mockResolvedValue({ id: 'bal-1', quantity: 2 });
       prisma.$transaction = jest.fn((fn: (tx: unknown) => unknown) => fn({ branchStockBalance: { findUnique: jest.fn().mockResolvedValue({ id: 'bal-1', quantity: 2 }) }, stockMovement: { create: jest.fn() } }));
       await expect(
@@ -120,7 +120,7 @@ describe('StockService', () => {
     });
 
     it('deducts branch balance and creates movement record', async () => {
-      const product = { id: 'p1', name: 'Drug', itemType: 'STOCKED_GOOD', quantity: 10, reorderPoint: 5, minimumStock: 0 };
+      const product = { id: 'p1', name: 'Drug', itemType: 'INVENTORY', quantity: 10, reorderPoint: 5, minimumStock: 0 };
       prisma.product.findUnique.mockResolvedValue(product);
 
       await service.deduct(CLINIC_ID, { branchId: BRANCH_ID, productId: 'p1', quantity: 1, visitRecordId: 'v1', actorId: 'user-1' });
@@ -130,7 +130,7 @@ describe('StockService', () => {
     });
 
     it('emits LowStockEvent when balance falls at or below reorderPoint', async () => {
-      const product = { id: 'p1', name: 'Drug', itemType: 'STOCKED_GOOD', quantity: 6, reorderPoint: 5, minimumStock: 0 };
+      const product = { id: 'p1', name: 'Drug', itemType: 'INVENTORY', quantity: 6, reorderPoint: 5, minimumStock: 0 };
       prisma.product.findUnique.mockResolvedValue(product);
       prisma.$transaction = jest.fn((fn: (tx: unknown) => unknown) =>
         fn({
@@ -158,7 +158,7 @@ describe('StockService', () => {
       prisma.product.findUnique.mockResolvedValue({
         id: 'p1',
         name: 'Drug',
-        itemType: 'STOCKED_GOOD',
+        itemType: 'INVENTORY',
         reorderPoint: 5,
         minimumStock: 0,
       });
@@ -191,7 +191,7 @@ describe('StockService', () => {
       prisma.product.findUnique.mockResolvedValue({
         id: 'p1',
         name: 'Drug',
-        itemType: 'STOCKED_GOOD',
+        itemType: 'INVENTORY',
         reorderPoint: 5,
         minimumStock: 0,
       });

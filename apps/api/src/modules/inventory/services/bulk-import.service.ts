@@ -198,9 +198,9 @@ export class BulkImportService {
     if (existing) return false; // skipped
 
     // Resolve itemType
-    const rawType = (row.itemType ?? 'STOCKED_GOOD').toUpperCase();
+    const rawType = (row.itemType ?? 'INVENTORY').toUpperCase();
     const itemType: ItemType =
-      rawType === 'SERVICE' ? ItemType.SERVICE : ItemType.STOCKED_GOOD;
+      rawType === 'SERVICE' ? ItemType.SERVICE : ItemType.INVENTORY;
 
     // Resolve category
     const categoryCode = (row.categoryCode ?? '').toUpperCase();
@@ -228,8 +228,8 @@ export class BulkImportService {
         isControlledSubstance: /^(true|yes|1)$/i.test(row.isControlledSubstance ?? ''),
         standardCost: parseFloat(row.standardCost ?? '0') || 0,
         baseSellingPrice: parseFloat(row.baseSellingPrice ?? '0') || 0,
-        reorderPoint: itemType === ItemType.STOCKED_GOOD ? parseFloat(row.reorderPoint ?? '0') || 0 : 0,
-        minimumStock: itemType === ItemType.STOCKED_GOOD ? parseFloat(row.minimumStock ?? '0') || 0 : 0,
+        reorderPoint: itemType === ItemType.INVENTORY ? parseFloat(row.reorderPoint ?? '0') || 0 : 0,
+        minimumStock: itemType === ItemType.INVENTORY ? parseFloat(row.minimumStock ?? '0') || 0 : 0,
       },
     });
 

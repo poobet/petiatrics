@@ -63,7 +63,7 @@ describe('InvoiceService', () => {
           childProduct: {
             id: 'child-1',
             name: 'Accessory Item',
-            itemType: 'STOCKED_GOOD',
+            itemType: 'INVENTORY',
             baseSellingPrice: 50.00, // 50 THB
           },
         },

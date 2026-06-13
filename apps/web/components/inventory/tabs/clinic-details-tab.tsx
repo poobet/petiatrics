@@ -14,7 +14,7 @@ export default function ClinicDetailsTab({ values, errors, refs, onChange }: Pro
   return (
     <div className="space-y-4">
       {/* Default Supplier (stocked goods only) */}
-      {values.itemType === ItemType.STOCKED_GOOD && (
+      {values.itemType === ItemType.INVENTORY && (
         <div>
           <label htmlFor="defaultSupplierId" className="block text-sm font-medium text-gray-700 mb-1">
             Default Supplier
@@ -34,7 +34,7 @@ export default function ClinicDetailsTab({ values, errors, refs, onChange }: Pro
       )}
 
       {/* Reorder Point (stocked goods only) */}
-      {values.itemType === ItemType.STOCKED_GOOD && (
+      {values.itemType === ItemType.INVENTORY && (
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label htmlFor="reorderPoint" className="block text-sm font-medium text-gray-700 mb-1">

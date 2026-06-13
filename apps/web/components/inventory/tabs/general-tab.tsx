@@ -31,7 +31,7 @@ export default function GeneralTab({ values, errors, refs, onChange, isEdit }: P
                 onChange={() => onChange('itemType', t)}
                 className="accent-blue-600"
               />
-              {t === ItemType.STOCKED_GOOD ? 'Stocked Good' : 'Service'}
+              {t === ItemType.INVENTORY ? 'Stocked Good' : 'Service'}
             </label>
           ))}
         </div>
@@ -117,7 +117,7 @@ export default function GeneralTab({ values, errors, refs, onChange, isEdit }: P
           />
           Controlled Substance
         </label>
-        {values.itemType === ItemType.STOCKED_GOOD && (
+        {values.itemType === ItemType.INVENTORY && (
           <label className="flex items-center gap-2 cursor-pointer text-sm">
             <input
               type="checkbox"
