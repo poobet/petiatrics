@@ -6,6 +6,7 @@ import type { AuthProfile } from '@petiatrics/types';
 import { Role } from '@petiatrics/types';
 import Link from 'next/link';
 import { Home, Calendar, FileText, CreditCard, Bell } from 'lucide-react';
+import { CustomerLogoutButton } from '../../components/layout/customer-logout';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -77,6 +78,7 @@ export default async function PetOwnerLayout({
         <div className="flex items-center gap-2">
           <Bell className="w-5 h-5 text-gray-400" />
           <span className="text-sm text-gray-600">{user.email}</span>
+          <CustomerLogoutButton />
         </div>
       </header>
 
