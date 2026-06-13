@@ -41,4 +41,12 @@ export class VaccinationService {
     if (!doc) throw new NotFoundException(`Vaccination record ${id} not found.`);
     return doc;
   }
+
+  async getOneCrossClinic(id: string): Promise<IVaccinationRecord> {
+    const doc = await this.vaccinationModel
+      .findOne({ _id: id })
+      .exec();
+    if (!doc) throw new NotFoundException(`Vaccination record ${id} not found.`);
+    return doc;
+  }
 }

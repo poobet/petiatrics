@@ -200,4 +200,12 @@ export class VisitService {
     if (!doc) throw new NotFoundException(`Visit ${visitId} not found.`);
     return doc;
   }
+
+  async getOneCrossClinic(visitId: string): Promise<IVisitRecord> {
+    const doc = await this.visitModel
+      .findOne({ _id: visitId })
+      .exec();
+    if (!doc) throw new NotFoundException(`Visit ${visitId} not found.`);
+    return doc;
+  }
 }
