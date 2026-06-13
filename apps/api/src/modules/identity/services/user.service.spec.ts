@@ -33,7 +33,7 @@ describe('UserService', () => {
         findFirst: jest.fn().mockResolvedValue(null),
       },
       $queryRaw: jest.fn().mockResolvedValue([
-        { id: 'group-customer-1', prefix: 'C-', current_sequence: 0 },
+        { id: 'group-customer-1', prefix: 'C-', currentSequence: 0 },
       ]),
     };
 

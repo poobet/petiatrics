@@ -225,10 +225,10 @@ export class UserService {
 
     let generatedCode: string | null = null;
     if (group) {
-      const rows = await tx.$queryRaw`SELECT id, prefix, current_sequence FROM bp_groups WHERE id = ${group.id} FOR UPDATE`;
+      const rows = await tx.$queryRaw`SELECT id, prefix, "currentSequence" FROM bp_groups WHERE id = ${group.id} FOR UPDATE`;
       const lockedGroup = rows[0];
       if (lockedGroup) {
-        const newSeq = lockedGroup.current_sequence + 1;
+        const newSeq = lockedGroup.currentSequence + 1;
         await tx.bpGroup.update({
           where: { id: group.id },
           data: { currentSequence: newSeq },

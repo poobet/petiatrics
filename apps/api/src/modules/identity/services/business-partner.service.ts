@@ -217,11 +217,11 @@ export class BusinessPartnerService {
       let generatedCode: string | null = null;
       if (dto.groupId) {
         const rows = await tx.$queryRaw<Array<{
-          id: string; prefix: string; current_sequence: number;
-        }>>(Prisma.sql`SELECT id, prefix, current_sequence FROM bp_groups WHERE id = ${dto.groupId} FOR UPDATE`);
+          id: string; prefix: string; currentSequence: number;
+        }>>(Prisma.sql`SELECT id, prefix, "currentSequence" FROM bp_groups WHERE id = ${dto.groupId} FOR UPDATE`);
         const group = rows[0];
         if (!group) throw new BadRequestException(`groupId '${dto.groupId}' not found`);
-        const newSeq = group.current_sequence + 1;
+        const newSeq = group.currentSequence + 1;
         await tx.bpGroup.update({
           where: { id: dto.groupId },
           data: { currentSequence: newSeq },
