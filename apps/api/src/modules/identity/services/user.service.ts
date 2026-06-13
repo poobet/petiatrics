@@ -10,6 +10,7 @@ import { PrismaClient, User } from '@prisma/client';
 import { Role, UserStatus } from '@petiatrics/types';
 import { v4 as uuidv4 } from 'uuid';
 import { RegisterCustomerDto } from '../dto/register-customer.dto';
+import { CreateClientDto } from '../dto/create-client.dto';
 import { DEFAULT_ROLE_PERMISSIONS } from './auth.service';
 
 export interface InviteUserDto {
@@ -313,5 +314,89 @@ export class UserService {
         permissions,
       },
     });
+  }
+
+  async findClientsByClinic(clinicId: string): Promise<User[]> {
+    return this.prisma.user.findMany({
+      where: {
+        clinicId,
+        role: Role.CUSTOMER as any,
+      },
+      include: {
+        businessPartners: {
+          where: { clinicId },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    }) as any;
+  }
+
+  async findClientById(clinicId: string, id: string): Promise<User> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id,
+        clinicId,
+        role: Role.CUSTOMER as any,
+      },
+      include: {
+        businessPartners: {
+          where: { clinicId },
+        },
+      },
+    });
+    if (!user) throw new NotFoundException(`Client ${id} not found in this clinic.`);
+    return user as any;
+  }
+
+  async createClient(clinicId: string, dto: CreateClientDto): Promise<User> {
+    let emailNorm: string | null = null;
+    if (dto.email) {
+      emailNorm = dto.email.toLowerCase().trim();
+      const existingUser = await this.prisma.user.findFirst({ where: { email: emailNorm } });
+      if (existingUser) {
+        throw new ConflictException(`An account with email ${dto.email} already exists.`);
+      }
+    }
+
+    const temporaryPassword = uuidv4().slice(0, 12) + 'A1!';
+    const passwordHash = await bcrypt.hash(temporaryPassword, 10);
+
+    return this.prisma.$transaction(async (tx) => {
+      const u = await tx.user.create({
+        data: {
+          email: emailNorm,
+          name: dto.name,
+          passwordHash,
+          role: Role.CUSTOMER as any,
+          clinicId: clinicId,
+          status: UserStatus.ACTIVE as any,
+        },
+      });
+
+      const bp = await this.createCustomerBpWithCode(tx, u.id, clinicId, dto.name, emailNorm);
+
+      await tx.businessPartner.update({
+        where: { id: bp.id },
+        data: {
+          phone: dto.phone ?? null,
+          taxId: dto.taxId ?? null,
+          addressLine1: dto.addressLine1 ?? null,
+          subDistrict: dto.subDistrict ?? null,
+          district: dto.district ?? null,
+          province: dto.province ?? null,
+          zipcode: dto.zipcode ?? null,
+          lineId: dto.lineId ?? null,
+        },
+      });
+
+      return tx.user.findUnique({
+        where: { id: u.id },
+        include: {
+          businessPartners: {
+            where: { clinicId },
+          },
+        },
+      });
+    }) as any;
   }
 }

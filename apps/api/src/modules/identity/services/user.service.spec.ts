@@ -15,6 +15,9 @@ describe('UserService', () => {
         create: jest.fn().mockImplementation(({ data }) =>
           Promise.resolve({ id: 'user-created-id', ...data }),
         ),
+        findUnique: jest.fn().mockImplementation(({ where }) =>
+          Promise.resolve({ id: 'user-created-id', name: 'Mochi Customer', email: 'mochi@example.com', businessPartners: [{ id: 'bp-created-id', code: 'C-0001' }] }),
+        ),
       },
       userBranch: {
         createMany: jest.fn().mockResolvedValue({ count: 1 }),
@@ -212,6 +215,49 @@ describe('UserService', () => {
         }
       });
       expect(result).toEqual(mockResult);
+    });
+  });
+
+  describe('createClient & findClients', () => {
+    it('creates client with linked business partner details successfully', async () => {
+      const clientDto = {
+        name: 'Mochi Customer',
+        email: 'mochi@example.com',
+        phone: '0812345678',
+      };
+      
+      prismaMock.user.findUnique = jest.fn().mockResolvedValue({
+        id: 'user-created-id',
+        name: clientDto.name,
+        email: clientDto.email,
+        businessPartners: [{ id: 'bp-created-id', code: 'C-0001' }]
+      });
+
+      const result = await service.createClient('clinic-1', clientDto);
+      expect(result.id).toBe('user-created-id');
+      expect(txMock.user.create).toHaveBeenCalled();
+      expect(txMock.businessPartner.create).toHaveBeenCalled();
+      expect(txMock.businessPartner.update).toHaveBeenCalled();
+    });
+
+    it('finds all clients in a clinic', async () => {
+      prismaMock.user.findMany = jest.fn().mockResolvedValue([
+        { id: 'client-1', role: Role.CUSTOMER }
+      ]);
+
+      const result = await service.findClientsByClinic('clinic-1');
+      expect(prismaMock.user.findMany).toHaveBeenCalled();
+      expect(result).toHaveLength(1);
+    });
+
+    it('finds single client by ID in a clinic', async () => {
+      prismaMock.user.findFirst = jest.fn().mockResolvedValue(
+        { id: 'client-1', role: Role.CUSTOMER }
+      );
+
+      const result = await service.findClientById('clinic-1', 'client-1');
+      expect(prismaMock.user.findFirst).toHaveBeenCalled();
+      expect(result.id).toBe('client-1');
     });
   });
 });
