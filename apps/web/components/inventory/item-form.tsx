@@ -12,9 +12,11 @@ import PricingTab from './tabs/pricing-tab';
 import ItemStockTab from '@/components/inventory/tabs/item-stock-tab';
 import ClinicDetailsTab from './tabs/clinic-details-tab';
 import AccessoriesTab from './tabs/accessories-tab';
+import BranchSettingsTab from './tabs/branch-settings-tab';
 import { apiClient, ApiError } from '../../lib/api-client';
+import { usePermission } from '../../lib/use-permission';
 
-type TabKey = 'general' | 'units' | 'pricing' | 'stock' | 'clinic' | 'accessories';
+type TabKey = 'general' | 'units' | 'pricing' | 'stock' | 'clinic' | 'accessories' | 'branchSettings';
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'general', label: 'General' },
@@ -23,6 +25,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'stock', label: 'Stock' },
   { key: 'accessories', label: 'Accessories/Bundle' },
   { key: 'clinic', label: 'Clinic Details' },
+  { key: 'branchSettings', label: 'Branch Pricing' },
 ];
 
 interface Props {
@@ -69,6 +72,7 @@ function itemDetailToFormValues(item: ItemDetailResponse): ItemFormValues {
 export default function ItemForm({ refs, initial }: Props) {
   const router = useRouter();
   const isEdit = !!initial;
+  const canWrite = usePermission('INVENTORY:EDIT');
   const [mounted, setMounted] = useState(false);
   const [values, setValues] = useState<ItemFormValues>(
     initial ? itemDetailToFormValues(initial) : ITEM_FORM_DEFAULTS,
@@ -122,9 +126,18 @@ export default function ItemForm({ refs, initial }: Props) {
 
   return (
     <form onSubmit={handleSubmit} noValidate>
+      {!canWrite && (
+        <div className="mb-4 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+          ⚠ You have read-only access to product master data.
+        </div>
+      )}
       {/* Tab navigation */}
       <div className="border-b mb-6 flex gap-6">
-        {TABS.filter((t) => (t.key !== 'stock' && t.key !== 'accessories') || isEdit).map((t) => (
+        {TABS.filter((t) => {
+          if ((t.key === 'stock' || t.key === 'accessories') && !isEdit) return false;
+          if (t.key === 'branchSettings' && (!isEdit || !canWrite)) return false;
+          return true;
+        }).map((t) => (
           <button
             key={t.key}
             type="button"
@@ -160,6 +173,9 @@ export default function ItemForm({ refs, initial }: Props) {
         {activeTab === 'clinic' && (
           <ClinicDetailsTab values={values} errors={fieldErrors} refs={refs} onChange={handleChange} />
         )}
+        {activeTab === 'branchSettings' && initial?.id && (
+          <BranchSettingsTab productId={initial.id} />
+        )}
       </div>
 
       {/* Submit error */}
@@ -176,15 +192,17 @@ export default function ItemForm({ refs, initial }: Props) {
           onClick={() => router.back()}
           className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
         >
-          Cancel
+          {canWrite ? 'Cancel' : 'Back'}
         </button>
-        <button
-          type="submit"
-          disabled={saving}
-          className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-60"
-        >
-          {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Item'}
-        </button>
+        {canWrite && (
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-60"
+          >
+            {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Item'}
+          </button>
+        )}
       </div>
     </form>
   );
