@@ -6,6 +6,7 @@ import {
   Patch,
   Post,
   Query,
+  ForbiddenException,
 } from '@nestjs/common';
 import { Roles } from '../../../common/guards/roles.decorator';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
@@ -14,11 +15,22 @@ import { Role } from '@petiatrics/types';
 import { UserContext } from '@petiatrics/types';
 import { Audit } from '../../../common/interceptors/audit.interceptor';
 import { PatientService, CreatePatientDto, UpdatePatientDto } from '../services/patient.service';
+import { PrismaClient } from '@prisma/client';
 
 @Controller('patients')
-@Roles(Role.VET, Role.CLINIC_OWNER)
+@Roles(
+  Role.CLINIC_OWNER,
+  Role.VET,
+  Role.ASSISTANT,
+  Role.CASHIER,
+  Role.STAFF,
+  Role.CUSTOMER,
+)
 export class PatientController {
-  constructor(private readonly patientService: PatientService) {}
+  constructor(
+    private readonly patientService: PatientService,
+    private readonly prisma: PrismaClient,
+  ) {}
 
   @Post()
   @Permissions('PATIENT:EDIT')
@@ -32,21 +44,38 @@ export class PatientController {
 
   @Get()
   @Permissions('PATIENT:VIEW')
-  findAll(
-    @TenantId() clinicId: string,
+  async findAll(
+    @TenantId() clinicId: string | null,
+    @CurrentUser() user: UserContext,
     @Query('search') search?: string,
     @Query('ownerUserId') ownerUserId?: string,
   ) {
-    return this.patientService.findAll(clinicId, search, ownerUserId);
+    if (user.role === Role.CUSTOMER) {
+      const bps = await this.prisma.businessPartner.findMany({
+        where: { linkedUserId: user.userId, isActive: true },
+        select: { clinicId: true },
+      });
+      const clinicIds = bps.map((bp) => bp.clinicId);
+      return this.patientService.findAllByOwnerCrossClinic(clinicIds, user.userId);
+    }
+    return this.patientService.findAll(clinicId!, search, ownerUserId);
   }
 
   @Get(':id')
   @Permissions('PATIENT:VIEW')
-  findOne(
-    @TenantId() clinicId: string,
+  async findOne(
+    @TenantId() clinicId: string | null,
+    @CurrentUser() user: UserContext,
     @Param('id') id: string,
   ) {
-    return this.patientService.findById(clinicId, id);
+    if (user.role === Role.CUSTOMER) {
+      const pet = await this.patientService.findByIdCrossClinic(id);
+      if (pet.ownerUserId !== user.userId) {
+        throw new ForbiddenException('You do not have permission to access this patient.');
+      }
+      return pet;
+    }
+    return this.patientService.findById(clinicId!, id);
   }
 
   @Patch(':id')
