@@ -21,11 +21,11 @@ import {
 
 @Controller('patients/:patientId/visits')
 @Roles(Role.VET, Role.CLINIC_OWNER)
-@Permissions('MANAGE_VISITS')
 export class VisitController {
   constructor(private readonly visitService: VisitService) {}
 
   @Post()
+  @Permissions('VISIT:ADD')
   @Audit({ entity: 'VisitRecord', operation: 'create' })
   create(
     @TenantId() clinicId: string,
@@ -38,6 +38,7 @@ export class VisitController {
   }
 
   @Get()
+  @Permissions('VISIT:VIEW')
   list(
     @TenantId() clinicId: string,
     @Param('patientId') patientId: string,
@@ -46,6 +47,7 @@ export class VisitController {
   }
 
   @Get(':visitId')
+  @Permissions('VISIT:VIEW')
   getOne(
     @TenantId() clinicId: string,
     @Param('visitId') visitId: string,
@@ -54,6 +56,7 @@ export class VisitController {
   }
 
   @Patch(':visitId')
+  @Permissions('VISIT:EDIT')
   @Audit({ entity: 'VisitRecord', operation: 'update' })
   update(
     @TenantId() clinicId: string,
@@ -64,6 +67,7 @@ export class VisitController {
   }
 
   @Post(':visitId/finalize')
+  @Permissions('VISIT:EDIT')
   @Audit({ entity: 'VisitRecord', operation: 'status_change' })
   finalize(
     @TenantId() clinicId: string,
@@ -76,6 +80,7 @@ export class VisitController {
 
   @Post(':visitId/amend')
   @Roles(Role.CLINIC_OWNER)
+  @Permissions('VISIT:EDIT')
   @Audit({ entity: 'VisitRecord', operation: 'amend' })
   amend(
     @TenantId() clinicId: string,

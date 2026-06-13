@@ -30,7 +30,7 @@ export class ProductController {
 
   @Post()
   @Roles(...WRITE_ROLES)
-  @Permissions('MANAGE_INVENTORY')
+  @Permissions('INVENTORY:ADD')
   @HttpCode(HttpStatus.CREATED)
   @Audit({ entity: 'Product', operation: 'create' })
   create(@TenantId() clinicId: string, @Body() dto: CreateProductDto) {
@@ -39,7 +39,7 @@ export class ProductController {
 
   @Get()
   @Roles(...READ_ROLES)
-  @Permissions('VIEW_INVENTORY')
+  @Permissions('INVENTORY:VIEW')
   @UseGuards(BranchContextGuard)
   findAll(
     @TenantId() clinicId: string,
@@ -51,7 +51,7 @@ export class ProductController {
 
   @Get('low-stock')
   @Roles(...READ_ROLES)
-  @Permissions('VIEW_INVENTORY')
+  @Permissions('INVENTORY:VIEW')
   @UseGuards(BranchContextGuard)
   getLowStock(
     @TenantId() clinicId: string,
@@ -62,14 +62,14 @@ export class ProductController {
 
   @Get(':id')
   @Roles(...READ_ROLES)
-  @Permissions('VIEW_INVENTORY')
+  @Permissions('INVENTORY:VIEW')
   findOne(@TenantId() clinicId: string, @Param('id') id: string) {
     return this.productService.findById(clinicId, id);
   }
 
   @Patch(':id')
   @Roles(...WRITE_ROLES)
-  @Permissions('MANAGE_INVENTORY')
+  @Permissions('INVENTORY:EDIT')
   @Audit({ entity: 'Product', operation: 'update' })
   update(
     @TenantId() clinicId: string,
@@ -81,7 +81,7 @@ export class ProductController {
 
   @Patch(':id/deactivate')
   @Roles(...WRITE_ROLES)
-  @Permissions('MANAGE_INVENTORY')
+  @Permissions('INVENTORY:DELETE')
   @Audit({ entity: 'Product', operation: 'status_change' })
   deactivate(@TenantId() clinicId: string, @Param('id') id: string) {
     return this.productService.deactivate(clinicId, id);
@@ -89,7 +89,7 @@ export class ProductController {
 
   @Get('barcode/:barcode')
   @Roles(...READ_ROLES)
-  @Permissions('VIEW_INVENTORY')
+  @Permissions('INVENTORY:VIEW')
   findByBarcode(@TenantId() clinicId: string, @Param('barcode') barcode: string) {
     return this.productService.findByBarcode(clinicId, barcode);
   }

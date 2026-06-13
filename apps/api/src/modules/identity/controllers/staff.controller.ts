@@ -18,6 +18,7 @@ import {
 import { ClinicService } from '../services/clinic.service';
 import { CreateStaffDto } from '../dto/create-staff.dto';
 import { Roles } from '../../../common/guards/roles.decorator';
+import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { TenantId, CurrentUser } from '../../../common/decorators/tenant.decorator';
 import { Role } from '@petiatrics/types';
 import type { UserContext } from '@petiatrics/types';
@@ -92,6 +93,7 @@ export class StaffController {
    */
   @Put('roles/:role/permissions')
   @HttpCode(HttpStatus.OK)
+  @Permissions('SETTINGS:MANAGE')
   @Audit({ entity: 'clinic_role_permissions', operation: 'update' })
   updateRolePermissions(
     @Param('role') role: Role,

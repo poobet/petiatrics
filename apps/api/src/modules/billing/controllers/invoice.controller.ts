@@ -21,7 +21,7 @@ export class InvoiceController {
 
   @Post()
   @Roles(Role.CASHIER, Role.CLINIC_OWNER)
-  @Permissions('MANAGE_BILLING')
+  @Permissions('BILLING:ADD')
   @Audit({ entity: 'Invoice', operation: 'create' })
   create(
     @TenantId() clinicId: string,
@@ -32,7 +32,7 @@ export class InvoiceController {
 
   @Get()
   @Roles(Role.CASHIER, Role.CLINIC_OWNER, Role.ASSISTANT)
-  @Permissions('VIEW_BILLING')
+  @Permissions('BILLING:VIEW')
   findAll(
     @TenantId() clinicId: string,
     @Query('status') status?: string,
@@ -42,7 +42,7 @@ export class InvoiceController {
 
   @Get(':id')
   @Roles(Role.CASHIER, Role.CLINIC_OWNER, Role.ASSISTANT)
-  @Permissions('VIEW_BILLING')
+  @Permissions('BILLING:VIEW')
   findOne(
     @TenantId() clinicId: string,
     @Param('id') id: string,
@@ -52,7 +52,7 @@ export class InvoiceController {
 
   @Patch(':id/issue')
   @Roles(Role.CASHIER, Role.CLINIC_OWNER)
-  @Permissions('MANAGE_BILLING')
+  @Permissions('BILLING:EDIT')
   @Audit({ entity: 'Invoice', operation: 'status_change' })
   issue(
     @TenantId() clinicId: string,
@@ -63,7 +63,7 @@ export class InvoiceController {
 
   @Patch(':id/pay')
   @Roles(Role.CASHIER, Role.CLINIC_OWNER)
-  @Permissions('MANAGE_BILLING')
+  @Permissions('BILLING:EDIT')
   @Audit({ entity: 'Invoice', operation: 'status_change' })
   markPaid(
     @TenantId() clinicId: string,
@@ -74,7 +74,7 @@ export class InvoiceController {
 
   @Delete(':id')
   @Roles(Role.CLINIC_OWNER)
-  @Permissions('MANAGE_BILLING')
+  @Permissions('BILLING:VOID')
   @Audit({ entity: 'Invoice', operation: 'void' })
   voidInvoice(
     @TenantId() clinicId: string,

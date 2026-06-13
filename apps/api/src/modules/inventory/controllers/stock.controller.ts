@@ -25,7 +25,7 @@ export class StockController {
 
   @Post('stock/replenish')
   @Roles(Role.CLINIC_OWNER)
-  @Permissions('MANAGE_INVENTORY')
+  @Permissions('INVENTORY:ADD')
   @UseGuards(BranchContextGuard)
   @Audit({ entity: 'StockMovement', operation: 'create' })
   replenish(
@@ -43,7 +43,7 @@ export class StockController {
 
   @Get('stock/movements')
   @Roles(Role.CLINIC_OWNER, Role.VET)
-  @Permissions('VIEW_INVENTORY')
+  @Permissions('INVENTORY:VIEW')
   @UseGuards(BranchContextGuard)
   getMovements(
     @TenantId() clinicId: string,
@@ -55,7 +55,7 @@ export class StockController {
 
   @Get('products/:productId/all-branch-balances')
   @Roles(Role.CLINIC_OWNER, Role.VET, Role.STAFF, Role.ASSISTANT, Role.CASHIER)
-  @Permissions('VIEW_INVENTORY')
+  @Permissions('INVENTORY:VIEW')
   @UseGuards(BranchContextGuard)
   getAllBranchBalances(
     @TenantId() clinicId: string,
@@ -74,7 +74,7 @@ export class StockController {
 
   @Get('stock-balances')
   @Roles(Role.CLINIC_OWNER, Role.VET, Role.STAFF, Role.ASSISTANT, Role.CASHIER)
-  @Permissions('VIEW_INVENTORY')
+  @Permissions('INVENTORY:VIEW')
   @UseGuards(BranchContextGuard)
   listBalances(
     @TenantId() clinicId: string,
@@ -96,7 +96,7 @@ export class StockController {
 
   @Get('stock-balances/lots/:productId')
   @Roles(Role.CLINIC_OWNER, Role.VET, Role.STAFF, Role.ASSISTANT, Role.CASHIER)
-  @Permissions('VIEW_INVENTORY')
+  @Permissions('INVENTORY:VIEW')
   @UseGuards(BranchContextGuard)
   getIssuableLots(
     @TenantId() clinicId: string,
@@ -110,7 +110,7 @@ export class StockController {
 
   @Post('stock-movements')
   @Roles(Role.CLINIC_OWNER, Role.VET, Role.STAFF, Role.ASSISTANT, Role.CASHIER)
-  @Permissions('MANAGE_INVENTORY')
+  @Permissions('INVENTORY:ADD')
   @UseGuards(BranchContextGuard)
   @Audit({ entity: 'StockMovement', operation: 'create' })
   createMovement(

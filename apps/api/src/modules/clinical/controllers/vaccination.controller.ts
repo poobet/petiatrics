@@ -14,11 +14,11 @@ import { VaccinationService, CreateVaccinationDto } from '../services/vaccinatio
 
 @Controller('patients/:patientId/vaccinations')
 @Roles(Role.VET, Role.CLINIC_OWNER)
-@Permissions('MANAGE_VACCINATIONS')
 export class VaccinationController {
   constructor(private readonly vaccinationService: VaccinationService) {}
 
   @Post()
+  @Permissions('VACCINATION:ADD')
   @Audit({ entity: 'VaccinationRecord', operation: 'create' })
   create(
     @TenantId() clinicId: string,
@@ -29,6 +29,7 @@ export class VaccinationController {
   }
 
   @Get()
+  @Permissions('VISIT:VIEW')
   list(
     @TenantId() clinicId: string,
     @Param('patientId') patientId: string,
@@ -37,6 +38,7 @@ export class VaccinationController {
   }
 
   @Get(':id')
+  @Permissions('VISIT:VIEW')
   getOne(
     @TenantId() clinicId: string,
     @Param('id') id: string,

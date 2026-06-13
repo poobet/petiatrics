@@ -21,7 +21,7 @@ export class PatientController {
   constructor(private readonly patientService: PatientService) {}
 
   @Post()
-  @Permissions('EDIT_PATIENTS')
+  @Permissions('PATIENT:EDIT')
   @Audit({ entity: 'PetProfile', operation: 'create' })
   create(
     @TenantId() clinicId: string,
@@ -31,7 +31,7 @@ export class PatientController {
   }
 
   @Get()
-  @Permissions('VIEW_PATIENTS')
+  @Permissions('PATIENT:VIEW')
   findAll(
     @TenantId() clinicId: string,
     @Query('search') search?: string,
@@ -40,7 +40,7 @@ export class PatientController {
   }
 
   @Get(':id')
-  @Permissions('VIEW_PATIENTS')
+  @Permissions('PATIENT:VIEW')
   findOne(
     @TenantId() clinicId: string,
     @Param('id') id: string,
@@ -49,7 +49,7 @@ export class PatientController {
   }
 
   @Patch(':id')
-  @Permissions('EDIT_PATIENTS')
+  @Permissions('PATIENT:EDIT')
   @Audit({ entity: 'PetProfile', operation: 'update' })
   update(
     @TenantId() clinicId: string,
