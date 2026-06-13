@@ -124,6 +124,15 @@ export class AuthService {
       name: ub.branch.name,
     }));
 
+    let resolvedBpId: string | null = null;
+    if (user.clinicId) {
+      const bp = await this.prisma.businessPartner.findFirst({
+        where: { clinicId: user.clinicId, linkedUserId: user.id, isActive: true },
+        select: { id: true },
+      });
+      if (bp) resolvedBpId = bp.id;
+    }
+
     const userContext: UserContext = {
       userId: user.id,
       clinicId: user.clinicId ?? null,
@@ -135,7 +144,7 @@ export class AuthService {
       mustChangePassword: user.mustChangePassword,
       preferredLocale: (user.preferredLocale as unknown as Locale) ?? Locale.TH,
       authorizedBranches,
-      businessPartnerId: user.businessPartnerId ?? null,
+      businessPartnerId: resolvedBpId,
       currencyCode: user.clinic?.currencyCode ?? 'THB',
     };
 
@@ -154,7 +163,7 @@ export class AuthService {
       clinicSlug: user.clinic?.slug ?? null,
       branches: authorizedBranches,
       preferredLocale: (user.preferredLocale as unknown as Locale) ?? Locale.TH,
-      businessPartnerId: user.businessPartnerId ?? null,
+      businessPartnerId: resolvedBpId,
       currencyCode: user.clinic?.currencyCode ?? 'THB',
     };
 

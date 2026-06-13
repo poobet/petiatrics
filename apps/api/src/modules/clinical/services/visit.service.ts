@@ -30,6 +30,7 @@ export interface CreateVisitDto {
     productId?: string | null;
     inventoryLinked?: boolean;
   }>;
+  billingBusinessPartnerId?: string | null;
 }
 
 export interface UpdateVisitDto {
@@ -41,12 +42,14 @@ export interface UpdateVisitDto {
     plan?: string;
   };
   prescriptions?: CreateVisitDto['prescriptions'];
+  billingBusinessPartnerId?: string | null;
 }
 
 export interface AmendVisitDto {
   amendmentReason: string;
   soap?: UpdateVisitDto['soap'];
   prescriptions?: CreateVisitDto['prescriptions'];
+  billingBusinessPartnerId?: string | null;
 }
 
 @Injectable()
@@ -75,6 +78,7 @@ export class VisitService {
       branchId: dto.branchId,
       patientId: dto.patientId,
       ownerUserId: pet.ownerUserId, // Enforce relationship binding
+      billingBusinessPartnerId: dto.billingBusinessPartnerId ?? null,
       vetId: dto.vetId,
       chiefComplaint: dto.chiefComplaint,
       soap: dto.soap ?? {},
@@ -175,6 +179,9 @@ export class VisitService {
     visit.amendmentReason = dto.amendmentReason;
     if (dto.soap) visit.soap = { ...visit.soap, ...dto.soap } as IVisitRecord['soap'];
     if (dto.prescriptions) visit.prescriptions = dto.prescriptions as IVisitRecord['prescriptions'];
+    if (dto.billingBusinessPartnerId !== undefined) {
+      visit.billingBusinessPartnerId = dto.billingBusinessPartnerId;
+    }
 
     return visit.save();
   }

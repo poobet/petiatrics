@@ -9,6 +9,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaClient, User } from '@prisma/client';
 import { Role, UserStatus } from '@petiatrics/types';
 import { v4 as uuidv4 } from 'uuid';
+import { RegisterCustomerDto } from '../dto/register-customer.dto';
 
 export interface InviteUserDto {
   email: string;
@@ -78,6 +79,10 @@ export class UserService {
         });
       }
 
+      if (input.role === Role.CUSTOMER || input.role === ('CUSTOMER' as any)) {
+        await this.createCustomerBpWithCode(tx, u.id, input.clinicId, input.name, null);
+      }
+
       return u;
     });
 
@@ -98,15 +103,23 @@ export class UserService {
     const temporaryPassword = uuidv4().slice(0, 12) + 'A1!';
     const passwordHash = await bcrypt.hash(temporaryPassword, BCRYPT_ROUNDS);
 
-    const user = await this.prisma.user.create({
-      data: {
-        email: emailNorm,
-        passwordHash,
-        role: dto.role as unknown as any,
-        clinicId: dto.clinicId,
-        invitedBy: dto.invitedBy,
-        status: UserStatus.INVITED as unknown as any,
-      },
+    const user = await this.prisma.$transaction(async (tx) => {
+      const u = await tx.user.create({
+        data: {
+          email: emailNorm,
+          passwordHash,
+          role: dto.role as unknown as any,
+          clinicId: dto.clinicId,
+          invitedBy: dto.invitedBy,
+          status: UserStatus.INVITED as unknown as any,
+        },
+      });
+
+      if (dto.role === Role.CUSTOMER || dto.role === ('CUSTOMER' as any)) {
+        await this.createCustomerBpWithCode(tx, u.id, dto.clinicId, emailNorm.split('@')[0], emailNorm);
+      }
+
+      return u;
     });
 
     return { ...user, temporaryPassword };
@@ -160,23 +173,115 @@ export class UserService {
    */
   async linkToBusinessPartner(userId: string, businessPartnerId: string, clinicId: string): Promise<User> {
     const user = await this.findOneInClinic(userId, clinicId);
-    if (user.businessPartnerId && user.businessPartnerId !== businessPartnerId) {
-      throw new ConflictException('User is already linked to another Business Partner');
-    }
-    return this.prisma.user.update({
-      where: { id: userId },
-      data: { businessPartnerId },
+    
+    const bp = await this.prisma.businessPartner.findFirst({
+      where: { id: businessPartnerId, clinicId },
     });
+    if (!bp) throw new NotFoundException('Business Partner not found in this clinic');
+
+    const existingBpForUser = await this.prisma.businessPartner.findFirst({
+      where: { clinicId, linkedUserId: userId },
+    });
+    if (existingBpForUser && existingBpForUser.id !== businessPartnerId) {
+      throw new ConflictException('User is already linked to another Business Partner in this clinic');
+    }
+
+    await this.prisma.businessPartner.update({
+      where: { id: businessPartnerId },
+      data: { linkedUserId: userId },
+    });
+
+    return user;
   }
 
   /**
    * Remove a user's Business Partner linkage.
    */
   async unlinkFromBusinessPartner(userId: string, clinicId: string): Promise<User> {
-    await this.findOneInClinic(userId, clinicId);
-    return this.prisma.user.update({
-      where: { id: userId },
-      data: { businessPartnerId: null },
+    const user = await this.findOneInClinic(userId, clinicId);
+    await this.prisma.businessPartner.updateMany({
+      where: { clinicId, linkedUserId: userId },
+      data: { linkedUserId: null },
+    });
+    return user;
+  }
+
+  /**
+   * Transactional helper to auto-generate a sequenced BusinessPartner of type CUSTOMER
+   * and link it to the given user.
+   */
+  async createCustomerBpWithCode(
+    tx: any,
+    userId: string,
+    clinicId: string,
+    name: string,
+    email?: string | null,
+  ): Promise<any> {
+    const group = await tx.bpGroup.findFirst({
+      where: { clinicId, prefix: 'C-' },
+    });
+
+    let generatedCode: string | null = null;
+    if (group) {
+      const rows = await tx.$queryRaw`SELECT id, prefix, current_sequence FROM bp_groups WHERE id = ${group.id} FOR UPDATE`;
+      const lockedGroup = rows[0];
+      if (lockedGroup) {
+        const newSeq = lockedGroup.current_sequence + 1;
+        await tx.bpGroup.update({
+          where: { id: group.id },
+          data: { currentSequence: newSeq },
+        });
+        generatedCode = `${lockedGroup.prefix}${newSeq.toString().padStart(4, '0')}`;
+      }
+    }
+
+    return tx.businessPartner.create({
+      data: {
+        clinicId,
+        type: 'CUSTOMER',
+        name,
+        email: email ?? null,
+        code: generatedCode,
+        groupId: group?.id ?? null,
+        linkedUserId: userId,
+        isActive: true,
+      },
+    });
+  }
+
+  /**
+   * B2C Self-Registration: Creates a Customer User and their BusinessPartner record
+   * atomically in a transaction.
+   */
+  async registerCustomer(dto: RegisterCustomerDto): Promise<User> {
+    const emailNorm = dto.email.toLowerCase().trim();
+    
+    const [existingClinic, existingUser] = await Promise.all([
+      this.prisma.clinic.findUnique({ where: { id: dto.clinicId } }),
+      this.prisma.user.findFirst({ where: { email: emailNorm } }),
+    ]);
+    
+    if (!existingClinic) throw new NotFoundException(`Clinic ${dto.clinicId} not found.`);
+    if (existingUser) throw new ConflictException(`An account with this email already exists.`);
+
+    assertPasswordPolicy(dto.password);
+    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+
+    return this.prisma.$transaction(async (tx) => {
+      const u = await tx.user.create({
+        data: {
+          email: emailNorm,
+          name: dto.name,
+          passwordHash,
+          role: Role.CUSTOMER as any,
+          clinicId: dto.clinicId,
+          status: UserStatus.ACTIVE as any,
+        },
+      });
+
+      await this.createCustomerBpWithCode(tx, u.id, dto.clinicId, dto.name, emailNorm);
+
+      return u;
     });
   }
 }

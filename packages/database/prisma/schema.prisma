@@ -31,6 +31,7 @@ enum Role {
   ASSISTANT
   CASHIER
   STAFF
+  CUSTOMER
 }
 
 enum UserStatus {
@@ -193,7 +194,6 @@ model UserBranch {
 model User {
   id                  String     @id @default(uuid())
   clinicId            String?
-  businessPartnerId   String?    @unique
   name                String     @default("")
   email               String?    @unique
   username            String?    @unique
@@ -209,7 +209,7 @@ model User {
   updatedAt           DateTime   @updatedAt
 
   clinic                  Clinic?          @relation(fields: [clinicId], references: [id])
-  businessPartner         BusinessPartner? @relation(fields: [businessPartnerId], references: [id])
+  businessPartners        BusinessPartner[]
   userBranches            UserBranch[]
   appointments            Appointment[]    @relation("VetAppointments")
   stockMovements          StockMovement[]  @relation("StockMovementActor")
@@ -303,7 +303,8 @@ model BusinessPartner {
   childBps       BusinessPartner[] @relation("BpHierarchy")
   defaultVatCode TaxCode?        @relation("DefaultVatCode", fields: [defaultVatCodeId], references: [id])
   defaultWhtCode TaxCode?        @relation("DefaultWhtCode", fields: [defaultWhtCodeId], references: [id])
-  user           User?
+  linkedUserId   String?
+  user           User?           @relation(fields: [linkedUserId], references: [id])
   vetExt         BpVet?
   suppExt        BpSupplier?
   group          BpGroup?        @relation(fields: [groupId], references: [id])
@@ -312,6 +313,7 @@ model BusinessPartner {
   defaultForProducts Product[]   @relation("ProductDefaultSupplier")
 
   @@unique([clinicId, code])
+  @@unique([clinicId, linkedUserId])
   @@index([clinicId])
   @@index([clinicId, isActive])
   @@index([clinicId, type, isActive])

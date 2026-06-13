@@ -156,7 +156,7 @@ describe('SessionService', () => {
 
       await service.refreshSession(id);
 
-      const [[, , newTtl]] = (redisMock.expire as jest.Mock).mock.calls.slice(-1);
+      const [[, newTtl]] = (redisMock.expire as jest.Mock).mock.calls.slice(-1);
       expect(newTtl).toBeLessThan(3600);
       expect(newTtl).toBeLessThanOrEqual(15 * 60 + 5); // ~15 min remaining
     });

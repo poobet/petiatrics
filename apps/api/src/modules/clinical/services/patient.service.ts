@@ -75,4 +75,19 @@ export class PatientService {
   async findAllByOwner(clinicId: string, ownerUserId: string): Promise<IPetProfile[]> {
     return this.findAll(clinicId, undefined, ownerUserId);
   }
+
+  async findAllByOwnerCrossClinic(clinicIds: string[], ownerUserId: string): Promise<IPetProfile[]> {
+    return this.petProfileModel
+      .find({ clinicId: { $in: clinicIds }, ownerUserId })
+      .sort({ name: 1 })
+      .exec();
+  }
+
+  async findByIdCrossClinic(id: string): Promise<IPetProfile> {
+    const doc = await this.petProfileModel
+      .findOne({ _id: id })
+      .exec();
+    if (!doc) throw new NotFoundException(`Patient ${id} not found.`);
+    return doc;
+  }
 }

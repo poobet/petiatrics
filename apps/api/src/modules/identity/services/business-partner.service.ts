@@ -260,6 +260,7 @@ export class BusinessPartnerService {
           bankAccountName: dto.bankAccountName ?? null,
           bankAccountBranch: dto.bankAccountBranch ?? null,
           bankAccountNumber: dto.bankAccountNumber ?? null,
+          linkedUserId: dto.linkUserId ?? null,
         },
         include: BP_INCLUDE,
       });
@@ -305,13 +306,6 @@ export class BusinessPartnerService {
             position: c.position ?? null,
             isPrimary: primaryIdx === -1 ? false : i === primaryIdx,
           })),
-        });
-      }
-
-      if (dto.linkUserId) {
-        await tx.user.update({
-          where: { id: dto.linkUserId },
-          data: { businessPartnerId: created.id },
         });
       }
 
@@ -373,6 +367,7 @@ export class BusinessPartnerService {
       if (dto.bankAccountName !== undefined) coreUpdate.bankAccountName = dto.bankAccountName;
       if (dto.bankAccountBranch !== undefined) coreUpdate.bankAccountBranch = dto.bankAccountBranch;
       if (dto.bankAccountNumber !== undefined) coreUpdate.bankAccountNumber = dto.bankAccountNumber;
+      if (dto.linkUserId !== undefined) coreUpdate.linkedUserId = dto.linkUserId;
 
       if (Object.keys(coreUpdate).length > 0) {
         await tx.businessPartner.update({ where: { id }, data: coreUpdate });
@@ -480,21 +475,7 @@ export class BusinessPartnerService {
         }
       }
 
-      if (dto.linkUserId !== undefined) {
-        // Unlink previous user if any
-        if (bp.user) {
-          await tx.user.update({
-            where: { id: bp.user.id },
-            data: { businessPartnerId: null },
-          });
-        }
-        if (dto.linkUserId !== null) {
-          await tx.user.update({
-            where: { id: dto.linkUserId },
-            data: { businessPartnerId: id },
-          });
-        }
-      }
+      // User link update is handled via coreUpdate.linkedUserId
 
       return tx.businessPartner.findFirstOrThrow({
         where: { id },
@@ -570,11 +551,14 @@ export class BusinessPartnerService {
   private async assertUserLinkage(userId: string, clinicId: string, currentBpId?: string): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
-    if (user.clinicId !== clinicId) {
+    if (user.role !== 'CUSTOMER' && user.clinicId && user.clinicId !== clinicId) {
       throw new ForbiddenException('User does not belong to this clinic');
     }
-    if (user.businessPartnerId && user.businessPartnerId !== currentBpId) {
-      throw new ConflictException('User is already linked to another Business Partner');
+    const existing = await this.prisma.businessPartner.findFirst({
+      where: { clinicId, linkedUserId: userId },
+    });
+    if (existing && existing.id !== currentBpId) {
+      throw new ConflictException('User is already linked to another Business Partner in this clinic');
     }
   }
 }
