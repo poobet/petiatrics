@@ -8,6 +8,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { Roles } from '../../../common/guards/roles.decorator';
+import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { CurrentUser, TenantId } from '../../../common/decorators/tenant.decorator';
 import { Role } from '@petiatrics/types';
 import { UserContext } from '@petiatrics/types';
@@ -20,6 +21,7 @@ export class PatientController {
   constructor(private readonly patientService: PatientService) {}
 
   @Post()
+  @Permissions('EDIT_PATIENTS')
   @Audit({ entity: 'PetProfile', operation: 'create' })
   create(
     @TenantId() clinicId: string,
@@ -29,6 +31,7 @@ export class PatientController {
   }
 
   @Get()
+  @Permissions('VIEW_PATIENTS')
   findAll(
     @TenantId() clinicId: string,
     @Query('search') search?: string,
@@ -37,6 +40,7 @@ export class PatientController {
   }
 
   @Get(':id')
+  @Permissions('VIEW_PATIENTS')
   findOne(
     @TenantId() clinicId: string,
     @Param('id') id: string,
@@ -45,6 +49,7 @@ export class PatientController {
   }
 
   @Patch(':id')
+  @Permissions('EDIT_PATIENTS')
   @Audit({ entity: 'PetProfile', operation: 'update' })
   update(
     @TenantId() clinicId: string,

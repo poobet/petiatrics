@@ -23,6 +23,7 @@ function makeUserContext(role: Role): UserContext {
     clinicName: 'Clinic',
     clinicSlug: 'clinic',
     role,
+    permissions: [],
     preferredLocale: Locale.EN,
     authorizedBranches: [{ id: 'branch-1', name: 'Main' }],
   };

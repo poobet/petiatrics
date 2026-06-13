@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Roles } from '../../../common/guards/roles.decorator';
+import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { BranchContextGuard } from '../../../common/guards/branch-context.guard';
 import { ActiveBranch, CurrentUser, TenantId } from '../../../common/decorators/tenant.decorator';
 import { Role } from '@petiatrics/types';
@@ -24,6 +25,7 @@ export class StockController {
 
   @Post('stock/replenish')
   @Roles(Role.CLINIC_OWNER)
+  @Permissions('MANAGE_INVENTORY')
   @UseGuards(BranchContextGuard)
   @Audit({ entity: 'StockMovement', operation: 'create' })
   replenish(
@@ -41,6 +43,7 @@ export class StockController {
 
   @Get('stock/movements')
   @Roles(Role.CLINIC_OWNER, Role.VET)
+  @Permissions('VIEW_INVENTORY')
   @UseGuards(BranchContextGuard)
   getMovements(
     @TenantId() clinicId: string,
@@ -52,6 +55,7 @@ export class StockController {
 
   @Get('products/:productId/all-branch-balances')
   @Roles(Role.CLINIC_OWNER, Role.VET, Role.STAFF, Role.ASSISTANT, Role.CASHIER)
+  @Permissions('VIEW_INVENTORY')
   @UseGuards(BranchContextGuard)
   getAllBranchBalances(
     @TenantId() clinicId: string,
@@ -70,6 +74,7 @@ export class StockController {
 
   @Get('stock-balances')
   @Roles(Role.CLINIC_OWNER, Role.VET, Role.STAFF, Role.ASSISTANT, Role.CASHIER)
+  @Permissions('VIEW_INVENTORY')
   @UseGuards(BranchContextGuard)
   listBalances(
     @TenantId() clinicId: string,
@@ -91,6 +96,7 @@ export class StockController {
 
   @Get('stock-balances/lots/:productId')
   @Roles(Role.CLINIC_OWNER, Role.VET, Role.STAFF, Role.ASSISTANT, Role.CASHIER)
+  @Permissions('VIEW_INVENTORY')
   @UseGuards(BranchContextGuard)
   getIssuableLots(
     @TenantId() clinicId: string,
@@ -104,6 +110,7 @@ export class StockController {
 
   @Post('stock-movements')
   @Roles(Role.CLINIC_OWNER, Role.VET, Role.STAFF, Role.ASSISTANT, Role.CASHIER)
+  @Permissions('MANAGE_INVENTORY')
   @UseGuards(BranchContextGuard)
   @Audit({ entity: 'StockMovement', operation: 'create' })
   createMovement(

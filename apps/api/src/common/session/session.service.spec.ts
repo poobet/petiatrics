@@ -45,6 +45,7 @@ const mockContext: UserContext = {
   clinicName: 'Test Clinic',
   clinicSlug: 'test-clinic',
   role: Role.VET,
+  permissions: [],
   preferredLocale: Locale.EN,
   authorizedBranches: [{ id: 'branch-1', name: 'Main Branch' }],
 };

@@ -12,6 +12,30 @@ import { PetProfileSchema } from '../mongo/pet-profile.schema';
 import { VisitRecordSchema } from '../mongo/visit-record.schema';
 import { VaccinationRecordSchema } from '../mongo/vaccination-record.schema';
 
+const ROLE_PERMISSIONS: Record<string, string[]> = {
+  SUPER_ADMIN: [
+    'VIEW_PATIENTS', 'EDIT_PATIENTS', 'MANAGE_VISITS', 'MANAGE_VACCINATIONS',
+    'VIEW_INVENTORY', 'MANAGE_INVENTORY', 'VIEW_BILLING', 'MANAGE_BILLING', 'MANAGE_SETTINGS'
+  ],
+  CLINIC_OWNER: [
+    'VIEW_PATIENTS', 'EDIT_PATIENTS', 'MANAGE_VISITS', 'MANAGE_VACCINATIONS',
+    'VIEW_INVENTORY', 'MANAGE_INVENTORY', 'VIEW_BILLING', 'MANAGE_BILLING', 'MANAGE_SETTINGS'
+  ],
+  VET: [
+    'VIEW_PATIENTS', 'EDIT_PATIENTS', 'MANAGE_VISITS', 'MANAGE_VACCINATIONS', 'VIEW_INVENTORY'
+  ],
+  ASSISTANT: [
+    'VIEW_PATIENTS', 'VIEW_INVENTORY', 'VIEW_BILLING'
+  ],
+  STAFF: [
+    'VIEW_PATIENTS', 'VIEW_INVENTORY', 'VIEW_BILLING'
+  ],
+  CASHIER: [
+    'VIEW_PATIENTS', 'VIEW_INVENTORY', 'VIEW_BILLING', 'MANAGE_BILLING'
+  ],
+  CUSTOMER: []
+};
+
 dotenv.config({
   path: path.resolve(process.cwd(), '../../.env'),
 });
@@ -216,13 +240,16 @@ async function main() {
   // ── 1. Super Admin (no clinicId) ──────────────────────────────────────────
   const platformAdmin = await prisma.user.upsert({
     where: { email: 'admin@petiatrics.io' },
-    update: {},
+    update: {
+      permissions: ROLE_PERMISSIONS['SUPER_ADMIN'],
+    },
     create: {
       email: 'admin@petiatrics.io',
       name: 'Platform Admin',
       passwordHash: await hashPassword('Admin@1234'),
       role: 'SUPER_ADMIN',
       status: 'ACTIVE',
+      permissions: ROLE_PERMISSIONS['SUPER_ADMIN'],
     },
   });
   console.log('✓ Super admin:', platformAdmin.email);
@@ -284,7 +311,9 @@ async function main() {
   for (const s of staffSeed) {
     const u = await prisma.user.upsert({
       where: { email: s.email },
-      update: {},
+      update: {
+        permissions: ROLE_PERMISSIONS[s.role],
+      },
       create: {
         email: s.email,
         name: s.name,
@@ -293,6 +322,7 @@ async function main() {
         role: s.role,
         status: 'ACTIVE',
         clinicId: clinic.id,
+        permissions: ROLE_PERMISSIONS[s.role],
       },
     });
     staffUsers[s.role] = u.id;
@@ -347,7 +377,9 @@ async function main() {
   // Seed Customer User
   const customerUser = await prisma.user.upsert({
     where: { email: 'customer@happypaws.io' },
-    update: {},
+    update: {
+      permissions: ROLE_PERMISSIONS['CUSTOMER'],
+    },
     create: {
       email: 'customer@happypaws.io',
       name: 'Happy Paws Customer',
@@ -356,6 +388,7 @@ async function main() {
       role: 'CUSTOMER',
       status: 'ACTIVE',
       clinicId: clinic.id,
+      permissions: ROLE_PERMISSIONS['CUSTOMER'],
     },
   });
   console.log('✓ User:', customerUser.email, '→ CUSTOMER');
@@ -649,7 +682,9 @@ async function main() {
   });
   await prisma.user.upsert({
     where: { email: 'owner@newpaws.io' },
-    update: {},
+    update: {
+      permissions: ROLE_PERMISSIONS['CLINIC_OWNER'],
+    },
     create: {
       email: 'owner@newpaws.io',
       name: 'New Paws Owner',
@@ -657,6 +692,7 @@ async function main() {
       role: 'CLINIC_OWNER',
       status: 'PENDING',
       clinicId: pendingClinic.id,
+      permissions: ROLE_PERMISSIONS['CLINIC_OWNER'],
     },
   });
   console.log('✓ Pending clinic:', pendingClinic.name, '(', pendingClinic.id, ')');

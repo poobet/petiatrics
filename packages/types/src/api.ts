@@ -42,6 +42,7 @@ export interface UserContext {
   clinicName: string | null;
   clinicSlug: string | null;
   role: Role;
+  permissions: string[];
   email?: string | null;
   username?: string | null;
   mustChangePassword?: boolean;
@@ -62,6 +63,7 @@ export interface AuthProfile {
   username?: string | null;
   mustChangePassword?: boolean;
   role: Role;
+  permissions: string[];
   clinicName: string | null;
   clinicSlug?: string | null;
   branches: BranchSummary[];

@@ -12,6 +12,30 @@ import type { UserContext, AuthProfile } from '@petiatrics/types';
 
 const BCRYPT_ROUNDS = 12;
 
+export const DEFAULT_ROLE_PERMISSIONS: Record<Role, string[]> = {
+  [Role.SUPER_ADMIN]: [
+    'VIEW_PATIENTS', 'EDIT_PATIENTS', 'MANAGE_VISITS', 'MANAGE_VACCINATIONS',
+    'VIEW_INVENTORY', 'MANAGE_INVENTORY', 'VIEW_BILLING', 'MANAGE_BILLING', 'MANAGE_SETTINGS'
+  ],
+  [Role.CLINIC_OWNER]: [
+    'VIEW_PATIENTS', 'EDIT_PATIENTS', 'MANAGE_VISITS', 'MANAGE_VACCINATIONS',
+    'VIEW_INVENTORY', 'MANAGE_INVENTORY', 'VIEW_BILLING', 'MANAGE_BILLING', 'MANAGE_SETTINGS'
+  ],
+  [Role.VET]: [
+    'VIEW_PATIENTS', 'EDIT_PATIENTS', 'MANAGE_VISITS', 'MANAGE_VACCINATIONS', 'VIEW_INVENTORY'
+  ],
+  [Role.ASSISTANT]: [
+    'VIEW_PATIENTS', 'VIEW_INVENTORY', 'VIEW_BILLING'
+  ],
+  [Role.STAFF]: [
+    'VIEW_PATIENTS', 'VIEW_INVENTORY', 'VIEW_BILLING'
+  ],
+  [Role.CASHIER]: [
+    'VIEW_PATIENTS', 'VIEW_INVENTORY', 'VIEW_BILLING', 'MANAGE_BILLING'
+  ],
+  [Role.CUSTOMER]: []
+};
+
 function assertPasswordPolicy(password: string): void {
   if (password.length < 8) throw new ConflictException('Password must be at least 8 characters.');
   if (!/[A-Z]/.test(password)) throw new ConflictException('Password must contain at least one uppercase letter.');
@@ -133,12 +157,18 @@ export class AuthService {
       if (bp) resolvedBpId = bp.id;
     }
 
+    const userRole = user.role as unknown as Role;
+    const permissions = user.permissions && user.permissions.length > 0
+      ? user.permissions
+      : DEFAULT_ROLE_PERMISSIONS[userRole] || [];
+
     const userContext: UserContext = {
       userId: user.id,
       clinicId: user.clinicId ?? null,
       clinicName: user.clinic?.name ?? null,
       clinicSlug: user.clinic?.slug ?? null,
-      role: user.role as unknown as Role,
+      role: userRole,
+      permissions,
       email: user.email,
       username: user.username,
       mustChangePassword: user.mustChangePassword,
@@ -158,7 +188,8 @@ export class AuthService {
       email: user.email,
       username: user.username,
       mustChangePassword: user.mustChangePassword,
-      role: user.role as unknown as Role,
+      role: userRole,
+      permissions,
       clinicName: user.clinic?.name ?? null,
       clinicSlug: user.clinic?.slug ?? null,
       branches: authorizedBranches,

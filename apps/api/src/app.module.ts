@@ -8,6 +8,7 @@ import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 import { EnvelopeInterceptor } from './common/interceptors/envelope.interceptor';
 import { SessionModule } from './common/session/session.module';
 import { SessionGuard } from './common/session/session.guard';
+import { PermissionsGuard } from './common/guards/permissions.guard';
 import { ContractValidationMiddleware } from './common/middleware/contract-validation.middleware';
 import { IdentityModule } from './modules/identity/identity.module';
 import { ClinicalModule } from './modules/clinical/clinical.module';
@@ -69,6 +70,11 @@ import { AuditModule } from './modules/audit/audit.module';
     {
       provide: APP_GUARD,
       useClass: SessionGuard,
+    },
+    // Granular permissions authorization applied globally
+    {
+      provide: APP_GUARD,
+      useClass: PermissionsGuard,
     },
     // Wrap all error responses in the standard { data, meta, error } envelope
     {

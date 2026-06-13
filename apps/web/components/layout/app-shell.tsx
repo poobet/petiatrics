@@ -48,6 +48,7 @@ interface SubNavItem {
   key: NavKey;
   href: string;
   icon: React.ElementType;
+  requiredPermission?: string;
 }
 
 interface NavItem {
@@ -55,27 +56,28 @@ interface NavItem {
   href?: string;
   icon: React.ElementType;
   roles?: string[];
+  requiredPermission?: string;
   subItems?: SubNavItem[];
 }
 
 const NAV_ITEMS: NavItem[] = [
   { key: 'dashboard', href: '/clinic/dashboard', icon: LayoutDashboard },
   { key: 'appointments', href: '/clinic/appointments', icon: Calendar },
-  { key: 'patients', href: '/clinic/patients', icon: PawPrint },
+  { key: 'patients', href: '/clinic/patients', icon: PawPrint, requiredPermission: 'VIEW_PATIENTS' },
   { key: 'clients', href: '/clients', icon: Users },
-  { key: 'medicalRecords', href: '/medical-records', icon: FileText },
+  { key: 'medicalRecords', href: '/medical-records', icon: FileText, requiredPermission: 'VIEW_PATIENTS' },
   {
     key: 'inventory',
     icon: Package,
     subItems: [
-      { key: 'products', href: '/clinic/inventory/products', icon: Package },
-      { key: 'stockLedger', href: '/clinic/inventory/stock-ledger', icon: Archive },
-      { key: 'goodsReceipt', href: '/clinic/inventory/receipt', icon: Boxes },
-      { key: 'goodsIssue', href: '/clinic/inventory/issue', icon: Archive },
-      { key: 'adjustments', href: '/clinic/inventory/adjustments', icon: Boxes },
+      { key: 'products', href: '/clinic/inventory/products', icon: Package, requiredPermission: 'VIEW_INVENTORY' },
+      { key: 'stockLedger', href: '/clinic/inventory/stock-ledger', icon: Archive, requiredPermission: 'VIEW_INVENTORY' },
+      { key: 'goodsReceipt', href: '/clinic/inventory/receipt', icon: Boxes, requiredPermission: 'MANAGE_INVENTORY' },
+      { key: 'goodsIssue', href: '/clinic/inventory/issue', icon: Archive, requiredPermission: 'MANAGE_INVENTORY' },
+      { key: 'adjustments', href: '/clinic/inventory/adjustments', icon: Boxes, requiredPermission: 'MANAGE_INVENTORY' },
     ],
   },
-  { key: 'billing', href: '/clinic/billing', icon: CreditCard },
+  { key: 'billing', href: '/clinic/billing', icon: CreditCard, requiredPermission: 'VIEW_BILLING' },
   {
     key: 'staff',
     href: '/clinic/staff',
@@ -136,9 +138,18 @@ export function AppShell({ children, user }: AppShellProps) {
     setExpandedNav(prev => ({ ...prev, [key]: !prev[key] }));
   }
 
-  function canAccess(item: NavItem) {
-    if (!item.roles) return true;
-    return item.roles.includes(user.role);
+  function canAccess(item: NavItem | SubNavItem): boolean {
+    if ('roles' in item && item.roles && !item.roles.includes(user.role)) {
+      return false;
+    }
+    if (item.requiredPermission) {
+      if (user.role === 'SUPER_ADMIN') return true;
+      const userPermissions = user.permissions || [];
+      if (!userPermissions.includes(item.requiredPermission)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   async function handleLocaleSwitch(locale: string) {
@@ -208,6 +219,9 @@ export function AppShell({ children, user }: AppShellProps) {
 
             // If item has sub-items, render as expandable menu
             if (item.subItems) {
+              const visibleSubItems = item.subItems.filter(canAccess);
+              if (visibleSubItems.length === 0) return null;
+
               return (
                 <div key={item.key}>
                   <button
@@ -236,7 +250,7 @@ export function AppShell({ children, user }: AppShellProps) {
                   {/* Sub-menu items */}
                   {isExpanded && (
                     <div className="mt-1 space-y-0.5 pl-2">
-                      {item.subItems.map((subItem) => {
+                      {visibleSubItems.map((subItem) => {
                         const SubIcon = subItem.icon;
                         const subActive = isActive(subItem.href);
                         return (

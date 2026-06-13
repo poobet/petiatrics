@@ -1,4 +1,4 @@
-﻿import { redirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import type { Metadata } from 'next';
 import { apiClient, ApiError } from '../../lib/api-client';
@@ -38,6 +38,9 @@ export default async function AdminLayout({
   }
 
   if (user.role !== Role.SUPER_ADMIN) {
+    if (user.role === Role.CUSTOMER) {
+      redirect('/my');
+    }
     redirect('/clinic/dashboard');
   }
 

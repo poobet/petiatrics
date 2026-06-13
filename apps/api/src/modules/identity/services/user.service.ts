@@ -10,6 +10,7 @@ import { PrismaClient, User } from '@prisma/client';
 import { Role, UserStatus } from '@petiatrics/types';
 import { v4 as uuidv4 } from 'uuid';
 import { RegisterCustomerDto } from '../dto/register-customer.dto';
+import { DEFAULT_ROLE_PERMISSIONS } from './auth.service';
 
 export interface InviteUserDto {
   email: string;
@@ -69,6 +70,7 @@ export class UserService {
           clinicId: input.clinicId,
           status: UserStatus.ACTIVE as any,
           mustChangePassword: true,
+          permissions: DEFAULT_ROLE_PERMISSIONS[input.role as Role] || [],
         },
       });
 
@@ -112,6 +114,7 @@ export class UserService {
           clinicId: dto.clinicId,
           invitedBy: dto.invitedBy,
           status: UserStatus.INVITED as unknown as any,
+          permissions: DEFAULT_ROLE_PERMISSIONS[dto.role as Role] || [],
         },
       });
 
@@ -276,12 +279,24 @@ export class UserService {
           role: Role.CUSTOMER as any,
           clinicId: dto.clinicId,
           status: UserStatus.ACTIVE as any,
+          permissions: DEFAULT_ROLE_PERMISSIONS[Role.CUSTOMER] || [],
         },
       });
 
       await this.createCustomerBpWithCode(tx, u.id, dto.clinicId, dto.name, emailNorm);
 
       return u;
+    });
+  }
+
+  /**
+   * Update permissions for a staff member.
+   */
+  async updatePermissions(userId: string, clinicId: string, permissions: string[]): Promise<User> {
+    await this.findOneInClinic(userId, clinicId);
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { permissions },
     });
   }
 }

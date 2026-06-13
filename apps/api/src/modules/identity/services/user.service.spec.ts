@@ -169,4 +169,28 @@ describe('UserService', () => {
       ).rejects.toThrow(ConflictException);
     });
   });
+
+  describe('updatePermissions', () => {
+    it('updates user permissions successfully if user exists in clinic', async () => {
+      prismaMock.user.findFirst = jest.fn().mockResolvedValue({ id: 'user-1', clinicId: 'clinic-1' });
+      prismaMock.user.update = jest.fn().mockResolvedValue({ id: 'user-1', permissions: ['VIEW_PATIENTS'] });
+
+      const result = await service.updatePermissions('user-1', 'clinic-1', ['VIEW_PATIENTS']);
+      
+      expect(prismaMock.user.findFirst).toHaveBeenCalled();
+      expect(prismaMock.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { permissions: ['VIEW_PATIENTS'] },
+      });
+      expect(result.permissions).toEqual(['VIEW_PATIENTS']);
+    });
+
+    it('throws NotFoundException if user does not exist in clinic', async () => {
+      prismaMock.user.findFirst = jest.fn().mockResolvedValue(null);
+
+      await expect(
+        service.updatePermissions('user-1', 'clinic-1', ['VIEW_PATIENTS']),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
 });

@@ -28,6 +28,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@petiatrics/ui';
+import { Checkbox } from '@petiatrics/ui';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,7 +46,40 @@ interface StaffUser {
   email: string | null;
   role: string;
   status: string;
+  permissions?: string[];
 }
+
+const PERMISSION_GROUPS = [
+  {
+    title: 'Clinical Permissions',
+    permissions: [
+      { id: 'VIEW_PATIENTS', label: 'View Patients', desc: 'Allows searching, viewing, and reading patient profiles.' },
+      { id: 'EDIT_PATIENTS', label: 'Edit Patients', desc: 'Allows creating, updating, and deleting patient profiles.' },
+      { id: 'MANAGE_VISITS', label: 'Manage Visits', desc: 'Allows creating, updating, and finalizing SOAP visit notes.' },
+      { id: 'MANAGE_VACCINATIONS', label: 'Manage Vaccinations', desc: 'Allows administering and logging vaccinations.' },
+    ],
+  },
+  {
+    title: 'Inventory Permissions',
+    permissions: [
+      { id: 'VIEW_INVENTORY', label: 'View Inventory', desc: 'Allows viewing stock balances, product catalog, and ledger.' },
+      { id: 'MANAGE_INVENTORY', label: 'Manage Inventory', desc: 'Allows performing stock adjustments and goods receipt.' },
+    ],
+  },
+  {
+    title: 'Billing Permissions',
+    permissions: [
+      { id: 'VIEW_BILLING', label: 'View Billing', desc: 'Allows reading invoices, payment history, and financial logs.' },
+      { id: 'MANAGE_BILLING', label: 'Manage Billing', desc: 'Allows creating, paying, and voiding invoices.' },
+    ],
+  },
+  {
+    title: 'Settings Permissions',
+    permissions: [
+      { id: 'MANAGE_SETTINGS', label: 'Manage Settings', desc: 'Allows managing clinic settings, branches, and staff permission matrices.' },
+    ],
+  },
+];
 
 export default function StaffPageClient() {
   const t = useTranslations('staff');
@@ -61,6 +95,27 @@ export default function StaffPageClient() {
   const [role, setRole] = useState('VET');
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+
+  const [permissionsOpen, setPermissionsOpen] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState<StaffUser | null>(null);
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const [updatingPermissions, setUpdatingPermissions] = useState(false);
+
+  async function handleSavePermissions() {
+    if (!selectedStaff) return;
+    setUpdatingPermissions(true);
+    try {
+      const updated = await apiClient.put<StaffUser>(`/clinic/staff/${selectedStaff.id}/permissions`, {
+        permissions: selectedPermissions,
+      });
+      setStaff((prev) => prev.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)));
+      setPermissionsOpen(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUpdatingPermissions(false);
+    }
+  }
 
   useEffect(() => {
     apiClient
@@ -242,6 +297,15 @@ export default function StaffPageClient() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
+                        onClick={() => {
+                          setSelectedStaff(user);
+                          setSelectedPermissions(user.permissions || []);
+                          setPermissionsOpen(true);
+                        }}
+                      >
+                        Edit Permissions
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
                         className="text-red-600 focus:text-red-600"
                         onClick={() => handleDeactivate(user.id)}
                       >
@@ -255,6 +319,64 @@ export default function StaffPageClient() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Edit Permissions Dialog */}
+      <Dialog open={permissionsOpen} onOpenChange={setPermissionsOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Permissions — {selectedStaff?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 mt-4">
+            <p className="text-sm text-gray-500">
+              Configure granular module-level overrides for this staff member. If no custom permissions are selected, the system falls back to default role permissions.
+            </p>
+
+            <div className="space-y-6">
+              {PERMISSION_GROUPS.map((group) => (
+                <div key={group.title} className="space-y-3">
+                  <h3 className="text-sm font-semibold text-gray-900 border-b pb-1.5">{group.title}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {group.permissions.map((perm) => {
+                      const isChecked = selectedPermissions.includes(perm.id);
+                      return (
+                        <div key={perm.id} className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                          <Checkbox
+                            id={perm.id}
+                            checked={isChecked}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedPermissions(prev => [...prev, perm.id]);
+                              } else {
+                                setSelectedPermissions(prev => prev.filter(p => p !== perm.id));
+                              }
+                            }}
+                          />
+                          <div className="space-y-1">
+                            <Label htmlFor={perm.id} className="text-sm font-medium leading-none cursor-pointer">
+                              {perm.label}
+                            </Label>
+                            <p className="text-xs text-gray-500 leading-normal">{perm.desc}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end gap-3 border-t pt-4">
+              <Button variant="outline" onClick={() => setPermissionsOpen(false)} disabled={updatingPermissions}>
+                {tCommon('cancel')}
+              </Button>
+              <Button onClick={handleSavePermissions} disabled={updatingPermissions}>
+                {updatingPermissions && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {tCommon('save')}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

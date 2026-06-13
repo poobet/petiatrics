@@ -7,6 +7,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { Roles } from '../../../common/guards/roles.decorator';
+import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { ActiveBranch, CurrentUser, TenantId } from '../../../common/decorators/tenant.decorator';
 import { Role } from '@petiatrics/types';
 import { UserContext } from '@petiatrics/types';
@@ -20,6 +21,7 @@ import {
 
 @Controller('patients/:patientId/visits')
 @Roles(Role.VET, Role.CLINIC_OWNER)
+@Permissions('MANAGE_VISITS')
 export class VisitController {
   constructor(private readonly visitService: VisitService) {}
 

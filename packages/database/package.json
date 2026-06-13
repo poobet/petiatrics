@@ -7,7 +7,7 @@
   "scripts": {
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
-    "db:seed": "tsx src/seed.ts",
+    "db:seed": "npx tsx src/seed.ts",
     "lint": "tsc --noEmit",
     "build": "tsc --build"
   },

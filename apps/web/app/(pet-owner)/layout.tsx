@@ -58,8 +58,9 @@ export default async function PetOwnerLayout({
     redirect('/login');
   }
 
-  // Pet-owner portal: allow clinic staff roles and SUPER_ADMIN (who can access all pages)
+  // Pet-owner portal: allow CUSTOMER role, clinic staff roles, and SUPER_ADMIN (who can access all pages)
   if (
+    user.role !== Role.CUSTOMER &&
     user.role !== Role.STAFF &&
     user.role !== Role.ASSISTANT &&
     user.role !== Role.CASHIER &&

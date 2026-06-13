@@ -6,6 +6,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { Roles } from '../../../common/guards/roles.decorator';
+import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { TenantId } from '../../../common/decorators/tenant.decorator';
 import { Role } from '@petiatrics/types';
 import { Audit } from '../../../common/interceptors/audit.interceptor';
@@ -13,6 +14,7 @@ import { VaccinationService, CreateVaccinationDto } from '../services/vaccinatio
 
 @Controller('patients/:patientId/vaccinations')
 @Roles(Role.VET, Role.CLINIC_OWNER)
+@Permissions('MANAGE_VACCINATIONS')
 export class VaccinationController {
   constructor(private readonly vaccinationService: VaccinationService) {}
 

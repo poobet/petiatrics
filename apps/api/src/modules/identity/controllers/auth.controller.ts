@@ -105,6 +105,7 @@ export class AuthController {
       username: user.username,
       mustChangePassword: user.mustChangePassword,
       role: user.role,
+      permissions: user.permissions ?? [],
       clinicName: user.clinicName ?? null,
       clinicSlug: user.clinicSlug ?? null,
       branches: user.authorizedBranches ?? [],

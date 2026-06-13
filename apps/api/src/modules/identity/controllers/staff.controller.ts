@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -8,6 +9,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
 } from '@nestjs/common';
 import {
   UserService,
@@ -73,6 +75,24 @@ export class StaffController {
     @TenantId() clinicId: string,
   ) {
     return this.users.updateRole(id, clinicId, dto);
+  }
+
+  /**
+   * PUT /api/v1/clinic/staff/:id/permissions
+   * Update staff permissions matrix.
+   */
+  @Put(':id/permissions')
+  @HttpCode(HttpStatus.OK)
+  @Audit({ entity: 'users', operation: 'update' })
+  updatePermissions(
+    @Param('id') id: string,
+    @Body() dto: { permissions: string[] },
+    @TenantId() clinicId: string,
+  ) {
+    if (!dto || !Array.isArray(dto.permissions)) {
+      throw new BadRequestException('permissions must be a string array');
+    }
+    return this.users.updatePermissions(id, clinicId, dto.permissions);
   }
 
   /**

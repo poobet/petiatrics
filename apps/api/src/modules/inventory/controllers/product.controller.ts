@@ -11,6 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Roles } from '../../../common/guards/roles.decorator';
+import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { BranchContextGuard } from '../../../common/guards/branch-context.guard';
 import { ActiveBranch, TenantId } from '../../../common/decorators/tenant.decorator';
 import { Role } from '@petiatrics/types';
@@ -29,6 +30,7 @@ export class ProductController {
 
   @Post()
   @Roles(...WRITE_ROLES)
+  @Permissions('MANAGE_INVENTORY')
   @HttpCode(HttpStatus.CREATED)
   @Audit({ entity: 'Product', operation: 'create' })
   create(@TenantId() clinicId: string, @Body() dto: CreateProductDto) {
@@ -37,6 +39,7 @@ export class ProductController {
 
   @Get()
   @Roles(...READ_ROLES)
+  @Permissions('VIEW_INVENTORY')
   @UseGuards(BranchContextGuard)
   findAll(
     @TenantId() clinicId: string,
@@ -48,6 +51,7 @@ export class ProductController {
 
   @Get('low-stock')
   @Roles(...READ_ROLES)
+  @Permissions('VIEW_INVENTORY')
   @UseGuards(BranchContextGuard)
   getLowStock(
     @TenantId() clinicId: string,
@@ -58,12 +62,14 @@ export class ProductController {
 
   @Get(':id')
   @Roles(...READ_ROLES)
+  @Permissions('VIEW_INVENTORY')
   findOne(@TenantId() clinicId: string, @Param('id') id: string) {
     return this.productService.findById(clinicId, id);
   }
 
   @Patch(':id')
   @Roles(...WRITE_ROLES)
+  @Permissions('MANAGE_INVENTORY')
   @Audit({ entity: 'Product', operation: 'update' })
   update(
     @TenantId() clinicId: string,
@@ -75,6 +81,7 @@ export class ProductController {
 
   @Patch(':id/deactivate')
   @Roles(...WRITE_ROLES)
+  @Permissions('MANAGE_INVENTORY')
   @Audit({ entity: 'Product', operation: 'status_change' })
   deactivate(@TenantId() clinicId: string, @Param('id') id: string) {
     return this.productService.deactivate(clinicId, id);
@@ -82,6 +89,7 @@ export class ProductController {
 
   @Get('barcode/:barcode')
   @Roles(...READ_ROLES)
+  @Permissions('VIEW_INVENTORY')
   findByBarcode(@TenantId() clinicId: string, @Param('barcode') barcode: string) {
     return this.productService.findByBarcode(clinicId, barcode);
   }
