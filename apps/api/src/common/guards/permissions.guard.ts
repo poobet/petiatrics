@@ -32,6 +32,12 @@ export class PermissionsGuard implements CanActivate {
     // SUPER_ADMIN bypasses all permissions checks
     if (userContext.role === Role.SUPER_ADMIN) return true;
 
+    // CUSTOMER role bypasses read-only permission checks (enforced via ownership checks in handlers)
+    if (userContext.role === Role.CUSTOMER) {
+      const isReadOnly = requiredPermissions.every(perm => perm.endsWith(':VIEW'));
+      if (isReadOnly) return true;
+    }
+
     const userPermissions = userContext.permissions || [];
     const hasAllPermissions = requiredPermissions.every(perm =>
       userPermissions.includes(perm),
