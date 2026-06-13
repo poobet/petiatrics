@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  ForbiddenException,
 } from '@nestjs/common';
 import { Roles } from '../../../common/guards/roles.decorator';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
@@ -18,11 +19,22 @@ import {
   UpdateVisitDto,
   AmendVisitDto,
 } from '../services/visit.service';
+import { PatientService } from '../services/patient.service';
 
 @Controller('patients/:patientId/visits')
-@Roles(Role.VET, Role.CLINIC_OWNER)
+@Roles(
+  Role.CLINIC_OWNER,
+  Role.VET,
+  Role.ASSISTANT,
+  Role.CASHIER,
+  Role.STAFF,
+  Role.CUSTOMER,
+)
 export class VisitController {
-  constructor(private readonly visitService: VisitService) {}
+  constructor(
+    private readonly visitService: VisitService,
+    private readonly patientService: PatientService,
+  ) {}
 
   @Post()
   @Permissions('VISIT:ADD')
@@ -39,20 +51,37 @@ export class VisitController {
 
   @Get()
   @Permissions('VISIT:VIEW')
-  list(
-    @TenantId() clinicId: string,
+  async list(
+    @TenantId() clinicId: string | null,
+    @CurrentUser() user: UserContext,
     @Param('patientId') patientId: string,
   ) {
-    return this.visitService.findByPatient(clinicId, patientId);
+    if (user.role === Role.CUSTOMER) {
+      const pet = await this.patientService.findByIdCrossClinic(patientId);
+      if (pet.ownerUserId !== user.userId) {
+        throw new ForbiddenException('You do not have permission to access records for this pet.');
+      }
+      return this.visitService.findByPatient(pet.clinicId, patientId);
+    }
+    return this.visitService.findByPatient(clinicId!, patientId);
   }
 
   @Get(':visitId')
   @Permissions('VISIT:VIEW')
-  getOne(
-    @TenantId() clinicId: string,
+  async getOne(
+    @TenantId() clinicId: string | null,
+    @CurrentUser() user: UserContext,
     @Param('visitId') visitId: string,
   ) {
-    return this.visitService.getOne(clinicId, visitId);
+    if (user.role === Role.CUSTOMER) {
+      const visit = await this.visitService.getOneCrossClinic(visitId);
+      const pet = await this.patientService.findByIdCrossClinic(visit.patientId.toString());
+      if (pet.ownerUserId !== user.userId) {
+        throw new ForbiddenException('You do not have permission to access records for this pet.');
+      }
+      return visit;
+    }
+    return this.visitService.getOne(clinicId!, visitId);
   }
 
   @Patch(':visitId')
