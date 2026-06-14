@@ -74,13 +74,19 @@ export class TaxEngineService {
   assertDispensingPermission(
     product: Pick<ProductTaxProfile, 'id' | 'name' | 'dispensingCategory'>,
     isClinicContext: boolean,
+    hasOverride: boolean = false,
   ): void {
     const { dispensingCategory, name } = product;
 
-    if (
-      dispensingCategory === DispensingCategory.Dangerous_Drug ||
-      dispensingCategory === DispensingCategory.Specially_Controlled_Drug
-    ) {
+    if (dispensingCategory === DispensingCategory.Dangerous_Drug) {
+      if (!isClinicContext && !hasOverride) {
+        throw new BadRequestException(
+          `"${name}" is a controlled substance (${dispensingCategory}) and can only be dispensed in a clinical visit context or with supervisor override.`,
+        );
+      }
+    }
+
+    if (dispensingCategory === DispensingCategory.Specially_Controlled_Drug) {
       if (!isClinicContext) {
         throw new BadRequestException(
           `"${name}" is a controlled substance (${dispensingCategory}) and can only be dispensed in a clinical visit context.`,

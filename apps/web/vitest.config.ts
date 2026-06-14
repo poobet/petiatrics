@@ -8,11 +8,13 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./test/setup.ts'],
+    exclude: ['**/node_modules/**', '**/dist/**', '**/test/e2e/**'],
   },
   resolve: {
     alias: {
+      '@': path.resolve(__dirname, './'),
       '@petiatrics/types': path.resolve(__dirname, '../../packages/types/src/index.ts'),
-      '@petiatrics/ui': path.resolve(__dirname, '../../packages/ui/src/index.tsx'),
+      '@petiatrics/ui': path.resolve(__dirname, '../../packages/ui/src/index.ts'),
     },
   },
 });

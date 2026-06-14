@@ -14,15 +14,18 @@ async function sessionHeaders(): Promise<HeadersInit> {
 
 async function getReferenceData() {
   const headers = await sessionHeaders();
-  const [catRes, unitRes, taxRes] = await Promise.all([
+  const [catRes, unitRes, taxRes, glRes] = await Promise.all([
     fetch(`${API}/api/v1/inventory/reference/categories`, { headers, cache: 'no-store' }),
     fetch(`${API}/api/v1/inventory/reference/units`, { headers, cache: 'no-store' }),
     fetch(`${API}/api/v1/inventory/reference/tax-codes`, { headers, cache: 'no-store' }),
+    fetch(`${API}/api/v1/inventory/reference/gl-accounts`, { headers, cache: 'no-store' }),
   ]);
 
   const rawCategories = catRes.ok ? await catRes.json() : [];
   const rawUnits = unitRes.ok ? await unitRes.json() : [];
   const rawTaxResponse = taxRes.ok ? await taxRes.json() : [];
+  const rawGlResponse = glRes.ok ? await glRes.json() : [];
+
   const categories: ItemCategoryResponse[] = rawCategories?.data ?? rawCategories ?? [];
   const units: UnitOfMeasureResponse[] = rawUnits?.data ?? rawUnits ?? [];
   const rawTax = rawTaxResponse?.data ?? rawTaxResponse ?? [];
@@ -31,8 +34,15 @@ async function getReferenceData() {
     name: t.description ?? t.code,
     code: t.code,
   }));
+  const rawGl = rawGlResponse?.data ?? rawGlResponse ?? [];
+  const glAccounts: ReferenceSelectorItem[] = rawGl.map((g: { id: string; code: string; name: string; type: string }) => ({
+    id: g.id,
+    name: g.name,
+    code: g.code,
+    symbol: g.type,
+  }));
 
-  return { categories, units, taxCodes, suppliers: [] };
+  return { categories, units, taxCodes, suppliers: [], glAccounts };
 }
 
 async function ensureOwnerAccess() {
@@ -57,7 +67,7 @@ export default async function NewItemPage() {
   const refs = await getReferenceData();
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
+    <div className="p-6 max-w-5xl mx-auto">
       <ItemFormHeader title="Add Item" backHref="/clinic/inventory" />
       <div className="bg-white rounded-lg border p-6">
         <ItemForm refs={refs} />

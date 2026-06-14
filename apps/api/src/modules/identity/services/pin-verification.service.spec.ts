@@ -16,6 +16,7 @@ function buildPrismaMock() {
   return {
     user: {
       findFirst: jest.fn(),
+      findMany: jest.fn(),
       update: jest.fn(),
     },
   };
@@ -131,6 +132,39 @@ describe('PinVerificationService', () => {
         where: { id: 'user-001' },
         data: { pinHash: null },
       });
+    });
+  });
+
+  // ─── verifyOverridePin() ──────────────────────────────────────────────────────
+
+  describe('verifyOverridePin()', () => {
+    it('returns authorizer user details when override PIN matches an active Vet', async () => {
+      prisma.user.findMany.mockResolvedValue([VET_USER]);
+      mockBcrypt.compare.mockResolvedValue(true as never);
+
+      const result = await service.verifyOverridePin(CLINIC_ID, '1234');
+      expect(result.id).toBe(VET_USER.id);
+      expect(result.name).toBe(VET_USER.name);
+      expect(result.role).toBe('VET');
+      expect(prisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            clinicId: CLINIC_ID,
+            status: 'ACTIVE',
+          }),
+        }),
+      );
+    });
+
+    it('throws UnauthorizedException when PIN does not match any user', async () => {
+      prisma.user.findMany.mockResolvedValue([VET_USER]);
+      mockBcrypt.compare.mockResolvedValue(false as never);
+
+      await expect(service.verifyOverridePin(CLINIC_ID, '9999')).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+
+    it('throws BadRequestException when PIN format is invalid', async () => {
+      await expect(service.verifyOverridePin(CLINIC_ID, 'abc')).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 });

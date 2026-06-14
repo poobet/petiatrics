@@ -8,6 +8,7 @@ import { PrismaClient } from '@prisma/client';
 import { scopedPrisma } from '@petiatrics/database';
 import { InvoiceCreatedEvent, InvoicePaidEvent, VisitFinalizedEvent } from '../../../common/events/domain-events';
 import { TaxEngineService } from './tax-engine.service';
+import { VisitService } from '../../clinical/services/visit.service';
 
 export interface CreateInvoiceLineItemDto {
   itemType: 'SERVICE' | 'PRODUCT';
@@ -25,6 +26,8 @@ export interface CreateInvoiceDto {
   patientId?: string | null;
   /** Owner user ID. Optional for OTC. */
   ownerUserId?: string | null;
+  /** Supervisor user ID that authorized this sale (for Dangerous Drugs at OTC) */
+  overrideApprovedByUserId?: string | null;
   lineItems: CreateInvoiceLineItemDto[];
   /**
    * @deprecated Use per-line VAT via TaxEngineService.
@@ -39,6 +42,7 @@ export class InvoiceService {
     private readonly prisma: PrismaClient,
     private readonly events: EventEmitter2,
     private readonly taxEngine: TaxEngineService,
+    private readonly visitService: VisitService,
   ) {}
 
   async create(clinicId: string, dto: CreateInvoiceDto) {
@@ -97,8 +101,50 @@ export class InvoiceService {
       if (item.itemType === 'PRODUCT' && item.sourceReferenceId) {
         const taxProfile = await this.taxEngine.getProductTaxProfile(item.sourceReferenceId);
         if (taxProfile) {
-          // Compliance gate — throws BadRequestException if blocked
-          this.taxEngine.assertDispensingPermission(taxProfile, isClinicContext);
+          const hasOverride = !!dto.overrideApprovedByUserId;
+
+          // Dangerous Drug supervisor override validation (OTC only)
+          if (taxProfile.dispensingCategory === 'Dangerous_Drug' && !isClinicContext) {
+            if (!dto.overrideApprovedByUserId) {
+              throw new BadRequestException(`"${taxProfile.name}" is a Dangerous Drug and requires a supervisor PIN override for OTC sales.`);
+            }
+            const supervisor = await this.prisma.user.findFirst({
+              where: {
+                id: dto.overrideApprovedByUserId,
+                clinicId,
+                role: { in: ['VET', 'CLINIC_OWNER'] },
+                status: 'ACTIVE',
+              },
+            });
+            if (!supervisor) {
+              throw new BadRequestException('Invalid supervisor ID for Dangerous Drug approval.');
+            }
+          }
+
+          // Specially Controlled Drug prescription list validation
+          if (taxProfile.dispensingCategory === 'Specially_Controlled_Drug') {
+            if (!isClinicContext || !dto.visitId) {
+              throw new BadRequestException(`"${taxProfile.name}" is a Specially Controlled Drug and cannot be sold at retail (OTC).`);
+            }
+            const visit = await this.visitService.getOne(clinicId, dto.visitId);
+            if (visit.status !== 'finalized' && visit.status !== 'amended') {
+              throw new BadRequestException('Associated visit record must be finalized or amended to checkout Specially Controlled Drugs.');
+            }
+            const prescribed = (visit.prescriptions ?? []).some(
+              (p: any) => p.productId === item.sourceReferenceId
+            );
+            if (!prescribed) {
+              throw new BadRequestException(`"${taxProfile.name}" is a Specially Controlled Drug and must be prescribed in the associated visit.`);
+            }
+          }
+
+          // Clinic Use Only OTC block
+          if (taxProfile.dispensingCategory === 'Clinic_Use_Only' && !isClinicContext) {
+            throw new BadRequestException(`"${taxProfile.name}" is for Clinic Use Only and cannot be sold at retail (OTC).`);
+          }
+
+          // Compliance gate
+          this.taxEngine.assertDispensingPermission(taxProfile, isClinicContext, hasOverride);
           // Resolve per-line VAT
           vatRateBps = this.taxEngine.resolveVatRateBps(taxProfile, isClinicContext);
         }

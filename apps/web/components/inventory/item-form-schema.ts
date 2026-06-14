@@ -1,4 +1,4 @@
-import { ItemType } from '@petiatrics/types';
+import { ItemType, DefaultVatType, WhtRate, DispensingCategory } from '@petiatrics/types';
 import type { ItemFormValues } from './item-form-types';
 
 export interface ValidationError {
@@ -20,6 +20,17 @@ export function validateItemForm(values: ItemFormValues): ValidationError[] {
   }
   if (values.baseSellingPrice === '' || Number(values.baseSellingPrice) < 0) {
     errors.push({ field: 'baseSellingPrice', message: 'Selling price must be ≥ 0.' });
+  }
+
+  // Validate Compliance / Taxes enums
+  if (!values.defaultVatType || !Object.values(DefaultVatType).includes(values.defaultVatType)) {
+    errors.push({ field: 'defaultVatType', message: 'Invalid Default VAT type selection.' });
+  }
+  if (!values.whtRate || !Object.values(WhtRate).includes(values.whtRate)) {
+    errors.push({ field: 'whtRate', message: 'Invalid Withholding Tax rate selection.' });
+  }
+  if (!values.dispensingCategory || !Object.values(DispensingCategory).includes(values.dispensingCategory)) {
+    errors.push({ field: 'dispensingCategory', message: 'Invalid Dispensing category selection.' });
   }
 
   for (let i = 0; i < values.conversions.length; i++) {
@@ -74,5 +85,11 @@ export function toApiPayload(values: ItemFormValues) {
     accessories: values.accessories
       .filter((a) => a.childProductId && Number(a.quantityRatio) > 0)
       .map((a) => ({ childProductId: a.childProductId, quantityRatio: Number(a.quantityRatio) })),
+    defaultVatType: values.defaultVatType,
+    whtRate: values.whtRate,
+    dispensingCategory: values.dispensingCategory,
+    revenueAccountId: values.revenueAccountId || null,
+    cogsAccountId: values.itemType === ItemType.INVENTORY ? (values.cogsAccountId || null) : null,
+    inventoryAssetAccountId: values.itemType === ItemType.INVENTORY ? (values.inventoryAssetAccountId || null) : null,
   };
 }

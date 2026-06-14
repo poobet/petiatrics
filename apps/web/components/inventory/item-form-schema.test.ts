@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ItemType } from '@petiatrics/types';
+import { ItemType, DefaultVatType, WhtRate, DispensingCategory } from '@petiatrics/types';
 import { validateItemForm, toApiPayload } from './item-form-schema';
 import type { ItemFormValues } from './item-form-types';
 import { ITEM_FORM_DEFAULTS } from './item-form-types';
@@ -166,5 +166,54 @@ describe('toApiPayload()', () => {
   it('sets genericName to null when empty', () => {
     const payload = toApiPayload(validStockedGood({ genericName: '' }));
     expect(payload.genericName).toBeNull();
+  });
+
+  it('maps compliance and GL fields to payload', () => {
+    const payload = toApiPayload(
+      validStockedGood({
+        defaultVatType: DefaultVatType.VAT_EXEMPT,
+        whtRate: WhtRate.WHT_3,
+        dispensingCategory: DispensingCategory.Dangerous_Drug,
+        revenueAccountId: 'rev-id',
+        cogsAccountId: 'cogs-id',
+        inventoryAssetAccountId: 'asset-id',
+      }),
+    );
+    expect(payload.defaultVatType).toBe(DefaultVatType.VAT_EXEMPT);
+    expect(payload.whtRate).toBe(WhtRate.WHT_3);
+    expect(payload.dispensingCategory).toBe(DispensingCategory.Dangerous_Drug);
+    expect(payload.revenueAccountId).toBe('rev-id');
+    expect(payload.cogsAccountId).toBe('cogs-id');
+    expect(payload.inventoryAssetAccountId).toBe('asset-id');
+  });
+
+  it('sets COGS and Inventory Asset accounts to null for service items', () => {
+    const payload = toApiPayload(
+      validServiceItem({
+        revenueAccountId: 'rev-id',
+        cogsAccountId: 'cogs-id',
+        inventoryAssetAccountId: 'asset-id',
+      }),
+    );
+    expect(payload.revenueAccountId).toBe('rev-id');
+    expect(payload.cogsAccountId).toBeNull();
+    expect(payload.inventoryAssetAccountId).toBeNull();
+  });
+});
+
+describe('validateItemForm() compliance validation', () => {
+  it('rejects invalid defaultVatType', () => {
+    const errors = validateItemForm(validStockedGood({ defaultVatType: 'INVALID' as any }));
+    expect(errors.some((e) => e.field === 'defaultVatType')).toBe(true);
+  });
+
+  it('rejects invalid whtRate', () => {
+    const errors = validateItemForm(validStockedGood({ whtRate: 'INVALID' as any }));
+    expect(errors.some((e) => e.field === 'whtRate')).toBe(true);
+  });
+
+  it('rejects invalid dispensingCategory', () => {
+    const errors = validateItemForm(validStockedGood({ dispensingCategory: 'INVALID' as any }));
+    expect(errors.some((e) => e.field === 'dispensingCategory')).toBe(true);
   });
 });

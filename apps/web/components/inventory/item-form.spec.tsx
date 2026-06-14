@@ -9,6 +9,12 @@ import type { ItemFormReferenceData } from './item-form-types';
 const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }));
 
+// ─── Mock next-intl ───────────────────────────────────────────────────────────
+
+vi.mock('next-intl', () => ({
+  useTranslations: (ns: string) => (key: string) => `${ns}.${key}`,
+}));
+
 // ─── Mock api-client ──────────────────────────────────────────────────────────
 
 vi.mock('../../lib/api-client', () => ({
@@ -20,6 +26,13 @@ vi.mock('../../lib/api-client', () => ({
 
 import { apiClient } from '../../lib/api-client';
 
+// ─── Mock use-permission ──────────────────────────────────────────────────────
+
+vi.mock('../../lib/use-permission', () => ({
+  usePermission: () => true,
+  usePermissions: () => true,
+}));
+
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 const REFS: ItemFormReferenceData = {
@@ -27,6 +40,11 @@ const REFS: ItemFormReferenceData = {
   units: [{ id: 'unit-001', name: 'Piece', symbol: 'pc', isActive: true }],
   taxCodes: [{ id: 'tc-001', name: 'VAT 7%', code: 'VAT7' }],
   suppliers: [],
+  glAccounts: [
+    { id: 'gl-rev', code: '4000', name: 'Sales Revenue', symbol: 'Revenue' },
+    { id: 'gl-cogs', code: '5000', name: 'Cost of Goods Sold', symbol: 'Expense' },
+    { id: 'gl-asset', code: '1100', name: 'Inventory Asset', symbol: 'Asset' },
+  ] as any,
 };
 
 const EXISTING_ITEM = {
@@ -68,11 +86,12 @@ describe('ItemForm', () => {
   });
 
   describe('Tab navigation', () => {
-    it('renders four tabs', () => {
+    it('renders five tabs', () => {
       render(<ItemForm refs={REFS} />);
       expect(screen.getByRole('button', { name: /general/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /units/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /pricing/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /financials\/gl/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /compliance\/tax/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /clinic/i })).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /stock/i })).not.toBeInTheDocument();
     });
@@ -87,16 +106,16 @@ describe('ItemForm', () => {
       expect(screen.getByLabelText(/item code/i)).toBeInTheDocument();
     });
 
-    it('switches to pricing tab on click', () => {
+    it('switches to financials tab on click', () => {
       render(<ItemForm refs={REFS} />);
-      fireEvent.click(screen.getByRole('button', { name: /pricing/i }));
+      fireEvent.click(screen.getByRole('button', { name: /financials\/gl/i }));
       expect(screen.getByLabelText(/base selling price/i)).toBeInTheDocument();
     });
 
     it('preserves form values when switching tabs', () => {
       render(<ItemForm refs={REFS} />);
       fireEvent.change(screen.getByLabelText(/item code/i), { target: { value: 'MYCODE' } });
-      fireEvent.click(screen.getByRole('button', { name: /pricing/i }));
+      fireEvent.click(screen.getByRole('button', { name: /financials\/gl/i }));
       fireEvent.click(screen.getByRole('button', { name: /general/i }));
       expect(screen.getByLabelText(/item code/i)).toHaveValue('MYCODE');
     });
@@ -142,7 +161,7 @@ describe('ItemForm', () => {
       fireEvent.click(screen.getByRole('button', { name: /general/i }));
       fireEvent.change(screen.getByLabelText(/category/i), { target: { value: 'cat-001' } });
 
-      fireEvent.click(screen.getByRole('button', { name: /pricing/i }));
+      fireEvent.click(screen.getByRole('button', { name: /financials\/gl/i }));
       fireEvent.change(screen.getByLabelText(/standard cost/i), { target: { value: '80' } });
       fireEvent.change(screen.getByLabelText(/base selling price/i), { target: { value: '150' } });
 
@@ -152,6 +171,84 @@ describe('ItemForm', () => {
       expect(apiClient.post).toHaveBeenCalledWith(
         expect.stringContaining('/inventory/products'),
         expect.objectContaining({ code: 'MED-001', name: 'Test Drug' }),
+      );
+    });
+
+    it('updates GL accounts on the financials tab', async () => {
+      render(<ItemForm refs={REFS} />);
+      fireEvent.click(screen.getByRole('button', { name: /financials\/gl/i }));
+      
+      fireEvent.change(screen.getByLabelText(/standard cost/i), { target: { value: '80' } });
+      fireEvent.change(screen.getByLabelText(/base selling price/i), { target: { value: '150' } });
+      fireEvent.change(screen.getByLabelText(/revenue gl account/i), { target: { value: 'gl-rev' } });
+      fireEvent.change(screen.getByLabelText(/cogs gl account/i), { target: { value: 'gl-cogs' } });
+      fireEvent.change(screen.getByLabelText(/inventory asset gl account/i), { target: { value: 'gl-asset' } });
+
+      // Go back to general tab to verify form is not submitted/errored
+      fireEvent.click(screen.getByRole('button', { name: /general/i }));
+      fireEvent.change(screen.getByLabelText(/item code/i), { target: { value: 'MED-001' } });
+      fireEvent.change(screen.getByLabelText(/item name/i), { target: { value: 'Test Drug' } });
+      fireEvent.change(screen.getByLabelText(/category/i), { target: { value: 'cat-001' } });
+
+      fireEvent.click(screen.getByRole('button', { name: /units/i }));
+      fireEvent.change(screen.getByLabelText(/base unit/i), { target: { value: 'unit-001' } });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /create item/i }));
+      });
+
+      expect(apiClient.post).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          revenueAccountId: 'gl-rev',
+          cogsAccountId: 'gl-cogs',
+          inventoryAssetAccountId: 'gl-asset',
+        })
+      );
+    });
+
+    it('updates tax and compliance settings on compliance tab', async () => {
+      render(<ItemForm refs={REFS} />);
+      fireEvent.click(screen.getByRole('button', { name: /compliance\/tax/i }));
+
+      fireEvent.change(screen.getByLabelText(/default vat type/i), { target: { value: 'VAT_EXEMPT' } });
+      fireEvent.change(screen.getByLabelText(/withholding tax \(wht\) rate/i), { target: { value: 'WHT_3' } });
+      fireEvent.change(screen.getByLabelText(/default tax code/i), { target: { value: 'tc-001' } });
+      fireEvent.click(screen.getByLabelText(/price is tax-inclusive/i));
+      fireEvent.change(screen.getByLabelText(/dispensing category/i), { target: { value: 'Dangerous_Drug' } });
+      fireEvent.change(screen.getByLabelText(/generic drug name/i), { target: { value: 'Paracetamol' } });
+      fireEvent.click(screen.getByLabelText(/is controlled substance/i));
+      fireEvent.click(screen.getByLabelText(/requires batch & expiry date tracking/i));
+
+      // Go fill other required fields
+      fireEvent.click(screen.getByRole('button', { name: /general/i }));
+      fireEvent.change(screen.getByLabelText(/item code/i), { target: { value: 'MED-001' } });
+      fireEvent.change(screen.getByLabelText(/item name/i), { target: { value: 'Test Drug' } });
+      fireEvent.change(screen.getByLabelText(/category/i), { target: { value: 'cat-001' } });
+
+      fireEvent.click(screen.getByRole('button', { name: /units/i }));
+      fireEvent.change(screen.getByLabelText(/base unit/i), { target: { value: 'unit-001' } });
+
+      fireEvent.click(screen.getByRole('button', { name: /financials\/gl/i }));
+      fireEvent.change(screen.getByLabelText(/standard cost/i), { target: { value: '80' } });
+      fireEvent.change(screen.getByLabelText(/base selling price/i), { target: { value: '150' } });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /create item/i }));
+      });
+
+      expect(apiClient.post).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          defaultVatType: 'VAT_EXEMPT',
+          whtRate: 'WHT_3',
+          defaultTaxCodeId: 'tc-001',
+          isTaxInclusive: true,
+          dispensingCategory: 'Dangerous_Drug',
+          genericName: 'Paracetamol',
+          isControlledSubstance: true,
+          requiresBatchAndExpiryTracking: true,
+        })
       );
     });
   });
@@ -172,7 +269,7 @@ describe('ItemForm', () => {
       render(<ItemForm refs={REFS} initial={EXISTING_ITEM as any} />);
       fireEvent.click(screen.getByRole('button', { name: /stock/i }));
       await waitFor(() => {
-        expect(apiClient.get).toHaveBeenCalledWith(expect.stringContaining('/inventory/stock-balances?productId=prod-001'));
+        expect(apiClient.get).toHaveBeenCalledWith(expect.stringContaining('/inventory/products/prod-001/all-branch-balances'));
       });
     });
 

@@ -1,4 +1,4 @@
-import { ItemType } from '@petiatrics/types';
+import { ItemType, DefaultVatType, WhtRate, DispensingCategory } from '@petiatrics/types';
 import type {
   ItemCategoryResponse,
   UnitOfMeasureResponse,
@@ -12,6 +12,7 @@ export interface ItemFormReferenceData {
   units: UnitOfMeasureResponse[];
   taxCodes: ReferenceSelectorItem[];
   suppliers: ReferenceSelectorItem[];
+  glAccounts: ReferenceSelectorItem[];
 }
 
 // ─── Form values (mirrors CreateItemPayload / UpdateItemPayload) ───────────────
@@ -51,6 +52,12 @@ export interface ItemFormValues {
   barcode: string;
   conversions: ItemConversionFormValue[];
   accessories: ItemAccessoryFormValue[];
+  defaultVatType: DefaultVatType;
+  whtRate: WhtRate;
+  dispensingCategory: DispensingCategory;
+  revenueAccountId: string;
+  cogsAccountId: string;
+  inventoryAssetAccountId: string;
 }
 
 export const ITEM_FORM_DEFAULTS: ItemFormValues = {
@@ -74,4 +81,10 @@ export const ITEM_FORM_DEFAULTS: ItemFormValues = {
   barcode: '',
   conversions: [],
   accessories: [],
+  defaultVatType: DefaultVatType.VAT_7,
+  whtRate: WhtRate.WHT_0,
+  dispensingCategory: DispensingCategory.General_Retail,
+  revenueAccountId: '',
+  cogsAccountId: '',
+  inventoryAssetAccountId: '',
 };

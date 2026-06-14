@@ -6,22 +6,25 @@ import type { ItemFormValues, ItemFormReferenceData } from './item-form-types';
 import { ITEM_FORM_DEFAULTS } from './item-form-types';
 import { validateItemForm, toApiPayload } from './item-form-schema';
 import type { ItemDetailResponse } from '@petiatrics/types';
+import { DefaultVatType, WhtRate, DispensingCategory } from '@petiatrics/types';
 import GeneralTab from './tabs/general-tab';
 import UnitsTab from './tabs/units-tab';
-import PricingTab from './tabs/pricing-tab';
-import ItemStockTab from '@/components/inventory/tabs/item-stock-tab';
+import FinancialsTab from './tabs/financials-tab';
+import ComplianceTab from './tabs/compliance-tab';
+import ItemStockTab from './tabs/item-stock-tab';
 import ClinicDetailsTab from './tabs/clinic-details-tab';
 import AccessoriesTab from './tabs/accessories-tab';
 import BranchSettingsTab from './tabs/branch-settings-tab';
 import { apiClient, ApiError } from '../../lib/api-client';
 import { usePermission } from '../../lib/use-permission';
 
-type TabKey = 'general' | 'units' | 'pricing' | 'stock' | 'clinic' | 'accessories' | 'branchSettings';
+type TabKey = 'general' | 'units' | 'financials' | 'compliance' | 'stock' | 'clinic' | 'accessories' | 'branchSettings';
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'general', label: 'General' },
   { key: 'units', label: 'Units' },
-  { key: 'pricing', label: 'Pricing' },
+  { key: 'financials', label: 'Financials/GL' },
+  { key: 'compliance', label: 'Compliance/Tax' },
   { key: 'stock', label: 'Stock' },
   { key: 'accessories', label: 'Accessories/Bundle' },
   { key: 'clinic', label: 'Clinic Details' },
@@ -34,7 +37,7 @@ interface Props {
   initial?: ItemDetailResponse;
 }
 
-function itemDetailToFormValues(item: ItemDetailResponse): ItemFormValues {
+function itemDetailToFormValues(item: any): ItemFormValues {
   return {
     code: item.code,
     name: item.name,
@@ -54,7 +57,7 @@ function itemDetailToFormValues(item: ItemDetailResponse): ItemFormValues {
     minimumStock: item.minimumStock,
     sku: item.sku ?? '',
     barcode: item.barcode ?? '',
-    conversions: (item.conversions ?? []).map((c) => ({
+    conversions: (item.conversions ?? []).map((c: any) => ({
       unitId: c.unitId,
       ratioToBase: c.ratioToBase,
     })),
@@ -66,6 +69,12 @@ function itemDetailToFormValues(item: ItemDetailResponse): ItemFormValues {
       itemType: a.itemType,
       quantityRatio: a.quantityRatio,
     })),
+    defaultVatType: item.defaultVatType ?? DefaultVatType.VAT_7,
+    whtRate: item.whtRate ?? WhtRate.WHT_0,
+    dispensingCategory: item.dispensingCategory ?? DispensingCategory.General_Retail,
+    revenueAccountId: item.revenueAccountId ?? '',
+    cogsAccountId: item.cogsAccountId ?? '',
+    inventoryAssetAccountId: item.inventoryAssetAccountId ?? '',
   };
 }
 
@@ -132,7 +141,7 @@ export default function ItemForm({ refs, initial }: Props) {
         </div>
       )}
       {/* Tab navigation */}
-      <div className="border-b mb-6 flex gap-6">
+      <div className="flex gap-1 p-1 bg-gray-100/70 rounded-lg mb-6 overflow-x-auto whitespace-nowrap max-w-full scrollbar-none">
         {TABS.filter((t) => {
           if ((t.key === 'stock' || t.key === 'accessories') && !isEdit) return false;
           if (t.key === 'branchSettings' && (!isEdit || !canWrite)) return false;
@@ -142,10 +151,10 @@ export default function ItemForm({ refs, initial }: Props) {
             key={t.key}
             type="button"
             onClick={() => setActiveTab(t.key)}
-            className={`pb-2 text-sm font-medium border-b-2 transition-colors ${
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-all shrink-0 ${
               activeTab === t.key
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-white/40'
             }`}
           >
             {t.label}
@@ -161,8 +170,11 @@ export default function ItemForm({ refs, initial }: Props) {
         {activeTab === 'units' && (
           <UnitsTab values={values} errors={fieldErrors} refs={refs} onChange={handleChange} />
         )}
-        {activeTab === 'pricing' && (
-          <PricingTab values={values} errors={fieldErrors} refs={refs} onChange={handleChange} />
+        {activeTab === 'financials' && (
+          <FinancialsTab values={values} errors={fieldErrors} refs={refs} onChange={handleChange} />
+        )}
+        {activeTab === 'compliance' && (
+          <ComplianceTab values={values} errors={fieldErrors} refs={refs} onChange={handleChange} />
         )}
         {activeTab === 'stock' && (
           <ItemStockTab itemId={initial?.id} />

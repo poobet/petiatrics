@@ -1,4 +1,4 @@
-import { Role, Locale, BusinessPartnerType, BpRole, ItemType, GLAccountType } from './enums';
+import { Role, Locale, BusinessPartnerType, BpRole, ItemType, GLAccountType, DefaultVatType, WhtRate, DispensingCategory } from './enums';
 
 // ─── Response Envelope ───────────────────────────────────────────────────────
 
@@ -380,6 +380,12 @@ export interface ItemSummaryResponse {
   isControlledSubstance: boolean;
   requiresBatchAndExpiryTracking: boolean;
   defaultSupplier: { id: string; name: string } | null;
+  defaultVatType: DefaultVatType;
+  whtRate: WhtRate;
+  dispensingCategory: DispensingCategory;
+  revenueAccountId: string | null;
+  cogsAccountId: string | null;
+  inventoryAssetAccountId: string | null;
   isActive: boolean;
 }
 
@@ -419,6 +425,12 @@ export interface CreateItemPayload {
   reorderPoint?: number;
   minimumStock?: number;
   barcode?: string | null;
+  defaultVatType?: DefaultVatType;
+  whtRate?: WhtRate;
+  dispensingCategory?: DispensingCategory;
+  revenueAccountId?: string | null;
+  cogsAccountId?: string | null;
+  inventoryAssetAccountId?: string | null;
 }
 
 export interface UpdateItemPayload {
@@ -440,6 +452,12 @@ export interface UpdateItemPayload {
   minimumStock?: number;
   barcode?: string | null;
   isActive?: boolean;
+  defaultVatType?: DefaultVatType;
+  whtRate?: WhtRate;
+  dispensingCategory?: DispensingCategory;
+  revenueAccountId?: string | null;
+  cogsAccountId?: string | null;
+  inventoryAssetAccountId?: string | null;
 }
 
 export interface ListItemsQuery {

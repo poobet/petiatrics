@@ -3,10 +3,16 @@ import { PrismaClient } from '@prisma/client';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InvoiceService, CreateInvoiceDto } from './invoice.service';
 import { TaxEngineService } from './tax-engine.service';
+import { VisitService } from '../../clinical/services/visit.service';
 import { DispensingCategory, DefaultVatType } from '@petiatrics/types';
 
 jest.mock('@petiatrics/database', () => ({
   scopedPrisma: (_prisma: unknown, _clinicId: string) => _prisma,
+  MODEL_NAMES: {
+    VISIT_RECORD: 'VisitRecord',
+    PET_PROFILE: 'PetProfile',
+    VACCINATION_RECORD: 'VaccinationRecord',
+  },
 }));
 
 function buildPrismaMock() {
@@ -24,6 +30,9 @@ function buildPrismaMock() {
     },
     product: {
       findUnique: jest.fn().mockResolvedValue(null), // default: product not found → no tax profile
+    },
+    user: {
+      findFirst: jest.fn(),
     },
     $transaction: jest.fn(async (cb) => {
       const tx = { invoice: { create: mockInvoiceCreate } };
@@ -43,11 +52,15 @@ describe('InvoiceService', () => {
   let prisma: any;
   let events: EventEmitter2;
   let taxEngine: TaxEngineService;
+  let visitService: any;
 
   beforeEach(async () => {
     prisma = buildPrismaMock();
     events = { emit: jest.fn() } as any;
     taxEngine = buildTaxEngine(prisma);
+    visitService = {
+      getOne: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -55,6 +68,7 @@ describe('InvoiceService', () => {
         { provide: PrismaClient, useValue: prisma },
         { provide: EventEmitter2, useValue: events },
         { provide: TaxEngineService, useValue: taxEngine },
+        { provide: VisitService, useValue: visitService },
       ],
     }).compile();
 
@@ -183,7 +197,7 @@ describe('InvoiceService', () => {
       expect(result).toEqual(mockCreatedInvoice);
     });
 
-    it('BLOCKS dispensing of a Dangerous_Drug in OTC context', async () => {
+    it('BLOCKS dispensing of a Dangerous_Drug in OTC context without PIN override', async () => {
       prisma.product.findUnique.mockResolvedValue({
         id: 'drug-001',
         name: 'Metronidazole',
@@ -192,7 +206,7 @@ describe('InvoiceService', () => {
       });
 
       const dto: CreateInvoiceDto = {
-        visitId: null, // OTC context — no clinical visit
+        visitId: null,
         lineItems: [
           {
             itemType: 'PRODUCT',
@@ -205,9 +219,173 @@ describe('InvoiceService', () => {
       };
 
       await expect(service.create('clinic-1', dto)).rejects.toThrow(
-        'can only be dispensed in a clinical visit context',
+        'requires a supervisor PIN override for OTC sales',
       );
       expect(prisma.invoice.create).not.toHaveBeenCalled();
+    });
+
+    it('ALLOWS dispensing of a Dangerous_Drug in OTC context with valid PIN override', async () => {
+      prisma.product.findUnique.mockResolvedValue({
+        id: 'drug-001',
+        name: 'Metronidazole',
+        defaultVatType: DefaultVatType.VAT_7,
+        dispensingCategory: DispensingCategory.Dangerous_Drug,
+      });
+
+      prisma.user.findFirst.mockResolvedValue({
+        id: 'vet-1',
+        name: 'Dr. John',
+        role: 'VET',
+        status: 'ACTIVE',
+      });
+
+      prisma.invoice.create.mockResolvedValue({ id: 'invoice-1' });
+
+      const dto: CreateInvoiceDto = {
+        visitId: null,
+        overrideApprovedByUserId: 'vet-1',
+        lineItems: [
+          {
+            itemType: 'PRODUCT',
+            description: 'Metronidazole',
+            quantity: 1,
+            unitPriceMinor: 18_000,
+            sourceReferenceId: 'drug-001',
+          },
+        ],
+      };
+
+      const result = await service.create('clinic-1', dto);
+      expect(result).toBeDefined();
+      expect(prisma.user.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: 'vet-1',
+          clinicId: 'clinic-1',
+          role: { in: ['VET', 'CLINIC_OWNER'] },
+          status: 'ACTIVE',
+        },
+      });
+      expect(prisma.invoice.create).toHaveBeenCalled();
+    });
+
+    it('BLOCKS Specially_Controlled_Drug in OTC context', async () => {
+      prisma.product.findUnique.mockResolvedValue({
+        id: 'drug-002',
+        name: 'Morphine',
+        defaultVatType: DefaultVatType.VAT_EXEMPT,
+        dispensingCategory: DispensingCategory.Specially_Controlled_Drug,
+      });
+
+      const dto: CreateInvoiceDto = {
+        visitId: null,
+        lineItems: [
+          {
+            itemType: 'PRODUCT',
+            description: 'Morphine',
+            quantity: 1,
+            unitPriceMinor: 20_000,
+            sourceReferenceId: 'drug-002',
+          },
+        ],
+      };
+
+      await expect(service.create('clinic-1', dto)).rejects.toThrow(
+        'cannot be sold at retail (OTC)',
+      );
+    });
+
+    it('ALLOWS Specially_Controlled_Drug in clinical context if prescribed in finalized visit', async () => {
+      prisma.product.findUnique.mockResolvedValue({
+        id: 'drug-002',
+        name: 'Morphine',
+        defaultVatType: DefaultVatType.VAT_EXEMPT,
+        dispensingCategory: DispensingCategory.Specially_Controlled_Drug,
+      });
+
+      visitService.getOne.mockResolvedValue({
+        id: 'visit-1',
+        status: 'finalized',
+        prescriptions: [
+          { productId: 'drug-002', drug: 'Morphine' },
+        ],
+      });
+
+      prisma.invoice.create.mockResolvedValue({ id: 'invoice-2' });
+
+      const dto: CreateInvoiceDto = {
+        visitId: 'visit-1',
+        lineItems: [
+          {
+            itemType: 'PRODUCT',
+            description: 'Morphine',
+            quantity: 1,
+            unitPriceMinor: 20_000,
+            sourceReferenceId: 'drug-002',
+          },
+        ],
+      };
+
+      const result = await service.create('clinic-1', dto);
+      expect(result).toBeDefined();
+      expect(visitService.getOne).toHaveBeenCalledWith('clinic-1', 'visit-1');
+    });
+
+    it('BLOCKS Specially_Controlled_Drug if not prescribed in the visit', async () => {
+      prisma.product.findUnique.mockResolvedValue({
+        id: 'drug-002',
+        name: 'Morphine',
+        defaultVatType: DefaultVatType.VAT_EXEMPT,
+        dispensingCategory: DispensingCategory.Specially_Controlled_Drug,
+      });
+
+      visitService.getOne.mockResolvedValue({
+        id: 'visit-1',
+        status: 'finalized',
+        prescriptions: [],
+      });
+
+      const dto: CreateInvoiceDto = {
+        visitId: 'visit-1',
+        lineItems: [
+          {
+            itemType: 'PRODUCT',
+            description: 'Morphine',
+            quantity: 1,
+            unitPriceMinor: 20_000,
+            sourceReferenceId: 'drug-002',
+          },
+        ],
+      };
+
+      await expect(service.create('clinic-1', dto)).rejects.toThrow(
+        'must be prescribed in the associated visit',
+      );
+    });
+
+    it('BLOCKS Clinic_Use_Only in OTC context', async () => {
+      prisma.product.findUnique.mockResolvedValue({
+        id: 'good-003',
+        name: 'Surgical Gown',
+        defaultVatType: DefaultVatType.VAT_7,
+        dispensingCategory: DispensingCategory.Clinic_Use_Only,
+      });
+
+      const dto: CreateInvoiceDto = {
+        visitId: null,
+        lineItems: [
+          {
+            itemType: 'PRODUCT',
+            description: 'Surgical Gown',
+            quantity: 1,
+            unitPriceMinor: 5_000,
+            sourceReferenceId: 'good-003',
+          },
+        ],
+      };
+
+      await expect(service.create('clinic-1', dto)).rejects.toThrow(
+        'cannot be sold at retail (OTC)',
+      );
     });
   });
 });
