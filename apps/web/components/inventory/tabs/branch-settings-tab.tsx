@@ -79,7 +79,7 @@ export default function BranchSettingsTab({ values, onChange, refs, canEdit }: P
                         handleBranchChange(
                           setting.branchId,
                           'retailPrice',
-                          e.target.value === '' ? '' : Number(e.target.value),
+                          e.target.value,
                         )
                       }
                       disabled={!canEdit}
@@ -97,7 +97,7 @@ export default function BranchSettingsTab({ values, onChange, refs, canEdit }: P
                         handleBranchChange(
                           setting.branchId,
                           'movingAverageCost',
-                          e.target.value === '' ? '' : Number(e.target.value),
+                          e.target.value,
                         )
                       }
                       disabled={!canEdit}

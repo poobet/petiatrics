@@ -107,7 +107,9 @@ function mapBpToResponse(
     user: bp.user
       ? {
           id: bp.user.id,
+          name: bp.user.name,
           role: bp.user.role as string as import('@petiatrics/types').Role,
+          status: bp.user.status as string,
           email: bp.user.email,
           username: bp.user.username,
         }
@@ -128,7 +130,7 @@ function mapBpToResponse(
 }
 
 const BP_INCLUDE = {
-  user: { select: { id: true, role: true, email: true, username: true } },
+  user: { select: { id: true, name: true, role: true, status: true, email: true, username: true } },
   vetExt: true,
   suppExt: true,
   group: true,

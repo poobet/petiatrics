@@ -83,6 +83,9 @@ export class UserService {
 
       if (input.role === Role.CUSTOMER || input.role === ('CUSTOMER' as any)) {
         await this.createCustomerBpWithCode(tx, u.id, input.clinicId, input.name, null);
+      } else {
+        // Auto-create a STAFF or VET BusinessPartner linked to the new staff user
+        await this.createStaffBpWithCode(tx, u.id, input.clinicId, input.name, input.role);
       }
 
       return u;
@@ -129,9 +132,15 @@ export class UserService {
 
   async findByClinic(clinicId: string): Promise<User[]> {
     return this.prisma.user.findMany({
-      where: { clinicId },
+      where: { clinicId, role: { not: 'CUSTOMER' as any } },
+      include: {
+        businessPartners: {
+          where: { clinicId },
+          select: { id: true, code: true, type: true, isActive: true },
+        },
+      },
       orderBy: { createdAt: 'asc' },
-    });
+    }) as any;
   }
 
   async updateRole(id: string, clinicId: string, dto: UpdateUserRoleDto): Promise<User> {
@@ -161,6 +170,27 @@ export class UserService {
       where: { id },
       data: { passwordHash, status: UserStatus.ACTIVE as unknown as any },
     });
+  }
+
+  /**
+   * Admin-initiated password reset for a staff member.
+   * Sets mustChangePassword=true so the staff must set a new password on next login.
+   */
+  async adminResetPassword(id: string, clinicId: string, newPassword: string): Promise<{ ok: true }> {
+    assertPasswordPolicy(newPassword);
+    await this.findOneInClinic(id, clinicId);
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await this.prisma.user.update({
+      where: { id },
+      data: {
+        passwordHash,
+        mustChangePassword: true,
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+        status: UserStatus.ACTIVE as unknown as any,
+      },
+    });
+    return { ok: true };
   }
 
   private async findOneInClinic(id: string, clinicId: string): Promise<User> {
@@ -206,6 +236,61 @@ export class UserService {
       data: { linkedUserId: null },
     });
     return user;
+  }
+
+  /**
+   * Transactional helper to auto-generate a sequenced BusinessPartner of type STAFF or VET
+   * and link it to the given user. VET role → BpType VET (prefix 'V-'); all others → STAFF (prefix 'S-').
+   */
+  private async createStaffBpWithCode(
+    tx: any,
+    userId: string,
+    clinicId: string,
+    name: string,
+    role: Role,
+  ): Promise<any> {
+    const isVet = role === Role.VET;
+    const bpType = isVet ? 'VET' : 'STAFF';
+    const prefix = isVet ? 'V-' : 'S-';
+
+    const group = await tx.bpGroup.findFirst({
+      where: { clinicId, prefix },
+    });
+
+    let generatedCode: string | null = null;
+    if (group) {
+      const rows = await tx.$queryRaw`SELECT id, prefix, "currentSequence" FROM bp_groups WHERE id = ${group.id} FOR UPDATE`;
+      const lockedGroup = rows[0];
+      if (lockedGroup) {
+        const newSeq = lockedGroup.currentSequence + 1;
+        await tx.bpGroup.update({
+          where: { id: group.id },
+          data: { currentSequence: newSeq },
+        });
+        generatedCode = `${lockedGroup.prefix}${newSeq.toString().padStart(4, '0')}`;
+      }
+    }
+
+    const bp = await tx.businessPartner.create({
+      data: {
+        clinicId,
+        type: bpType,
+        name,
+        code: generatedCode,
+        groupId: group?.id ?? null,
+        linkedUserId: userId,
+        isActive: true,
+      },
+    });
+
+    // For VET BPs, create the extension row (license number filled in later)
+    if (isVet) {
+      await tx.bpVet.create({
+        data: { bpId: bp.id, licenseNumber: '' },
+      });
+    }
+
+    return bp;
   }
 
   /**

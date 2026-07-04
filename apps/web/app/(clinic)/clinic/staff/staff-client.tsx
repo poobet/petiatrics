@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   Table,
@@ -34,7 +35,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@petiatrics/ui';
-import { MoreHorizontal, Plus, Loader2 } from 'lucide-react';
+import { MoreHorizontal, Plus, Loader2, KeyRound, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
 import { apiClient } from '../../../../lib/api-client';
 import { useSessionStore } from '../../../../lib/session-store';
 
@@ -46,6 +48,7 @@ interface StaffUser {
   role: string;
   status: string;
   permissions?: string[];
+  businessPartners?: Array<{ id: string; code: string | null; type: string; isActive: boolean }>;
 }
 
 
@@ -54,6 +57,7 @@ export default function StaffPageClient() {
   const t = useTranslations('staff');
   const tCommon = useTranslations('common');
   const clinicSlug = useSessionStore((s) => s.user?.clinicSlug ?? '');
+  const router = useRouter();
 
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +68,14 @@ export default function StaffPageClient() {
   const [role, setRole] = useState('VET');
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+
+  // ── Reset-password dialog state ────────────────────────────────────────
+  const [resetTarget, setResetTarget] = useState<StaffUser | null>(null);
+  const [resetPwd, setResetPwd] = useState('');
+  const [resetPwdConfirm, setResetPwdConfirm] = useState('');
+  const [resetting, setResetting] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetSuccess, setResetSuccess] = useState(false);
 
 
 
@@ -106,6 +118,31 @@ export default function StaffPageClient() {
     }
   }
 
+  function openResetDialog(user: StaffUser) {
+    setResetTarget(user);
+    setResetPwd('');
+    setResetPwdConfirm('');
+    setResetError(null);
+    setResetSuccess(false);
+  }
+
+  async function handleResetPassword() {
+    if (!resetTarget) return;
+    if (resetPwd.length < 8) { setResetError('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'); return; }
+    if (resetPwd !== resetPwdConfirm) { setResetError('รหัสผ่านไม่ตรงกัน'); return; }
+    setResetting(true);
+    setResetError(null);
+    try {
+      await apiClient.patch(`/clinic/staff/${resetTarget.id}/reset-password`, { newPassword: resetPwd });
+      setResetSuccess(true);
+      setTimeout(() => setResetTarget(null), 1500);
+    } catch (err: any) {
+      setResetError(err?.message ?? 'เกิดข้อผิดพลาด');
+    } finally {
+      setResetting(false);
+    }
+  }
+
   function roleLabel(role: string) {
     const map: Record<string, string> = {
       SUPER_ADMIN: t('roles.platform_admin'),
@@ -128,6 +165,52 @@ export default function StaffPageClient() {
 
   return (
     <div className="space-y-6">
+      {/* ── Reset Password Dialog ──────────────────────────────────────── */}
+      <Dialog open={!!resetTarget} onOpenChange={(open) => { if (!open) setResetTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-primary" />
+              รีเซ็ตรหัสผ่าน — {resetTarget?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <p className="text-sm text-muted-foreground">
+              ตั้งรหัสผ่านชั่วคราวใหม่ พนักงานจะต้องเปลี่ยนรหัสผ่านในครั้งถัดไปที่ล็อกอิน
+            </p>
+            <div className="space-y-1.5">
+              <Label>รหัสผ่านใหม่</Label>
+              <Input
+                type="password"
+                value={resetPwd}
+                onChange={(e) => setResetPwd(e.target.value)}
+                placeholder="อย่างน้อย 8 ตัวอักษร"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>ยืนยันรหัสผ่าน</Label>
+              <Input
+                type="password"
+                value={resetPwdConfirm}
+                onChange={(e) => setResetPwdConfirm(e.target.value)}
+                placeholder="กรอกรหัสผ่านอีกครั้ง"
+              />
+            </div>
+            {resetError && <p className="text-sm text-destructive">{resetError}</p>}
+            {resetSuccess && <p className="text-sm text-green-600">✓ รีเซ็ตรหัสผ่านสำเร็จ</p>}
+            <Button
+              className="w-full"
+              onClick={handleResetPassword}
+              disabled={resetting || resetSuccess || !resetPwd || !resetPwdConfirm}
+            >
+              {resetting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              ยืนยันรีเซ็ตรหัสผ่าน
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
         <div className="flex items-center gap-2">
@@ -215,6 +298,7 @@ export default function StaffPageClient() {
             <TableRow>
               <TableHead>{t('name')}</TableHead>
               <TableHead>{t('username')}</TableHead>
+              <TableHead>BP Code</TableHead>
               <TableHead>{t('role')}</TableHead>
               <TableHead>{t('status')}</TableHead>
               <TableHead className="text-right">{tCommon('actions')}</TableHead>
@@ -223,22 +307,36 @@ export default function StaffPageClient() {
           <TableBody>
             {loading && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-8">
                   <Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" />
                 </TableCell>
               </TableRow>
             )}
             {!loading && staff.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-gray-400 py-8">
+                <TableCell colSpan={6} className="text-center text-gray-400 py-8">
                   {t('noStaff')}
                 </TableCell>
               </TableRow>
             )}
-            {staff.map((user) => (
+            {staff.map((user) => {
+              const bp = user.businessPartners?.[0];
+              return (
               <TableRow key={user.id}>
                 <TableCell className="font-medium">{user.name}</TableCell>
                 <TableCell className="font-mono text-sm text-gray-600">{user.username ?? user.email ?? '-'}</TableCell>
+                <TableCell>
+                  {bp ? (
+                    <Link
+                      href={`/clinic/business-partners/${bp.id}`}
+                      className="font-mono text-xs text-primary hover:underline"
+                    >
+                      {bp.code ?? 'View BP'}
+                    </Link>
+                  ) : (
+                    <span className="text-muted-foreground text-xs">—</span>
+                  )}
+                </TableCell>
                 <TableCell>{roleLabel(user.role)}</TableCell>
                 <TableCell>
                   <Badge variant={statusVariant(user.status) as any}>{user.status}</Badge>
@@ -251,6 +349,22 @@ export default function StaffPageClient() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      {bp && (
+                        <DropdownMenuItem
+                          className="flex items-center gap-2 cursor-pointer"
+                          onClick={() => router.push(`/clinic/business-partners/${bp.id}`)}
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          ดูข้อมูล BP
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem
+                        className="flex items-center gap-2"
+                        onClick={() => openResetDialog(user)}
+                      >
+                        <KeyRound className="h-4 w-4" />
+                        รีเซ็ตรหัสผ่าน
+                      </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-red-600 focus:text-red-600"
                         onClick={() => handleDeactivate(user.id)}
@@ -261,7 +375,8 @@ export default function StaffPageClient() {
                   </DropdownMenu>
                 </TableCell>
               </TableRow>
-            ))}
+              );
+            })}
           </TableBody>
         </Table>
       </div>

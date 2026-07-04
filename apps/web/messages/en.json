@@ -653,7 +653,8 @@
       "contact": "Contact Info",
       "tax": "Tax & Address",
       "roles": "Roles & Trade Terms",
-      "financials": "Financials"
+      "financials": "Financials",
+      "linkage": "Linkage"
     },
     "phone": "Phone",
     "email": "Email",

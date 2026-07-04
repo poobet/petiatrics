@@ -4,8 +4,8 @@ import { Badge } from '@petiatrics/ui/badge';
 
 interface Invoice {
   id: string;
-  visitId: string;
-  patientId: string;
+  visitId: string | null;
+  patientId: string | null;
   totalMinor: number;
   status: string;
   issuedAt?: string;
@@ -105,8 +105,12 @@ export default async function BillingPage() {
             {invoices.map((inv) => (
               <tr key={inv.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-mono text-xs text-gray-500">{inv.id.slice(0, 8)}…</td>
-                <td className="px-4 py-3 font-mono text-xs text-gray-500">{inv.patientId.slice(0, 8)}…</td>
-                <td className="px-4 py-3 font-mono text-xs text-gray-500">{inv.visitId.slice(0, 8)}…</td>
+                <td className="px-4 py-3 font-mono text-xs text-gray-500">
+                  {inv.patientId ? `${inv.patientId.slice(0, 8)}…` : '—'}
+                </td>
+                <td className="px-4 py-3 font-mono text-xs text-gray-500">
+                  {inv.visitId ? `${inv.visitId.slice(0, 8)}…` : '—'}
+                </td>
                 <td className="px-4 py-3 text-right font-medium">{formatMinor(inv.totalMinor)}</td>
                 <td className="px-4 py-3">
                   <Badge variant={STATUS_COLORS[inv.status] ?? 'secondary'}>{inv.status}</Badge>
@@ -116,7 +120,7 @@ export default async function BillingPage() {
                 </td>
                 <td className="px-4 py-3">
                   <Link
-                    href={`/billing/${inv.id}`}
+                    href={`/clinic/billing/${inv.id}`}
                     className="text-blue-600 hover:underline text-xs"
                   >
                     View

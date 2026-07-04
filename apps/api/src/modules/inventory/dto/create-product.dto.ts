@@ -156,7 +156,8 @@ export class CreateProductDto {
 }
 
 export class UpsertBranchSettingDto {
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty()
   branchId!: string;
 
   @IsBoolean()

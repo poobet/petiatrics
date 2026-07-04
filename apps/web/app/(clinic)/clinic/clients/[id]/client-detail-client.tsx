@@ -12,6 +12,7 @@ interface Client {
   name: string;
   email: string | null;
   businessPartners?: {
+    id: string;
     code: string | null;
     phone: string | null;
     lineId: string | null;
@@ -72,6 +73,14 @@ export default function ClientDetailClient({ params }: { params: Promise<{ id: s
           <h1 className="text-2xl font-semibold">{client.name}</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
             BP Code: <span className="font-medium text-foreground">{bp?.code ?? '—'}</span>
+            {bp && (
+              <Link
+                href={`/clinic/business-partners/${bp.id}`}
+                className="ml-2 text-primary hover:underline text-xs"
+              >
+                View BP Record →
+              </Link>
+            )}
           </p>
         </div>
         <Link href="/clinic/clients">

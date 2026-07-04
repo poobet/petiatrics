@@ -368,6 +368,81 @@ async function main() {
     },
   });
 
+  // Seed BpGroup for Staff seq numbering
+  await prisma.bpGroup.upsert({
+    where: { clinicId_prefix: { clinicId: clinic.id, prefix: 'S-' } },
+    update: {},
+    create: {
+      clinicId: clinic.id,
+      name: 'Staff',
+      prefix: 'S-',
+      currentSequence: 0,
+    },
+  });
+  console.log('✓ BpGroup: S- (Staff)');
+
+  // Seed BpGroup for Vet seq numbering
+  await prisma.bpGroup.upsert({
+    where: { clinicId_prefix: { clinicId: clinic.id, prefix: 'V-' } },
+    update: {},
+    create: {
+      clinicId: clinic.id,
+      name: 'Vets',
+      prefix: 'V-',
+      currentSequence: 0,
+    },
+  });
+  console.log('✓ BpGroup: V- (Vets)');
+
+  // ── Back-fill: ensure every staff user has a linked BusinessPartner ────────
+  const staffUsersWithoutBp = await prisma.user.findMany({
+    where: {
+      clinicId: clinic.id,
+      role: { notIn: ['CUSTOMER', 'SUPER_ADMIN'] as any[] },
+    },
+    include: { businessPartners: { where: { clinicId: clinic.id } } },
+  });
+  for (const u of staffUsersWithoutBp) {
+    const isVet = (u.role as string) === 'VET';
+    const bpType = isVet ? 'VET' : 'STAFF';
+    const canonicalName = u.name || u.username || u.email || 'Staff';
+
+    if (u.businessPartners.length > 0) {
+      // Sync BP name if it differs from the user's canonical name
+      const bp = u.businessPartners[0];
+      if (bp.name !== canonicalName) {
+        await prisma.businessPartner.update({
+          where: { id: bp.id },
+          data: { name: canonicalName },
+        });
+        console.log(`✓ Synced BP name: "${bp.name}" → "${canonicalName}" (${u.username ?? u.email})`);
+      }
+      continue;
+    }
+
+    const existing = await prisma.businessPartner.findFirst({
+      where: { clinicId: clinic.id, linkedUserId: u.id },
+    });
+    if (existing) continue;
+    const bp = await prisma.businessPartner.create({
+      data: {
+        clinicId: clinic.id,
+        type: bpType as any,
+        name: canonicalName,
+        linkedUserId: u.id,
+        isActive: true,
+      },
+    });
+    if (isVet) {
+      await prisma.bpVet.upsert({
+        where: { bpId: bp.id },
+        update: {},
+        create: { bpId: bp.id, licenseNumber: '' },
+      });
+    }
+    console.log(`✓ Back-filled BP (${bpType}) for user: ${u.username ?? u.email}`);
+  }
+
   // Seed Customer User
   const customerUser = await prisma.user.upsert({
     where: { email: 'customer@happypaws.io' },

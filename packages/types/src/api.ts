@@ -232,7 +232,9 @@ export interface BusinessPartnerListQuery {
 
 export interface BpUserSummary {
   id: string;
+  name: string;
   role: Role;
+  status: string;
   email: string | null;
   username: string | null;
 }
