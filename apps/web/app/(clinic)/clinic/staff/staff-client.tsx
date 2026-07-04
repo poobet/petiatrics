@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   Table,
@@ -34,10 +35,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@petiatrics/ui';
-import { MoreHorizontal, Plus, Loader2 } from 'lucide-react';
+import { MoreHorizontal, Plus, Loader2, KeyRound, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
 import { apiClient } from '../../../../lib/api-client';
 import { useSessionStore } from '../../../../lib/session-store';
+import { BusinessPartnerResponse } from '@petiatrics/types';
 
+// Used only for the Create Staff form / Reset Password dialog (still uses User table)
 interface StaffUser {
   id: string;
   name: string;
@@ -46,16 +50,17 @@ interface StaffUser {
   role: string;
   status: string;
   permissions?: string[];
+  businessPartners?: Array<{ id: string; code: string | null; type: string; isActive: boolean }>;
 }
-
 
 
 export default function StaffPageClient() {
   const t = useTranslations('staff');
   const tCommon = useTranslations('common');
   const clinicSlug = useSessionStore((s) => s.user?.clinicSlug ?? '');
+  const router = useRouter();
 
-  const [staff, setStaff] = useState<StaffUser[]>([]);
+  const [staff, setStaff] = useState<BusinessPartnerResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [usernamePrefix, setUsernamePrefix] = useState('');
@@ -65,13 +70,24 @@ export default function StaffPageClient() {
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
+  // ── Reset-password dialog state ────────────────────────────────────────
+  const [resetTarget, setResetTarget] = useState<StaffUser | null>(null);
+  const [resetPwd, setResetPwd] = useState('');
+  const [resetPwdConfirm, setResetPwdConfirm] = useState('');
+  const [resetting, setResetting] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetSuccess, setResetSuccess] = useState(false);
+
 
 
 
 
   useEffect(() => {
+    const params = new URLSearchParams();
+    params.append('types', 'STAFF');
+    params.append('types', 'VET');
     apiClient
-      .get<StaffUser[]>('/clinic/staff')
+      .get<BusinessPartnerResponse[]>(`/clinic/business-partners?${params.toString()}`)
       .then(setStaff)
       .finally(() => setLoading(false));
   }, []);
@@ -79,13 +95,18 @@ export default function StaffPageClient() {
   async function handleCreate() {
     setCreating(true);
     try {
-      const newUser = await apiClient.post<StaffUser>('/clinic/staff', {
+      await apiClient.post<StaffUser>('/clinic/staff', {
         usernamePrefix,
         name,
         temporaryPassword,
         role,
       });
-      setStaff((prev) => [...prev, newUser]);
+      // Reload the BP list so the newly created Staff shows up with a BP record
+      const params = new URLSearchParams();
+      params.append('types', 'STAFF');
+      params.append('types', 'VET');
+      const updated = await apiClient.get<BusinessPartnerResponse[]>(`/clinic/business-partners?${params.toString()}`);
+      setStaff(updated);
       setCreateOpen(false);
       setUsernamePrefix('');
       setName('');
@@ -99,10 +120,40 @@ export default function StaffPageClient() {
   async function handleDeactivate(userId: string) {
     setBusy(userId);
     try {
-      const updated = await apiClient.delete<StaffUser>(`/clinic/staff/${userId}`);
-      setStaff((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+      await apiClient.delete<StaffUser>(`/clinic/staff/${userId}`);
+      // Reload BP list to reflect the updated active status
+      const params = new URLSearchParams();
+      params.append('types', 'STAFF');
+      params.append('types', 'VET');
+      const updated = await apiClient.get<BusinessPartnerResponse[]>(`/clinic/business-partners?${params.toString()}`);
+      setStaff(updated);
     } finally {
       setBusy(null);
+    }
+  }
+
+  function openResetDialog(user: StaffUser) {
+    setResetTarget(user);
+    setResetPwd('');
+    setResetPwdConfirm('');
+    setResetError(null);
+    setResetSuccess(false);
+  }
+
+  async function handleResetPassword() {
+    if (!resetTarget) return;
+    if (resetPwd.length < 8) { setResetError('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'); return; }
+    if (resetPwd !== resetPwdConfirm) { setResetError('รหัสผ่านไม่ตรงกัน'); return; }
+    setResetting(true);
+    setResetError(null);
+    try {
+      await apiClient.patch(`/clinic/staff/${resetTarget.id}/reset-password`, { newPassword: resetPwd });
+      setResetSuccess(true);
+      setTimeout(() => setResetTarget(null), 1500);
+    } catch (err: any) {
+      setResetError(err?.message ?? 'เกิดข้อผิดพลาด');
+    } finally {
+      setResetting(false);
     }
   }
 
@@ -128,6 +179,52 @@ export default function StaffPageClient() {
 
   return (
     <div className="space-y-6">
+      {/* ── Reset Password Dialog ──────────────────────────────────────── */}
+      <Dialog open={!!resetTarget} onOpenChange={(open) => { if (!open) setResetTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-primary" />
+              รีเซ็ตรหัสผ่าน — {resetTarget?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <p className="text-sm text-muted-foreground">
+              ตั้งรหัสผ่านชั่วคราวใหม่ พนักงานจะต้องเปลี่ยนรหัสผ่านในครั้งถัดไปที่ล็อกอิน
+            </p>
+            <div className="space-y-1.5">
+              <Label>รหัสผ่านใหม่</Label>
+              <Input
+                type="password"
+                value={resetPwd}
+                onChange={(e) => setResetPwd(e.target.value)}
+                placeholder="อย่างน้อย 8 ตัวอักษร"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>ยืนยันรหัสผ่าน</Label>
+              <Input
+                type="password"
+                value={resetPwdConfirm}
+                onChange={(e) => setResetPwdConfirm(e.target.value)}
+                placeholder="กรอกรหัสผ่านอีกครั้ง"
+              />
+            </div>
+            {resetError && <p className="text-sm text-destructive">{resetError}</p>}
+            {resetSuccess && <p className="text-sm text-green-600">✓ รีเซ็ตรหัสผ่านสำเร็จ</p>}
+            <Button
+              className="w-full"
+              onClick={handleResetPassword}
+              disabled={resetting || resetSuccess || !resetPwd || !resetPwdConfirm}
+            >
+              {resetting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              ยืนยันรีเซ็ตรหัสผ่าน
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
         <div className="flex items-center gap-2">
@@ -215,6 +312,7 @@ export default function StaffPageClient() {
             <TableRow>
               <TableHead>{t('name')}</TableHead>
               <TableHead>{t('username')}</TableHead>
+              <TableHead>BP Code</TableHead>
               <TableHead>{t('role')}</TableHead>
               <TableHead>{t('status')}</TableHead>
               <TableHead className="text-right">{tCommon('actions')}</TableHead>
@@ -223,45 +321,77 @@ export default function StaffPageClient() {
           <TableBody>
             {loading && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-8">
                   <Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" />
                 </TableCell>
               </TableRow>
             )}
             {!loading && staff.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-gray-400 py-8">
+                <TableCell colSpan={6} className="text-center text-gray-400 py-8">
                   {t('noStaff')}
                 </TableCell>
               </TableRow>
             )}
-            {staff.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell className="font-medium">{user.name}</TableCell>
-                <TableCell className="font-mono text-sm text-gray-600">{user.username ?? user.email ?? '-'}</TableCell>
-                <TableCell>{roleLabel(user.role)}</TableCell>
+            {staff.map((bp) => {
+              return (
+              <TableRow key={bp.id}>
+                <TableCell className="font-medium">{bp.name}</TableCell>
+                <TableCell className="font-mono text-sm text-gray-600">
+                  {bp.user?.username ?? bp.user?.email ?? bp.email ?? '-'}
+                </TableCell>
                 <TableCell>
-                  <Badge variant={statusVariant(user.status) as any}>{user.status}</Badge>
+                  <Link
+                    href={`/clinic/business-partners/${bp.id}/edit`}
+                    className="font-mono text-xs text-primary hover:underline"
+                  >
+                    {bp.code ?? 'View BP'}
+                  </Link>
+                </TableCell>
+                <TableCell>{roleLabel(bp.user?.role ?? bp.type)}</TableCell>
+                <TableCell>
+                  <Badge variant={statusVariant(bp.isActive ? 'ACTIVE' : 'INACTIVE') as any}>
+                    {bp.isActive ? 'ACTIVE' : 'INACTIVE'}
+                  </Badge>
                 </TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" disabled={busy === user.id}>
+                      <Button variant="ghost" size="sm" disabled={busy === bp.id}>
                         <MoreHorizontal className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
-                        className="text-red-600 focus:text-red-600"
-                        onClick={() => handleDeactivate(user.id)}
+                        className="flex items-center gap-2 cursor-pointer"
+                        onClick={() => router.push(`/clinic/business-partners/${bp.id}/edit`)}
                       >
-                        {t('deactivate')}
+                        <ExternalLink className="h-4 w-4" />
+                        ดูข้อมูล BP
                       </DropdownMenuItem>
+                      {bp.user && (
+                        <DropdownMenuItem
+                          className="flex items-center gap-2"
+                          onClick={() => openResetDialog({ id: bp.user!.id, name: bp.name, username: bp.user!.username, email: bp.user!.email, role: bp.user!.role, status: bp.user!.status })}
+                        >
+                          <KeyRound className="h-4 w-4" />
+                          รีเซ็ตรหัสผ่าน
+                        </DropdownMenuItem>
+                      )}
+                      {bp.user && (
+                        <DropdownMenuItem
+                          className="text-red-600 focus:text-red-600"
+                          onClick={() => handleDeactivate(bp.user!.id)}
+                        >
+                          {t('deactivate')}
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
               </TableRow>
-            ))}
+              );
+            })}
           </TableBody>
         </Table>
       </div>

@@ -14,9 +14,9 @@ interface LineItem {
 
 interface Invoice {
   id: string;
-  visitId: string;
-  patientId: string;
-  ownerUserId: string;
+  visitId: string | null;
+  patientId: string | null;
+  ownerUserId: string | null;
   subtotalMinor: number;
   taxRateBps: number;
   taxTotalMinor: number;

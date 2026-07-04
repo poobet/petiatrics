@@ -38,7 +38,7 @@ export default function ItemTable({ items, lowStockIds, onDeactivate }: Props) {
         </thead>
         <tbody className="divide-y">
           {items.map((item) => {
-            const isLow = item.itemType === ItemType.STOCKED_GOOD && lowStockIds.has(item.id);
+            const isLow = item.itemType === ItemType.INVENTORY && lowStockIds.has(item.id);
             return (
               <tr
                 key={item.id}
@@ -64,7 +64,7 @@ export default function ItemTable({ items, lowStockIds, onDeactivate }: Props) {
                   {item.baseSellingPrice.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </td>
                 <td className="px-4 py-3 text-right font-mono">
-                  {item.itemType === ItemType.STOCKED_GOOD ? (item as { quantity?: number }).quantity ?? 0 : '—'}
+                  {item.itemType === ItemType.INVENTORY ? (item as { quantity?: number }).quantity ?? 0 : '—'}
                 </td>
                 <td className="px-4 py-3">
                   <ItemStatusBadge isActive={item.isActive} />

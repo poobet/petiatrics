@@ -1,4 +1,4 @@
-import { ItemType } from '@petiatrics/types';
+import { ItemType, DefaultVatType, WhtRate, DispensingCategory } from '@petiatrics/types';
 import type { ItemFormValues } from './item-form-types';
 
 export interface ValidationError {
@@ -22,6 +22,17 @@ export function validateItemForm(values: ItemFormValues): ValidationError[] {
     errors.push({ field: 'baseSellingPrice', message: 'Selling price must be ≥ 0.' });
   }
 
+  // Validate Compliance / Taxes enums
+  if (!values.defaultVatType || !Object.values(DefaultVatType).includes(values.defaultVatType)) {
+    errors.push({ field: 'defaultVatType', message: 'Invalid Default VAT type selection.' });
+  }
+  if (!values.whtRate || !Object.values(WhtRate).includes(values.whtRate)) {
+    errors.push({ field: 'whtRate', message: 'Invalid Withholding Tax rate selection.' });
+  }
+  if (!values.dispensingCategory || !Object.values(DispensingCategory).includes(values.dispensingCategory)) {
+    errors.push({ field: 'dispensingCategory', message: 'Invalid Dispensing category selection.' });
+  }
+
   for (let i = 0; i < values.conversions.length; i++) {
     const c = values.conversions[i];
     if (!c.unitId) errors.push({ field: `conversions.${i}.unitId`, message: `Conversion ${i + 1}: unit is required.` });
@@ -40,6 +51,27 @@ export function validateItemForm(values: ItemFormValues): ValidationError[] {
     }
   }
 
+  if (values.branchSettings) {
+    for (let i = 0; i < values.branchSettings.length; i++) {
+      const bs = values.branchSettings[i];
+      if (!bs.branchId) {
+        errors.push({ field: `branchSettings.${i}.branchId`, message: `Branch setting ${i + 1}: Branch ID is required.` });
+      }
+      if (bs.retailPrice === '' || Number(bs.retailPrice) < 0) {
+        errors.push({
+          field: `branchSettings.${i}.retailPrice`,
+          message: `Branch setting ${i + 1}: Retail price must be ≥ 0.`,
+        });
+      }
+      if (bs.movingAverageCost === '' || Number(bs.movingAverageCost) < 0) {
+        errors.push({
+          field: `branchSettings.${i}.movingAverageCost`,
+          message: `Branch setting ${i + 1}: Moving average cost must be ≥ 0.`,
+        });
+      }
+    }
+  }
+
   return errors;
 }
 
@@ -54,19 +86,19 @@ export function toApiPayload(values: ItemFormValues) {
     genericName: values.genericName.trim() || null,
     isControlledSubstance: values.isControlledSubstance,
     requiresBatchAndExpiryTracking:
-      values.itemType === ItemType.STOCKED_GOOD ? values.requiresBatchAndExpiryTracking : false,
+      values.itemType === ItemType.INVENTORY ? values.requiresBatchAndExpiryTracking : false,
     standardCost: Number(values.standardCost) || 0,
     baseSellingPrice: Number(values.baseSellingPrice) || 0,
     isTaxInclusive: values.isTaxInclusive,
     defaultTaxCodeId: values.defaultTaxCodeId || null,
     defaultSupplierId:
-      values.itemType === ItemType.STOCKED_GOOD ? values.defaultSupplierId || null : null,
+      values.itemType === ItemType.INVENTORY ? values.defaultSupplierId || null : null,
     defaultDoctorFee:
       values.itemType === ItemType.SERVICE ? (Number(values.defaultDoctorFee) || null) : null,
     reorderPoint:
-      values.itemType === ItemType.STOCKED_GOOD ? Number(values.reorderPoint) || 0 : 0,
+      values.itemType === ItemType.INVENTORY ? Number(values.reorderPoint) || 0 : 0,
     minimumStock:
-      values.itemType === ItemType.STOCKED_GOOD ? Number(values.minimumStock) || 0 : 0,
+      values.itemType === ItemType.INVENTORY ? Number(values.minimumStock) || 0 : 0,
     barcode: values.barcode.trim() || null,
     conversions: values.conversions
       .filter((c) => c.unitId && Number(c.ratioToBase) > 0)
@@ -74,5 +106,17 @@ export function toApiPayload(values: ItemFormValues) {
     accessories: values.accessories
       .filter((a) => a.childProductId && Number(a.quantityRatio) > 0)
       .map((a) => ({ childProductId: a.childProductId, quantityRatio: Number(a.quantityRatio) })),
+    branchSettings: values.branchSettings?.map((s) => ({
+      branchId: s.branchId,
+      isActive: s.isActive,
+      retailPrice: Number(s.retailPrice) || 0,
+      movingAverageCost: Number(s.movingAverageCost) || 0,
+    })),
+    defaultVatType: values.defaultVatType,
+    whtRate: values.whtRate,
+    dispensingCategory: values.dispensingCategory,
+    revenueAccountId: values.revenueAccountId || null,
+    cogsAccountId: values.itemType === ItemType.INVENTORY ? (values.cogsAccountId || null) : null,
+    inventoryAssetAccountId: values.itemType === ItemType.INVENTORY ? (values.inventoryAssetAccountId || null) : null,
   };
 }

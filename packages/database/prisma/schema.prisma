@@ -87,8 +87,29 @@ enum StockMovementRefType {
 }
 
 enum ItemType {
-  STOCKED_GOOD
+  INVENTORY
   SERVICE
+  CONSUMABLE
+}
+
+enum DefaultVatType {
+  VAT_7
+  VAT_EXEMPT
+  NON_VAT
+}
+
+enum WhtRate {
+  WHT_0
+  WHT_1
+  WHT_3
+}
+
+enum DispensingCategory {
+  General_Retail
+  Household_Remedy
+  Dangerous_Drug
+  Specially_Controlled_Drug
+  Clinic_Use_Only
 }
 
 enum GLAccountType {
@@ -172,6 +193,7 @@ model Branch {
   userBranches      UserBranch[]
   branchStockBalances BranchStockBalance[]
   stockMovements    StockMovement[]
+  branchSettings    ProductBranchSetting[]
 
   @@index([clinicId])
   @@map("branches")
@@ -199,6 +221,7 @@ model User {
   email               String?    @unique
   username            String?    @unique
   passwordHash        String
+  pinHash             String?    // Hashed supervisor PIN for POS override authorization (bcrypt)
   role                Role
   status              UserStatus @default(PENDING)
   mustChangePassword  Boolean    @default(false)
@@ -438,8 +461,13 @@ model GLAccount {
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
+  // GL account relations for this model
   revenueForCategories ItemCategory[] @relation("RevenueGLAccount")
   expenseForCategories ItemCategory[] @relation("ExpenseGLAccount")
+  // Product-level GL relations
+  revenueProducts        Product[] @relation("ProductRevenueAccount")
+  cogsProducts           Product[] @relation("ProductCogsAccount")
+  inventoryAssetProducts Product[] @relation("ProductInventoryAssetAccount")
 
   @@map("gl_accounts")
 }
@@ -500,42 +528,56 @@ model ItemUnitConversion {
 // ─── Product (Inventory Item) ────────────────────────────────────────────────
 
 model Product {
-  id                             String    @id @default(uuid())
+  id                             String             @id @default(uuid())
   clinicId                       String
   code                           String
   sku                            String?
-  barcode                        String?   @unique
+  barcode                        String?            @unique
   name                           String
-  itemType                       ItemType  @default(STOCKED_GOOD)
+  itemType                       ItemType           @default(INVENTORY)
   categoryId                     String?
   baseUnitId                     String?
-  standardCost                   Decimal   @default(0) @db.Decimal(14, 4)
-  baseSellingPrice               Decimal   @default(0) @db.Decimal(14, 4)
-  isTaxInclusive                 Boolean   @default(false)
+  standardCost                   Decimal            @default(0) @db.Decimal(14, 4)
+  baseSellingPrice               Decimal            @default(0) @db.Decimal(14, 4)
+  isTaxInclusive                 Boolean            @default(false)
   defaultTaxCodeId               String?
+  // ── Compliance & Tax (POS Dynamic Engine) ────────────────────────────────
+  defaultVatType                 DefaultVatType     @default(VAT_7)
+  whtRate                        WhtRate            @default(WHT_0)
+  dispensingCategory             DispensingCategory @default(General_Retail)
+  // ── GL Account mappings ──────────────────────────────────────────────────
+  revenueAccountId               String?
+  cogsAccountId                  String?
+  inventoryAssetAccountId        String?
+  // ── Existing fields ──────────────────────────────────────────────────────
   genericName                    String?
-  isControlledSubstance          Boolean   @default(false)
-  requiresBatchAndExpiryTracking Boolean   @default(false)
+  isControlledSubstance          Boolean            @default(false)
+  requiresBatchAndExpiryTracking Boolean            @default(false)
   defaultSupplierId              String?
-  defaultDoctorFee               Decimal?  @db.Decimal(14, 4)
-  quantity                       Decimal   @default(0) @db.Decimal(10, 3)
-  reorderPoint                   Decimal   @default(0) @db.Decimal(10, 3)
-  minimumStock                   Decimal   @default(0) @db.Decimal(10, 3)
-  isActive                       Boolean   @default(true)
-  createdAt                      DateTime  @default(now())
-  updatedAt                      DateTime  @updatedAt
+  defaultDoctorFee               Decimal?           @db.Decimal(14, 4)
+  quantity                       Decimal            @default(0) @db.Decimal(10, 3)
+  reorderPoint                   Decimal            @default(0) @db.Decimal(10, 3)
+  minimumStock                   Decimal            @default(0) @db.Decimal(10, 3)
+  isActive                       Boolean            @default(true)
+  createdAt                      DateTime           @default(now())
+  updatedAt                      DateTime           @updatedAt
 
   clinic          Clinic              @relation(fields: [clinicId], references: [id])
   category        ItemCategory?       @relation(fields: [categoryId], references: [id])
   baseUnit        UnitOfMeasure?      @relation("BaseUnit", fields: [baseUnitId], references: [id])
   defaultTaxCode  TaxCode?            @relation("ProductDefaultTax", fields: [defaultTaxCodeId], references: [id])
   defaultSupplier BusinessPartner?    @relation("ProductDefaultSupplier", fields: [defaultSupplierId], references: [id])
+  // GL Account relations
+  revenueAccount        GLAccount?    @relation("ProductRevenueAccount", fields: [revenueAccountId], references: [id])
+  cogsAccount           GLAccount?    @relation("ProductCogsAccount", fields: [cogsAccountId], references: [id])
+  inventoryAssetAccount GLAccount?    @relation("ProductInventoryAssetAccount", fields: [inventoryAssetAccountId], references: [id])
   stockMovements      StockMovement[]
   branchStockBalances BranchStockBalance[]
   stockAlerts         StockAlert[]
   unitConversions     ItemUnitConversion[]
   parentProductAccessories       ProductAccessory[] @relation("ParentProductRelations")
   childProductAccessories        ProductAccessory[] @relation("ChildProductRelations")
+  branchSettings                 ProductBranchSetting[]
 
   @@unique([clinicId, code])
   @@unique([clinicId, sku])
@@ -571,6 +613,26 @@ model BranchStockBalance {
   @@index([clinicId, productId])
   @@index([productId])
   @@map("branch_stock_balances")
+}
+
+// ─── ProductBranchSetting (per-branch pricing & activation) ──────────────────
+
+model ProductBranchSetting {
+  id                String   @id @default(uuid())
+  productId         String
+  branchId          String
+  isActive          Boolean  @default(true)         // Whether item is available in this branch
+  retailPrice       Decimal  @db.Decimal(14, 4)     // Branch-specific selling price
+  movingAverageCost Decimal  @default(0) @db.Decimal(14, 4) // Branch-specific cost for COGS
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  branch  Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, branchId])
+  @@index([branchId])
+  @@map("product_branch_settings")
 }
 
 // ─── ClinicItemSequence (per-clinic SKU counter) ─────────────────────────────
@@ -649,11 +711,11 @@ model StockAlert {
 model Invoice {
   id            String        @id @default(uuid())
   clinicId      String
-  visitId       String        // MongoDB VisitRecord._id
-  patientId     String        // MongoDB PetProfile._id
-  ownerUserId   String
+  visitId       String?       // Nullable — null = Pet Shop Retail (OTC) context
+  patientId     String?       // Nullable — null = OTC checkout without patient link
+  ownerUserId   String?       // Nullable — null = OTC checkout
   subtotalMinor Int
-  taxRateBps    Int           @default(0) // basis points, e.g. 700 = 7%
+  taxRateBps    Int           @default(0)
   taxTotalMinor Int
   totalMinor    Int
   status        InvoiceStatus @default(DRAFT)
@@ -686,6 +748,8 @@ model InvoiceLineItem {
   quantity          Decimal             @db.Decimal(10, 3)
   unitPriceMinor    Int
   subtotalMinor     Int
+  vatRateBps        Int                 @default(0)    // basis points — context-driven (700=7%, 0=exempt)
+  vatTotalMinor     Int                 @default(0)    // per-line VAT amount in minor units
   sourceReferenceId String?
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)

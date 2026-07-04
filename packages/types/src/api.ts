@@ -1,4 +1,4 @@
-import { Role, Locale, BusinessPartnerType, BpRole, ItemType, GLAccountType } from './enums';
+import { Role, Locale, BusinessPartnerType, BpRole, ItemType, GLAccountType, DefaultVatType, WhtRate, DispensingCategory } from './enums';
 
 // ─── Response Envelope ───────────────────────────────────────────────────────
 
@@ -232,7 +232,9 @@ export interface BusinessPartnerListQuery {
 
 export interface BpUserSummary {
   id: string;
+  name: string;
   role: Role;
+  status: string;
   email: string | null;
   username: string | null;
 }
@@ -380,12 +382,35 @@ export interface ItemSummaryResponse {
   isControlledSubstance: boolean;
   requiresBatchAndExpiryTracking: boolean;
   defaultSupplier: { id: string; name: string } | null;
+  defaultVatType: DefaultVatType;
+  whtRate: WhtRate;
+  dispensingCategory: DispensingCategory;
+  revenueAccountId: string | null;
+  cogsAccountId: string | null;
+  inventoryAssetAccountId: string | null;
   isActive: boolean;
+}
+
+export interface BranchSettingResponse {
+  id: string;
+  branchId: string;
+  isActive: boolean;
+  retailPrice: number;
+  movingAverageCost: number;
+  updatedAt: string;
+}
+
+export interface BranchSettingPayload {
+  branchId: string;
+  isActive: boolean;
+  retailPrice: number;
+  movingAverageCost?: number;
 }
 
 export interface ItemDetailResponse extends ItemSummaryResponse {
   conversions: ItemUnitConversionResponse[];
   accessories?: ItemAccessoryResponse[];
+  branchSettings?: BranchSettingResponse[];
   genericName: string | null;
   defaultDoctorFee: number | null;
   defaultSupplierId: string | null;
@@ -407,6 +432,7 @@ export interface CreateItemPayload {
   baseUnitId: string;
   conversions?: ItemUnitConversionPayload[];
   accessories?: ItemAccessoryPayload[];
+  branchSettings?: BranchSettingPayload[];
   standardCost: number;
   baseSellingPrice: number;
   isTaxInclusive?: boolean;
@@ -419,6 +445,12 @@ export interface CreateItemPayload {
   reorderPoint?: number;
   minimumStock?: number;
   barcode?: string | null;
+  defaultVatType?: DefaultVatType;
+  whtRate?: WhtRate;
+  dispensingCategory?: DispensingCategory;
+  revenueAccountId?: string | null;
+  cogsAccountId?: string | null;
+  inventoryAssetAccountId?: string | null;
 }
 
 export interface UpdateItemPayload {
@@ -427,6 +459,7 @@ export interface UpdateItemPayload {
   baseUnitId?: string;
   conversions?: ItemUnitConversionPayload[];
   accessories?: ItemAccessoryPayload[];
+  branchSettings?: BranchSettingPayload[];
   standardCost?: number;
   baseSellingPrice?: number;
   isTaxInclusive?: boolean;
@@ -440,6 +473,12 @@ export interface UpdateItemPayload {
   minimumStock?: number;
   barcode?: string | null;
   isActive?: boolean;
+  defaultVatType?: DefaultVatType;
+  whtRate?: WhtRate;
+  dispensingCategory?: DispensingCategory;
+  revenueAccountId?: string | null;
+  cogsAccountId?: string | null;
+  inventoryAssetAccountId?: string | null;
 }
 
 export interface ListItemsQuery {

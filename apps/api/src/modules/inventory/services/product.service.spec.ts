@@ -3,7 +3,7 @@ import { ConflictException, NotFoundException, BadRequestException } from '@nest
 import { PrismaClient } from '@prisma/client';
 import { ProductService } from './product.service';
 import { SkuSequenceService } from './sku-sequence.service';
-import type { CreateProductDto } from '../dto/create-product.dto';
+import { CreateProductDto } from '../dto/create-product.dto';
 import { ItemType } from '@petiatrics/types';
 
 // Make scopedPrisma pass-through so tests work against the same mock prisma object
@@ -32,6 +32,8 @@ function buildPrismaMock() {
     businessPartner: { findFirst: jest.fn() },
     itemUnitConversion: { deleteMany: jest.fn() },
     productAccessory: { deleteMany: jest.fn() },
+    productBranchSetting: { upsert: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
+    $transaction: jest.fn().mockImplementation((ops) => Promise.all(ops)),
   };
 }
 
@@ -43,7 +45,7 @@ function validCreateDto(overrides: Partial<CreateProductDto> = {}): CreateProduc
   return {
     code: 'MED-001',
     name: 'Test Medication',
-    itemType: ItemType.STOCKED_GOOD,
+    itemType: ItemType.INVENTORY,
     categoryId: CATEGORY_ID,
     baseUnitId: UNIT_ID,
     standardCost: 100,
@@ -143,8 +145,22 @@ describe('ProductService', () => {
     beforeEach(() => {
       prisma.product.count.mockResolvedValue(2);
       prisma.product.findMany.mockResolvedValue([
-        { id: 'p1', name: 'Medication A', itemType: 'STOCKED_GOOD', isActive: true },
-        { id: 'p2', name: 'Service B', itemType: 'SERVICE', isActive: true },
+        {
+          id: 'p1',
+          name: 'Medication A',
+          itemType: 'INVENTORY',
+          isActive: true,
+          baseSellingPrice: 100,
+          branchSettings: [],
+        },
+        {
+          id: 'p2',
+          name: 'Service B',
+          itemType: 'SERVICE',
+          isActive: true,
+          baseSellingPrice: 200,
+          branchSettings: [],
+        },
       ]);
     });
 
@@ -186,6 +202,37 @@ describe('ProductService', () => {
       await service.findAll(CLINIC_ID, 'branch-1', { includeInactive: true });
       const call = (prisma.product.findMany as jest.Mock).mock.calls[0][0];
       expect(call.where.isActive).toBeUndefined();
+    });
+
+    it('overrides baseSellingPrice and isActive when branch setting is present', async () => {
+      prisma.product.findMany.mockResolvedValue([
+        {
+          id: 'p1',
+          name: 'Medication A',
+          itemType: 'INVENTORY',
+          isActive: true,
+          baseSellingPrice: 100,
+          branchSettings: [{ isActive: true, retailPrice: 150, movingAverageCost: 0 }],
+        },
+      ]);
+      const result = await service.findAll(CLINIC_ID, 'branch-1', {});
+      expect(result.items[0].baseSellingPrice).toBe(150);
+      expect(result.items[0].isActive).toBe(true);
+    });
+
+    it('excludes branch-inactive products when includeInactive=false', async () => {
+      prisma.product.findMany.mockResolvedValue([
+        {
+          id: 'p1',
+          name: 'Medication A',
+          itemType: 'INVENTORY',
+          isActive: true,
+          baseSellingPrice: 100,
+          branchSettings: [{ isActive: false, retailPrice: 150, movingAverageCost: 0 }],
+        },
+      ]);
+      const result = await service.findAll(CLINIC_ID, 'branch-1', {});
+      expect(result.items).toHaveLength(0);
     });
   });
 
@@ -259,8 +306,8 @@ describe('ProductService', () => {
   describe('getLowStock()', () => {
     it('returns only stocked goods at or below threshold via branch balance', async () => {
       prisma.branchStockBalance.findMany.mockResolvedValue([
-        { productId: 'p1', quantity: 3, product: { id: 'p1', reorderPoint: 5, minimumStock: 0, itemType: 'STOCKED_GOOD', isActive: true } },
-        { productId: 'p2', quantity: 10, product: { id: 'p2', reorderPoint: 5, minimumStock: 0, itemType: 'STOCKED_GOOD', isActive: true } },
+        { productId: 'p1', quantity: 3, product: { id: 'p1', reorderPoint: 5, minimumStock: 0, itemType: 'INVENTORY', isActive: true } },
+        { productId: 'p2', quantity: 10, product: { id: 'p2', reorderPoint: 5, minimumStock: 0, itemType: 'INVENTORY', isActive: true } },
       ]);
       const result = await service.getLowStock(CLINIC_ID, 'branch-1');
       expect(result).toHaveLength(1);

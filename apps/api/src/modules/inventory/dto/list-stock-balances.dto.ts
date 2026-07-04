@@ -1,9 +1,9 @@
-import { IsOptional, IsUUID, IsBoolean, IsNumber, Min } from 'class-validator';
+import { IsOptional, IsUUID, IsBoolean, IsNumber, Min, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class ListStockBalancesDto {
   @IsOptional()
-  @IsUUID()
+  @IsString()
   branchId?: string;
 
   @IsOptional()

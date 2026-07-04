@@ -10,6 +10,7 @@ import { Billing } from '../../../../../documents/display/src/app/pages/Billing'
 import { MedicalRecords } from '../../../../../documents/display/src/app/pages/MedicalRecords';
 import { Staff } from '../../../../../documents/display/src/app/pages/Staff';
 import { DashboardLayout } from '../../../../../documents/display/src/app/layouts/DashboardLayout';
+import { InventoryProductEdit } from '../../../../../documents/display/src/app/pages/InventoryProductEdit';
 
 const meta = {
   title: 'Pages/Figma Mockups',
@@ -97,6 +98,18 @@ export const StaffPage: Story = {
       <Routes>
         <Route element={<DashboardLayout />}>
           <Route path="/staff" element={<Staff />} />
+        </Route>
+      </Routes>
+    </MemoryRouter>
+  ),
+};
+
+export const InventoryProductEditPage: Story = {
+  render: () => (
+    <MemoryRouter initialEntries={['/inventory/products/5b39f840-fe0e-44dc-833b-da80fbe57b30/edit']}>
+      <Routes>
+        <Route element={<DashboardLayout />}>
+          <Route path="/inventory/products/:id/edit" element={<InventoryProductEdit />} />
         </Route>
       </Routes>
     </MemoryRouter>

@@ -6,7 +6,7 @@ import { test, expect, type APIRequestContext, type Page } from '@playwright/tes
  * Prerequisites:
  *   - App running at PLAYWRIGHT_BASE_URL (default http://localhost:3000)
  *   - Seeded clinic with a CLINIC_OWNER user
- *   - At least 2 items seeded (1 STOCKED_GOOD, 1 SERVICE)
+ *   - At least 2 items seeded (1 INVENTORY, 1 SERVICE)
  *
  * To run:
  *   npx playwright test --project=chromium test/e2e/inventory-workspace.spec.ts
