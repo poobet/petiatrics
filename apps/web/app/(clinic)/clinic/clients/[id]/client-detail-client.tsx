@@ -6,24 +6,7 @@ import { apiClient, ApiError } from '@/lib/api-client';
 import { Button } from '@petiatrics/ui/button';
 import { Badge } from '@petiatrics/ui/badge';
 import { usePermission } from '@/lib/use-permission';
-
-interface Client {
-  id: string;
-  name: string;
-  email: string | null;
-  businessPartners?: {
-    id: string;
-    code: string | null;
-    phone: string | null;
-    lineId: string | null;
-    taxId: string | null;
-    addressLine1: string | null;
-    subDistrict: string | null;
-    district: string | null;
-    province: string | null;
-    zipcode: string | null;
-  }[];
-}
+import { BusinessPartnerResponse } from '@petiatrics/types';
 
 interface Pet {
   _id: string;
@@ -36,7 +19,7 @@ interface Pet {
 
 export default function ClientDetailClient({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const [client, setClient] = useState<Client | null>(null);
+  const [bp, setBp] = useState<BusinessPartnerResponse | null>(null);
   const [pets, setPets] = useState<Pet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,12 +29,15 @@ export default function ClientDetailClient({ params }: { params: Promise<{ id: s
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [clientData, petsData] = await Promise.all([
-          apiClient.get<Client>(`/clinic/clients/${id}`),
-          apiClient.get<Pet[]>(`/patients?ownerUserId=${id}`),
-        ]);
-        setClient(clientData);
-        setPets(petsData);
+        const bpData = await apiClient.get<BusinessPartnerResponse>(`/clinic/business-partners/${id}`);
+        setBp(bpData);
+
+        // Pets are still linked via ownerUserId (User table ID)
+        // bp.user contains the linked user record
+        if (bpData.user?.id) {
+          const petsData = await apiClient.get<Pet[]>(`/patients?ownerUserId=${bpData.user.id}`);
+          setPets(petsData);
+        }
       } catch (err) {
         setError(err instanceof ApiError ? err.message : 'Failed to load details');
       } finally {
@@ -62,25 +48,21 @@ export default function ClientDetailClient({ params }: { params: Promise<{ id: s
   }, [id]);
 
   if (loading) return <p className="text-muted-foreground text-sm">Loading…</p>;
-  if (error || !client) return <p className="text-destructive text-sm">{error || 'Client not found'}</p>;
-
-  const bp = client.businessPartners?.[0];
+  if (error || !bp) return <p className="text-destructive text-sm">{error || 'Client not found'}</p>;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">{client.name}</h1>
+          <h1 className="text-2xl font-semibold">{bp.name}</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
-            BP Code: <span className="font-medium text-foreground">{bp?.code ?? '—'}</span>
-            {bp && (
-              <Link
-                href={`/clinic/business-partners/${bp.id}/edit`}
-                className="ml-2 text-primary hover:underline text-xs"
-              >
-                View BP Record →
-              </Link>
-            )}
+            BP Code: <span className="font-medium text-foreground">{bp.code ?? '—'}</span>
+            <Link
+              href={`/clinic/business-partners/${bp.id}/edit`}
+              className="ml-2 text-primary hover:underline text-xs"
+            >
+              View BP Record →
+            </Link>
           </p>
         </div>
         <Link href="/clinic/clients">
@@ -94,24 +76,24 @@ export default function ClientDetailClient({ params }: { params: Promise<{ id: s
           <div className="space-y-3 text-sm">
             <div>
               <span className="text-muted-foreground block">Email</span>
-              <span className="font-medium">{client.email ?? '—'}</span>
+              <span className="font-medium">{bp.email ?? '—'}</span>
             </div>
             <div>
               <span className="text-muted-foreground block">Phone</span>
-              <span className="font-medium">{bp?.phone ?? '—'}</span>
+              <span className="font-medium">{bp.phone ?? '—'}</span>
             </div>
             <div>
               <span className="text-muted-foreground block">Line ID</span>
-              <span className="font-medium">{bp?.lineId ?? '—'}</span>
+              <span className="font-medium">{bp.lineId ?? '—'}</span>
             </div>
             <div>
               <span className="text-muted-foreground block">Tax ID</span>
-              <span className="font-medium">{bp?.taxId ?? '—'}</span>
+              <span className="font-medium">{bp.taxId ?? '—'}</span>
             </div>
             <div>
               <span className="text-muted-foreground block">Address</span>
               <span className="font-medium whitespace-pre-line">
-                {bp?.addressLine1 ? (
+                {bp.addressLine1 ? (
                   <>
                     {bp.addressLine1}
                     {(bp.subDistrict || bp.district || bp.province) && '\n'}
@@ -130,7 +112,7 @@ export default function ClientDetailClient({ params }: { params: Promise<{ id: s
           <div className="flex justify-between items-center">
             <h2 className="font-semibold text-lg">Patients / Pets</h2>
             {canEdit && (
-              <Link href={`/clinic/patients/new?ownerId=${id}`}>
+              <Link href={`/clinic/patients/new?ownerId=${bp.user?.id}`}>
                 <Button size="sm">+ Add Pet</Button>
               </Link>
             )}

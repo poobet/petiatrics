@@ -149,11 +149,18 @@ export class BusinessPartnerService {
   async list(clinicId: string, query: ListBusinessPartnersDto, callerIsManager: boolean): Promise<BusinessPartnerResponse[]> {
     const showInactive = callerIsManager && query.includeInactive === true;
 
+    // `types` (array) takes precedence over legacy `type` (single value)
+    const typeFilter = query.types?.length
+      ? { type: { in: query.types as any[] } }
+      : query.type
+        ? { type: query.type as any }
+        : {};
+
     const bps = await this.prisma.businessPartner.findMany({
       where: {
         clinicId,
         ...(showInactive ? {} : { isActive: true }),
-        ...(query.type ? { type: query.type as any } : {}),
+        ...typeFilter,
         ...(query.search
           ? { name: { contains: query.search, mode: 'insensitive' as const } }
           : {}),
@@ -164,6 +171,7 @@ export class BusinessPartnerService {
 
     return bps.map((bp) => mapBpToResponse(bp as any));
   }
+
 
   async findByIdForManagement(id: string, clinicId: string) {
     return this.prisma.businessPartner.findFirst({

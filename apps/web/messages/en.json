@@ -597,6 +597,7 @@
     "new": "Add Business Partner",
     "edit": "Edit Business Partner",
     "name": "Name",
+    "code": "BP Code",
     "type": "Type",
     "linkedUser": "Linked User",
     "noPartners": "No business partners found.",
