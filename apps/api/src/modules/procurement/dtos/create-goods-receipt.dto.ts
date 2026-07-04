@@ -14,6 +14,10 @@ export class GoodsReceiptLineDto {
   @IsNotEmpty()
   productId!: string;
 
+  @IsUUID()
+  @IsOptional()
+  uomId?: string;
+
   @IsNumber()
   @IsPositive()
   quantityReceived!: number;

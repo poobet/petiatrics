@@ -34,7 +34,7 @@ export class PurchaseOrderService {
     });
 
     // Auto-approve if Manager, Owner, or Vet
-    const canAutoApprove = [Role.SUPER_ADMIN, Role.CLINIC_OWNER, Role.VET].includes(userRole);
+    const canAutoApprove = ([Role.SUPER_ADMIN, Role.CLINIC_OWNER, Role.VET] as Role[]).includes(userRole);
     const status = canAutoApprove ? PurchaseOrderStatus.APPROVED : PurchaseOrderStatus.DRAFT;
 
     return this.prisma.purchaseOrder.create({
@@ -118,7 +118,7 @@ export class PurchaseOrderService {
   }
 
   async approve(clinicId: string, userId: string, userRole: Role, id: string) {
-    if (![Role.SUPER_ADMIN, Role.CLINIC_OWNER, Role.VET].includes(userRole)) {
+    if (!([Role.SUPER_ADMIN, Role.CLINIC_OWNER, Role.VET] as Role[]).includes(userRole)) {
       throw new ForbiddenException('Only managers, owners or vets can approve POs');
     }
 
@@ -145,8 +145,8 @@ export class PurchaseOrderService {
       where: { id, clinicId },
     });
     if (!po) throw new NotFoundException(`Purchase Order with ID ${id} not found`);
-    if ([PurchaseOrderStatus.CLOSED, PurchaseOrderStatus.FULLY_RECEIVED, PurchaseOrderStatus.PARTIALLY_RECEIVED].includes(po.status)) {
-      throw new ForbiddenException(`Cannot cancel a Purchase Order that has been received or closed`);
+    if (([PurchaseOrderStatus.CLOSED, PurchaseOrderStatus.FULLY_RECEIVED, PurchaseOrderStatus.PARTIALLY_RECEIVED] as PurchaseOrderStatus[]).includes(po.status)) {
+      throw new ForbiddenException('Cannot cancel a Purchase Order that has been received or closed');
     }
 
     return this.prisma.purchaseOrder.update({
