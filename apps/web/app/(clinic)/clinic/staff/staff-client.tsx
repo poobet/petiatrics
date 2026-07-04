@@ -328,7 +328,7 @@ export default function StaffPageClient() {
                 <TableCell>
                   {bp ? (
                     <Link
-                      href={`/clinic/business-partners/${bp.id}`}
+                      href={`/clinic/business-partners/${bp.id}/edit`}
                       className="font-mono text-xs text-primary hover:underline"
                     >
                       {bp.code ?? 'View BP'}
@@ -352,7 +352,7 @@ export default function StaffPageClient() {
                       {bp && (
                         <DropdownMenuItem
                           className="flex items-center gap-2 cursor-pointer"
-                          onClick={() => router.push(`/clinic/business-partners/${bp.id}`)}
+                          onClick={() => router.push(`/clinic/business-partners/${bp.id}/edit`)}
                         >
                           <ExternalLink className="h-4 w-4" />
                           ดูข้อมูล BP

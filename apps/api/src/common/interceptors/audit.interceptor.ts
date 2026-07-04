@@ -21,7 +21,7 @@ export interface AuditMetadata {
   /** The Mongoose/Prisma collection or resource name, e.g. 'visit_records' */
   entity: string;
   /** The operation performed (maps to AuditOperation enum in the schema) */
-  operation: 'create' | 'update' | 'delete' | 'void' | 'amend' | 'status_change';
+  operation: 'create' | 'update' | 'delete' | 'void' | 'amend' | 'status_change' | 'password_reset';
   /**
    * Optional function that extracts the entity ID from the response payload.
    * Defaults to `(result) => result?.id ?? result?._id?.toString()`.

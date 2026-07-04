@@ -88,7 +88,7 @@ export default async function EditItemPage({ params }: PageProps) {
   if (!item) notFound();
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6">
       <ItemFormHeader
         title="Edit Item"
         backHref="/clinic/inventory"

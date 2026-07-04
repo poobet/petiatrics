@@ -17,18 +17,28 @@ import AccessoriesTab from './tabs/accessories-tab';
 import BranchSettingsTab from './tabs/branch-settings-tab';
 import { apiClient, ApiError } from '../../lib/api-client';
 import { usePermission } from '../../lib/use-permission';
+import {
+  Info,
+  Scale,
+  DollarSign,
+  ShieldCheck,
+  Package,
+  Layers,
+  FileSpreadsheet,
+  GitBranch,
+} from 'lucide-react';
 
 type TabKey = 'general' | 'units' | 'financials' | 'compliance' | 'stock' | 'clinic' | 'accessories' | 'branchSettings';
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: 'general', label: 'General' },
-  { key: 'units', label: 'Units' },
-  { key: 'financials', label: 'Financials/GL' },
-  { key: 'compliance', label: 'Compliance/Tax' },
-  { key: 'stock', label: 'Stock' },
-  { key: 'accessories', label: 'Accessories/Bundle' },
-  { key: 'clinic', label: 'Clinic Details' },
-  { key: 'branchSettings', label: 'Branch Pricing' },
+const TABS: { key: TabKey; label: string; icon: any }[] = [
+  { key: 'general', label: 'General Info', icon: Info },
+  { key: 'units', label: 'UoM & Units', icon: Scale },
+  { key: 'financials', label: 'Financials/GL', icon: DollarSign },
+  { key: 'compliance', label: 'Compliance/Tax', icon: ShieldCheck },
+  { key: 'stock', label: 'Stock Levels', icon: Package },
+  { key: 'accessories', label: 'Accessories', icon: Layers },
+  { key: 'clinic', label: 'Clinic Details', icon: FileSpreadsheet },
+  { key: 'branchSettings', label: 'Branch Pricing', icon: GitBranch },
 ];
 
 interface Props {
@@ -167,36 +177,50 @@ export default function ItemForm({ refs, initial }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate>
+    <form onSubmit={handleSubmit} noValidate className="space-y-6">
       {!canWrite && (
-        <div className="mb-4 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+        <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700 flex items-center gap-2">
           ⚠ You have read-only access to product master data.
         </div>
       )}
-      {/* Tab navigation */}
-      <div className="flex gap-1 p-1 bg-gray-100/70 rounded-lg mb-6 overflow-x-auto whitespace-nowrap max-w-full scrollbar-none">
+      
+      {/* Navigation Tabs (Horizontal Top Bar for Premium ERP UX) */}
+      <div className="flex w-full gap-1.5 p-1.5 bg-slate-50/70 rounded-2xl border border-slate-200/80">
         {TABS.filter((t) => {
           if ((t.key === 'stock' || t.key === 'accessories') && !isEdit) return false;
           if (t.key === 'branchSettings' && !isEdit) return false;
           return true;
-        }).map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setActiveTab(t.key)}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-all shrink-0 ${
-              activeTab === t.key
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-white/40'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+        }).map((t) => {
+          const Icon = t.icon;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setActiveTab(t.key)}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                activeTab === t.key
+                  ? 'bg-white text-blue-600 shadow-sm border border-slate-200/60'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
+              }`}
+            >
+              <Icon className={`w-4 h-4 shrink-0 ${activeTab === t.key ? 'text-blue-600' : 'text-slate-400'}`} />
+              {t.label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Tab content */}
-      <div className="min-h-75">
+      {/* Tab content card */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm min-h-75">
+        <div className="border-b border-slate-100 pb-4 mb-5">
+          <h3 className="text-base font-semibold text-slate-800">
+            {TABS.find(t => t.key === activeTab)?.label}
+          </h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Manage specific details related to the item's {activeTab} profile.
+          </p>
+        </div>
+
         {activeTab === 'general' && (
           <GeneralTab values={values} errors={fieldErrors} refs={refs} onChange={handleChange} isEdit={isEdit} />
         )}
@@ -230,17 +254,17 @@ export default function ItemForm({ refs, initial }: Props) {
 
       {/* Submit error */}
       {submitError && (
-        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+        <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center gap-2">
           {submitError}
         </div>
       )}
 
       {/* Actions */}
-      <div className="mt-6 flex justify-end gap-3">
+      <div className="flex justify-end gap-3 border-t border-slate-100 pt-5">
         <button
           type="button"
           onClick={() => router.back()}
-          className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+          className="px-4 py-2.5 text-sm border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors"
         >
           {canWrite ? 'Cancel' : 'Back'}
         </button>
@@ -248,7 +272,7 @@ export default function ItemForm({ refs, initial }: Props) {
           <button
             type="submit"
             disabled={saving}
-            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-60"
+            className="px-4 py-2.5 text-sm bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl shadow-sm transition-all disabled:opacity-60"
           >
             {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Item'}
           </button>
@@ -257,3 +281,4 @@ export default function ItemForm({ refs, initial }: Props) {
     </form>
   );
 }
+

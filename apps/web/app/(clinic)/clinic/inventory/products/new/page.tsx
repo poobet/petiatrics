@@ -67,7 +67,7 @@ export default async function NewItemPage() {
   const refs = await getReferenceData();
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6">
       <ItemFormHeader title="Add Item" backHref="/clinic/inventory" />
       <div className="bg-white rounded-lg border p-6">
         <ItemForm refs={refs} />

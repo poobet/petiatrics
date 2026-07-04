@@ -75,7 +75,7 @@ export default function ClientDetailClient({ params }: { params: Promise<{ id: s
             BP Code: <span className="font-medium text-foreground">{bp?.code ?? '—'}</span>
             {bp && (
               <Link
-                href={`/clinic/business-partners/${bp.id}`}
+                href={`/clinic/business-partners/${bp.id}/edit`}
                 className="ml-2 text-primary hover:underline text-xs"
               >
                 View BP Record →

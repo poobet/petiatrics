@@ -1,7 +1,7 @@
 import createNextIntlPlugin from 'next-intl/plugin';
 const withNextIntl = createNextIntlPlugin('./i18n.ts');
 const nextConfig = {
-    // Enable standalone output for Docker deployment
+    // Enable standalone output for Docker deployment (reload cache)
     output: 'standalone',
     // Transpile internal workspace packages
     transpilePackages: ['@petiatrics/ui', '@petiatrics/types', '@petiatrics/config'],
