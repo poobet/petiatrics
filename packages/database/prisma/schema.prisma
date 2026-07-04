@@ -155,6 +155,10 @@ model Clinic {
   bpGroups            BpGroup[]
   clinicItemSequence  ClinicItemSequence?
   rolePermissions     ClinicRolePermission[]
+  purchaseOrders      PurchaseOrder[]
+  goodsReceipts       GoodsReceipt[]
+  purchaseInvoices    PurchaseInvoice[]
+  supplierPayments    SupplierPayment[]
 
   @@map("clinics")
 }
@@ -172,6 +176,7 @@ model Branch {
   userBranches      UserBranch[]
   branchStockBalances BranchStockBalance[]
   stockMovements    StockMovement[]
+  goodsReceiptLines GoodsReceiptLine[]
 
   @@index([clinicId])
   @@map("branches")
@@ -215,6 +220,11 @@ model User {
   appointments            Appointment[]    @relation("VetAppointments")
   stockMovements          StockMovement[]  @relation("StockMovementActor")
   approvedStockMovements  StockMovement[]  @relation("StockMovementApprover")
+  createdPOs              PurchaseOrder[] @relation("POCreatedBy")
+  approvedPOs             PurchaseOrder[] @relation("POApprovedBy")
+  goodsReceipts           GoodsReceipt[]
+  purchaseInvoices        PurchaseInvoice[]
+  supplierPayments        SupplierPayment[]
 
   @@index([clinicId])
   @@index([email])
@@ -312,6 +322,9 @@ model BusinessPartner {
   activeRoles    BpRoleActive[]
   contacts       BpContact[]
   defaultForProducts Product[]   @relation("ProductDefaultSupplier")
+  purchaseOrders   PurchaseOrder[]
+  purchaseInvoices PurchaseInvoice[]
+  supplierPayments SupplierPayment[]
 
   @@unique([clinicId, code])
   @@unique([clinicId, linkedUserId])
@@ -475,6 +488,8 @@ model UnitOfMeasure {
 
   baseUnitProducts   Product[]            @relation("BaseUnit")
   itemUnitConversions ItemUnitConversion[]
+  purchaseOrderLines PurchaseOrderLine[]
+  goodsReceiptLines   GoodsReceiptLine[]
 
   @@map("units_of_measure")
 }
@@ -536,6 +551,9 @@ model Product {
   unitConversions     ItemUnitConversion[]
   parentProductAccessories       ProductAccessory[] @relation("ParentProductRelations")
   childProductAccessories        ProductAccessory[] @relation("ChildProductRelations")
+  purchaseOrderLines PurchaseOrderLine[]
+  goodsReceiptLines   GoodsReceiptLine[]
+  purchaseInvoiceLines PurchaseInvoiceLine[]
 
   @@unique([clinicId, code])
   @@unique([clinicId, sku])
@@ -725,4 +743,234 @@ model ClinicRolePermission {
 
   @@unique([clinicId, role])
   @@map("clinic_role_permissions")
+}
+
+// ─── Procurement Enums ────────────────────────────────────────────────────────
+
+enum PurchaseOrderStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  PARTIALLY_RECEIVED
+  FULLY_RECEIVED
+  CANCELLED
+  CLOSED
+}
+
+enum GoodsReceiptStatus {
+  DRAFT
+  COMMITTED
+  CANCELLED
+}
+
+enum PurchaseInvoiceStatus {
+  DRAFT
+  POSTED
+  PARTIALLY_PAID
+  PAID
+  VOIDED
+}
+
+// ─── Procurement Models ───────────────────────────────────────────────────────
+
+model PurchaseOrder {
+  id              String              @id @default(uuid())
+  clinicId        String
+  supplierId      String
+  code            String              // e.g., "PO-2026-0001"
+  status          PurchaseOrderStatus @default(DRAFT)
+  orderDate       DateTime            @default(now())
+  creditTermDays  Int                 @default(0)
+  notes           String?             @db.Text
+  subtotalMinor   Int                 @default(0)
+  taxTotalMinor   Int                 @default(0)
+  totalMinor      Int                 @default(0)
+  createdById     String
+  approvedById    String?
+  approvedAt      DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  clinic          Clinic            @relation(fields: [clinicId], references: [id])
+  supplier        BusinessPartner   @relation(fields: [supplierId], references: [id])
+  createdBy       User              @relation("POCreatedBy", fields: [createdById], references: [id])
+  approvedBy      User?             @relation("POApprovedBy", fields: [approvedById], references: [id])
+  lines           PurchaseOrderLine[]
+  goodsReceipts   GoodsReceipt[]
+  purchaseInvoices PurchaseInvoice[]
+
+  @@unique([clinicId, code])
+  @@index([clinicId])
+  @@index([supplierId])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderLine {
+  id                String   @id @default(uuid())
+  purchaseOrderId   String
+  productId         String
+  uomId             String?  // Alt UoM if ordered in alternate units
+  quantityOrdered   Decimal  @db.Decimal(10, 3)
+  quantityReceived  Decimal  @default(0) @db.Decimal(10, 3)
+  quantityInvoiced  Decimal  @default(0) @db.Decimal(10, 3)
+  unitPriceMinor    Int
+  subtotalMinor     Int
+  taxRateBps        Int      @default(0) // e.g. 700 = 7%
+  taxTotalMinor     Int      @default(0)
+  totalMinor        Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  purchaseOrder     PurchaseOrder      @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product           Product            @relation(fields: [productId], references: [id])
+  uom               UnitOfMeasure?     @relation(fields: [uomId], references: [id])
+  receiptLines      GoodsReceiptLine[]
+  invoiceLines      PurchaseInvoiceLine[]
+
+  @@index([purchaseOrderId])
+  @@index([productId])
+  @@map("purchase_order_lines")
+}
+
+model GoodsReceipt {
+  id              String             @id @default(uuid())
+  clinicId        String
+  purchaseOrderId String?            // Optional for ad-hoc receipt
+  code            String             // e.g., "GR-2026-0001"
+  status          GoodsReceiptStatus @default(DRAFT)
+  receivedDate    DateTime           @default(now())
+  receivedById    String
+  overrideReason  String?            // If over-received
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  clinic          Clinic             @relation(fields: [clinicId], references: [id])
+  purchaseOrder   PurchaseOrder?     @relation(fields: [purchaseOrderId], references: [id])
+  receivedBy      User               @relation(fields: [receivedById], references: [id])
+  lines           GoodsReceiptLine[]
+
+  @@unique([clinicId, code])
+  @@index([clinicId])
+  @@index([purchaseOrderId])
+  @@map("goods_receipts")
+}
+
+model GoodsReceiptLine {
+  id              String   @id @default(uuid())
+  goodsReceiptId  String
+  poLineId        String?
+  branchId        String   // Branch-specific delivery location
+  productId       String
+  uomId           String?
+  quantityReceived Decimal  @db.Decimal(10, 3)
+  lotNumber       String?
+  expiryDate      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  goodsReceipt    GoodsReceipt       @relation(fields: [goodsReceiptId], references: [id], onDelete: Cascade)
+  poLine          PurchaseOrderLine? @relation(fields: [poLineId], references: [id])
+  branch          Branch             @relation(fields: [branchId], references: [id])
+  product         Product            @relation(fields: [productId], references: [id])
+  uom             UnitOfMeasure?     @relation(fields: [uomId], references: [id])
+  invoiceLines    PurchaseInvoiceLine[]
+
+  @@index([goodsReceiptId])
+  @@index([branchId])
+  @@index([productId])
+  @@map("goods_receipt_lines")
+}
+
+model PurchaseInvoice {
+  id              String                @id @default(uuid())
+  clinicId        String
+  supplierId      String
+  purchaseOrderId String?
+  invoiceNumber   String                // Vendor's invoice number
+  code            String                // e.g., "PI-2026-0001"
+  status          PurchaseInvoiceStatus @default(DRAFT)
+  invoiceDate     DateTime
+  dueDate         DateTime
+  subtotalMinor   Int                   @default(0)
+  taxTotalMinor   Int                   @default(0)
+  totalMinor      Int                   @default(0)
+  amountPaidMinor Int                   @default(0)
+  createdById     String
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  clinic          Clinic                @relation(fields: [clinicId], references: [id])
+  supplier        BusinessPartner       @relation(fields: [supplierId], references: [id])
+  purchaseOrder   PurchaseOrder?        @relation(fields: [purchaseOrderId], references: [id])
+  createdBy       User                  @relation(fields: [createdById], references: [id])
+  lines           PurchaseInvoiceLine[]
+  allocations     SupplierPaymentAllocation[]
+
+  @@unique([clinicId, code])
+  @@index([clinicId])
+  @@index([supplierId])
+  @@map("purchase_invoices")
+}
+
+model PurchaseInvoiceLine {
+  id                String   @id @default(uuid())
+  purchaseInvoiceId String
+  poLineId          String?
+  grLineId          String?
+  productId         String
+  quantity          Decimal  @db.Decimal(10, 3)
+  unitPriceMinor    Int
+  subtotalMinor     Int
+  taxRateBps        Int      @default(0)
+  taxTotalMinor     Int      @default(0)
+  totalMinor        Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  purchaseInvoice   PurchaseInvoice    @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Cascade)
+  poLine            PurchaseOrderLine? @relation(fields: [poLineId], references: [id])
+  grLine            GoodsReceiptLine?  @relation(fields: [grLineId], references: [id])
+  product           Product            @relation(fields: [productId], references: [id])
+
+  @@index([purchaseInvoiceId])
+  @@map("purchase_invoice_lines")
+}
+
+model SupplierPayment {
+  id              String   @id @default(uuid())
+  clinicId        String
+  supplierId      String
+  code            String   // e.g., "SP-2026-0001"
+  paymentDate     DateTime @default(now())
+  paymentMethod   String   // e.g., "BANK_TRANSFER", "CASH"
+  referenceNumber String?
+  amountMinor     Int
+  createdById     String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  clinic          Clinic   @relation(fields: [clinicId], references: [id])
+  supplier        BusinessPartner @relation(fields: [supplierId], references: [id])
+  createdBy       User     @relation(fields: [createdById], references: [id])
+  allocations     SupplierPaymentAllocation[]
+
+  @@unique([clinicId, code])
+  @@index([clinicId])
+  @@index([supplierId])
+  @@map("supplier_payments")
+}
+
+model SupplierPaymentAllocation {
+  id                  String   @id @default(uuid())
+  paymentId           String
+  purchaseInvoiceId   String
+  amountAllocatedMinor Int
+  createdAt           DateTime @default(now())
+
+  payment             SupplierPayment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoice             PurchaseInvoice @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@index([purchaseInvoiceId])
+  @@map("supplier_payment_allocations")
 }
