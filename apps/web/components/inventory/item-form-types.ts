@@ -31,6 +31,13 @@ export interface ItemAccessoryFormValue {
   quantityRatio: number | '';
 }
 
+export interface BranchSettingFormValue {
+  branchId: string;
+  isActive: boolean;
+  retailPrice: number | '';
+  movingAverageCost: number | '';
+}
+
 export interface ItemFormValues {
   code: string;
   name: string;
@@ -52,6 +59,7 @@ export interface ItemFormValues {
   barcode: string;
   conversions: ItemConversionFormValue[];
   accessories: ItemAccessoryFormValue[];
+  branchSettings: BranchSettingFormValue[];
   defaultVatType: DefaultVatType;
   whtRate: WhtRate;
   dispensingCategory: DispensingCategory;
@@ -81,6 +89,7 @@ export const ITEM_FORM_DEFAULTS: ItemFormValues = {
   barcode: '',
   conversions: [],
   accessories: [],
+  branchSettings: [],
   defaultVatType: DefaultVatType.VAT_7,
   whtRate: WhtRate.WHT_0,
   dispensingCategory: DispensingCategory.General_Retail,

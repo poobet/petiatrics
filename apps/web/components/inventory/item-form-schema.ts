@@ -51,6 +51,27 @@ export function validateItemForm(values: ItemFormValues): ValidationError[] {
     }
   }
 
+  if (values.branchSettings) {
+    for (let i = 0; i < values.branchSettings.length; i++) {
+      const bs = values.branchSettings[i];
+      if (!bs.branchId) {
+        errors.push({ field: `branchSettings.${i}.branchId`, message: `Branch setting ${i + 1}: Branch ID is required.` });
+      }
+      if (bs.retailPrice === '' || Number(bs.retailPrice) < 0) {
+        errors.push({
+          field: `branchSettings.${i}.retailPrice`,
+          message: `Branch setting ${i + 1}: Retail price must be ≥ 0.`,
+        });
+      }
+      if (bs.movingAverageCost === '' || Number(bs.movingAverageCost) < 0) {
+        errors.push({
+          field: `branchSettings.${i}.movingAverageCost`,
+          message: `Branch setting ${i + 1}: Moving average cost must be ≥ 0.`,
+        });
+      }
+    }
+  }
+
   return errors;
 }
 
@@ -85,6 +106,12 @@ export function toApiPayload(values: ItemFormValues) {
     accessories: values.accessories
       .filter((a) => a.childProductId && Number(a.quantityRatio) > 0)
       .map((a) => ({ childProductId: a.childProductId, quantityRatio: Number(a.quantityRatio) })),
+    branchSettings: values.branchSettings?.map((s) => ({
+      branchId: s.branchId,
+      isActive: s.isActive,
+      retailPrice: Number(s.retailPrice) || 0,
+      movingAverageCost: Number(s.movingAverageCost) || 0,
+    })),
     defaultVatType: values.defaultVatType,
     whtRate: values.whtRate,
     dispensingCategory: values.dispensingCategory,

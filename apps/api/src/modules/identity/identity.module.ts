@@ -12,6 +12,7 @@ import { ClientsController } from './controllers/clients.controller';
 import { BusinessPartnersController } from './controllers/business-partners.controller';
 import { ReferenceController } from './controllers/reference.controller';
 import { PinController } from './controllers/pin.controller';
+import { BranchesController } from './controllers/branches.controller';
 import { SessionModule } from '../../common/session/session.module';
 
 /**
@@ -23,7 +24,7 @@ import { SessionModule } from '../../common/session/session.module';
  */
 @Module({
   imports: [SessionModule],
-  controllers: [AuthController, AdminController, StaffController, ClientsController, BusinessPartnersController, ReferenceController, PinController],
+  controllers: [AuthController, AdminController, StaffController, ClientsController, BusinessPartnersController, ReferenceController, PinController, BranchesController],
   providers: [
     // Provide a bare PrismaClient for identity operations (unscoped — admins need cross-clinic access)
     {

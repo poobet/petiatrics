@@ -75,6 +75,12 @@ function itemDetailToFormValues(item: any): ItemFormValues {
     revenueAccountId: item.revenueAccountId ?? '',
     cogsAccountId: item.cogsAccountId ?? '',
     inventoryAssetAccountId: item.inventoryAssetAccountId ?? '',
+    branchSettings: (item.branchSettings ?? []).map((s: any) => ({
+      branchId: s.branchId,
+      isActive: s.isActive,
+      retailPrice: Number(s.retailPrice),
+      movingAverageCost: Number(s.movingAverageCost),
+    })),
   };
 }
 
@@ -90,7 +96,34 @@ export default function ItemForm({ refs, initial }: Props) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState('');
   const [saving, setSaving] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const [branches, setBranches] = useState<any[]>([]);
+
+  useEffect(() => {
+    setMounted(true);
+
+    apiClient
+      .get<{ items: any[] }>('/identity/branches')
+      .then((res) => {
+        const allBranches = res.items || [];
+        setBranches(allBranches);
+
+        setValues((prev) => {
+          const currentSettings = initial?.branchSettings ?? [];
+          const merged = allBranches.map((branch) => {
+            const existing = currentSettings.find((s: any) => s.branchId === branch.id);
+            return {
+              branchId: branch.id,
+              isActive: existing ? existing.isActive : true,
+              retailPrice: existing ? Number(existing.retailPrice) : 0,
+              movingAverageCost: existing ? Number(existing.movingAverageCost) : 0,
+            };
+          });
+          return { ...prev, branchSettings: merged };
+        });
+      })
+      .catch((err) => console.error('Failed to load branches', err));
+  }, [initial]);
+
   if (!mounted) return null;
 
   function handleChange(field: keyof ItemFormValues, value: unknown) {
@@ -144,7 +177,7 @@ export default function ItemForm({ refs, initial }: Props) {
       <div className="flex gap-1 p-1 bg-gray-100/70 rounded-lg mb-6 overflow-x-auto whitespace-nowrap max-w-full scrollbar-none">
         {TABS.filter((t) => {
           if ((t.key === 'stock' || t.key === 'accessories') && !isEdit) return false;
-          if (t.key === 'branchSettings' && (!isEdit || !canWrite)) return false;
+          if (t.key === 'branchSettings' && !isEdit) return false;
           return true;
         }).map((t) => (
           <button
@@ -185,8 +218,13 @@ export default function ItemForm({ refs, initial }: Props) {
         {activeTab === 'clinic' && (
           <ClinicDetailsTab values={values} errors={fieldErrors} refs={refs} onChange={handleChange} />
         )}
-        {activeTab === 'branchSettings' && initial?.id && (
-          <BranchSettingsTab productId={initial.id} />
+        {activeTab === 'branchSettings' && (
+          <BranchSettingsTab
+            values={values}
+            onChange={handleChange}
+            refs={{ ...refs, branches }}
+            canEdit={canWrite}
+          />
         )}
       </div>
 

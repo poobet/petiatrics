@@ -25,7 +25,12 @@ const nextConfig: NextConfig = {
 
   // Resolve .ts/.tsx before .js/.jsx so transpilePackages works against TypeScript sources
   // without requiring pre-compiled .js artifacts in each package's src/ directory.
-  webpack(config) {
+  webpack(config, { dev }) {
+
+    if (dev) {
+      config.cache = false;
+    }
+
     config.resolve.extensionAlias = {
       '.js': ['.ts', '.tsx', '.js', '.jsx'],
       '.jsx': ['.tsx', '.jsx'],

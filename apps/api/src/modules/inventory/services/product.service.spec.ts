@@ -145,8 +145,22 @@ describe('ProductService', () => {
     beforeEach(() => {
       prisma.product.count.mockResolvedValue(2);
       prisma.product.findMany.mockResolvedValue([
-        { id: 'p1', name: 'Medication A', itemType: 'INVENTORY', isActive: true },
-        { id: 'p2', name: 'Service B', itemType: 'SERVICE', isActive: true },
+        {
+          id: 'p1',
+          name: 'Medication A',
+          itemType: 'INVENTORY',
+          isActive: true,
+          baseSellingPrice: 100,
+          branchSettings: [],
+        },
+        {
+          id: 'p2',
+          name: 'Service B',
+          itemType: 'SERVICE',
+          isActive: true,
+          baseSellingPrice: 200,
+          branchSettings: [],
+        },
       ]);
     });
 
@@ -188,6 +202,37 @@ describe('ProductService', () => {
       await service.findAll(CLINIC_ID, 'branch-1', { includeInactive: true });
       const call = (prisma.product.findMany as jest.Mock).mock.calls[0][0];
       expect(call.where.isActive).toBeUndefined();
+    });
+
+    it('overrides baseSellingPrice and isActive when branch setting is present', async () => {
+      prisma.product.findMany.mockResolvedValue([
+        {
+          id: 'p1',
+          name: 'Medication A',
+          itemType: 'INVENTORY',
+          isActive: true,
+          baseSellingPrice: 100,
+          branchSettings: [{ isActive: true, retailPrice: 150, movingAverageCost: 0 }],
+        },
+      ]);
+      const result = await service.findAll(CLINIC_ID, 'branch-1', {});
+      expect(result.items[0].baseSellingPrice).toBe(150);
+      expect(result.items[0].isActive).toBe(true);
+    });
+
+    it('excludes branch-inactive products when includeInactive=false', async () => {
+      prisma.product.findMany.mockResolvedValue([
+        {
+          id: 'p1',
+          name: 'Medication A',
+          itemType: 'INVENTORY',
+          isActive: true,
+          baseSellingPrice: 100,
+          branchSettings: [{ isActive: false, retailPrice: 150, movingAverageCost: 0 }],
+        },
+      ]);
+      const result = await service.findAll(CLINIC_ID, 'branch-1', {});
+      expect(result.items).toHaveLength(0);
     });
   });
 

@@ -180,7 +180,13 @@ export class ProductService {
       db.product.count({ where }),
       db.product.findMany({
         where,
-        include: PRODUCT_INCLUDE,
+        include: {
+          ...PRODUCT_INCLUDE,
+          branchSettings: {
+            where: { branchId },
+            select: { isActive: true, retailPrice: true, movingAverageCost: true },
+          },
+        },
         orderBy: [{ name: 'asc' }],
         skip,
         take: perPage,
@@ -199,15 +205,27 @@ export class ProductService {
 
     const mappedItems = items.map((item: any) => {
       const mapped = this.mapProductResponse(item);
+      const branchSetting = item.branchSettings?.[0];
+      const isActive = branchSetting ? branchSetting.isActive : item.isActive;
+      const baseSellingPrice = branchSetting && Number(branchSetting.retailPrice) > 0
+        ? Number(branchSetting.retailPrice)
+        : Number(item.baseSellingPrice);
+
       return {
         ...mapped,
+        isActive,
+        baseSellingPrice,
         quantity: item.itemType === ItemType.SERVICE ? null : (byProductId.get(item.id) ?? 0),
         reorderPoint: Number(item.reorderPoint),
         minimumStock: Number(item.minimumStock),
       };
     });
 
-    return { items: mappedItems, total, page, perPage };
+    const filteredItems = includeInactive
+      ? mappedItems
+      : mappedItems.filter((item) => item.isActive);
+
+    return { items: filteredItems, total, page, perPage };
   }
 
   async findById(clinicId: string, id: string) {

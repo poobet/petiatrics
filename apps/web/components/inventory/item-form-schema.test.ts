@@ -216,4 +216,45 @@ describe('validateItemForm() compliance validation', () => {
     const errors = validateItemForm(validStockedGood({ dispensingCategory: 'INVALID' as any }));
     expect(errors.some((e) => e.field === 'dispensingCategory')).toBe(true);
   });
+
+  it('rejects invalid or negative branch settings', () => {
+    const errors = validateItemForm(
+      validStockedGood({
+        branchSettings: [
+          { branchId: '', isActive: true, retailPrice: 10, movingAverageCost: 5 }, // missing branchId
+          { branchId: 'b1', isActive: true, retailPrice: -5, movingAverageCost: 5 }, // negative retailPrice
+          { branchId: 'b2', isActive: true, retailPrice: 10, movingAverageCost: -1 }, // negative movingAverageCost
+        ],
+      }),
+    );
+    expect(errors.some((e) => e.field === 'branchSettings.0.branchId')).toBe(true);
+    expect(errors.some((e) => e.field === 'branchSettings.1.retailPrice')).toBe(true);
+    expect(errors.some((e) => e.field === 'branchSettings.2.movingAverageCost')).toBe(true);
+  });
+});
+
+describe('toApiPayload() branch settings mapping', () => {
+  it('maps branchSettings correctly to payload', () => {
+    const payload = toApiPayload(
+      validStockedGood({
+        branchSettings: [
+          { branchId: 'b1', isActive: true, retailPrice: 120.5, movingAverageCost: 80.0 },
+          { branchId: 'b2', isActive: false, retailPrice: 0, movingAverageCost: 0 },
+        ],
+      }),
+    );
+    expect(payload.branchSettings).toHaveLength(2);
+    expect(payload.branchSettings?.[0]).toEqual({
+      branchId: 'b1',
+      isActive: true,
+      retailPrice: 120.5,
+      movingAverageCost: 80.0,
+    });
+    expect(payload.branchSettings?.[1]).toEqual({
+      branchId: 'b2',
+      isActive: false,
+      retailPrice: 0,
+      movingAverageCost: 0,
+    });
+  });
 });

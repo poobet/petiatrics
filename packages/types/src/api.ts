@@ -389,9 +389,26 @@ export interface ItemSummaryResponse {
   isActive: boolean;
 }
 
+export interface BranchSettingResponse {
+  id: string;
+  branchId: string;
+  isActive: boolean;
+  retailPrice: number;
+  movingAverageCost: number;
+  updatedAt: string;
+}
+
+export interface BranchSettingPayload {
+  branchId: string;
+  isActive: boolean;
+  retailPrice: number;
+  movingAverageCost?: number;
+}
+
 export interface ItemDetailResponse extends ItemSummaryResponse {
   conversions: ItemUnitConversionResponse[];
   accessories?: ItemAccessoryResponse[];
+  branchSettings?: BranchSettingResponse[];
   genericName: string | null;
   defaultDoctorFee: number | null;
   defaultSupplierId: string | null;
@@ -413,6 +430,7 @@ export interface CreateItemPayload {
   baseUnitId: string;
   conversions?: ItemUnitConversionPayload[];
   accessories?: ItemAccessoryPayload[];
+  branchSettings?: BranchSettingPayload[];
   standardCost: number;
   baseSellingPrice: number;
   isTaxInclusive?: boolean;
@@ -439,6 +457,7 @@ export interface UpdateItemPayload {
   baseUnitId?: string;
   conversions?: ItemUnitConversionPayload[];
   accessories?: ItemAccessoryPayload[];
+  branchSettings?: BranchSettingPayload[];
   standardCost?: number;
   baseSellingPrice?: number;
   isTaxInclusive?: boolean;
