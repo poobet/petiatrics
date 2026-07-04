@@ -16,6 +16,7 @@ import { AppointmentsModule } from './modules/appointments/appointments.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { ProcurementModule } from './modules/procurement/procurement.module';
 
 // Bounded-context modules are imported in their respective phases
 
@@ -59,6 +60,7 @@ import { AuditModule } from './modules/audit/audit.module';
     InventoryModule,
     BillingModule,
     AuditModule,
+    ProcurementModule,
   ],
   providers: [
     // Rate limiting guard applied globally
