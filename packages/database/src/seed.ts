@@ -658,8 +658,9 @@ async function main() {
 
   // ── 8. Sample Invoices ────────────────────────────────────────────────────
   if (ownerUser) {
-    const existingInvoices = await prisma.invoice.findMany({ where: { clinicId: clinic.id } });
-    if (existingInvoices.length === 0) {
+    await prisma.invoiceLineItem.deleteMany({ where: { invoice: { clinicId: clinic.id } } });
+    await prisma.invoice.deleteMany({ where: { clinicId: clinic.id } });
+    {
       const subtotal = 80000; // 800 THB
       const taxRateBps = 700;
       const taxTotal = Math.round(subtotal * taxRateBps / 10_000);
@@ -740,8 +741,8 @@ async function main() {
 
   // ── 9. Sample Appointments ────────────────────────────────────────────────
   if (ownerUser && petIds.length > 0) {
-    const existingAppts = await prisma.appointment.findMany({ where: { clinicId: clinic.id } });
-    if (existingAppts.length === 0) {
+    await prisma.appointment.deleteMany({ where: { clinicId: clinic.id } });
+    {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setHours(10, 0, 0, 0);
