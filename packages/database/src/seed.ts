@@ -643,9 +643,9 @@ async function main() {
         baseSellingPrice: p.sellPrice,
         quantity: p.quantity,
         reorderPoint: p.reorderThreshold,
-        defaultVatType: p.defaultVatType as 'VAT_7' | 'VAT_EXEMPT' | 'NON_VAT',
-        dispensingCategory: p.dispensingCategory as 'General_Retail' | 'Household_Remedy' | 'Dangerous_Drug' | 'Specially_Controlled_Drug' | 'Clinic_Use_Only',
-        whtRate: p.whtRate as 'WHT_0' | 'WHT_1' | 'WHT_3',
+        defaultVatType: ((p as any).defaultVatType ?? 'VAT_7') as 'VAT_7' | 'VAT_EXEMPT' | 'NON_VAT',
+        dispensingCategory: ((p as any).dispensingCategory ?? 'General_Retail') as 'General_Retail' | 'Household_Remedy' | 'Dangerous_Drug' | 'Specially_Controlled_Drug' | 'Clinic_Use_Only',
+        whtRate: ((p as any).whtRate ?? 'WHT_0') as 'WHT_0' | 'WHT_1' | 'WHT_3',
       },
     });
     productIds.push(product.id);
