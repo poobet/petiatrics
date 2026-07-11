@@ -160,28 +160,74 @@ export class AuthService {
     }
 
     const userRole = user.role as unknown as Role;
+
+    // --- New dynamic permission resolution ---
     let permissions: string[] = [];
-    if (user.clinicId) {
-      const rolePerm = await this.prisma.clinicRolePermission.findFirst({
-        where: {
-          clinicId: user.clinicId,
-          role: user.role,
+    let resolvedRoleId: string = '';
+    let resolvedRoleCode: string = userRole as string;
+    let resolvedRoleName: string = userRole as string;
+    let resolvedSystemRole: string | null = null;
+
+    // Resolve the ClinicRole record if roleId is set (new system)
+    if (user.roleId) {
+      const clinicRole = await this.prisma.clinicRole.findUnique({
+        where: { id: user.roleId },
+        include: {
+          permissions: {
+            include: { action: { select: { code: true } } },
+          },
         },
       });
-      if (rolePerm) {
-        permissions = rolePerm.permissions;
+
+      if (clinicRole) {
+        resolvedRoleId = clinicRole.id;
+        resolvedRoleCode = clinicRole.code;
+        resolvedRoleName = clinicRole.name;
+        resolvedSystemRole = user.systemRole ?? null;
+
+        if (
+          resolvedRoleCode === 'CLINIC_OWNER' ||
+          resolvedSystemRole === 'SUPER_ADMIN'
+        ) {
+          // Full access — load all action codes
+          const allActions = await this.prisma.actionMaster.findMany({
+            where: { isActive: true },
+            select: { code: true },
+          });
+          permissions = allActions.map((a) => a.code);
+        } else {
+          permissions = clinicRole.permissions
+            .filter((p) => p.action)
+            .map((p) => p.action!.code);
+        }
+      }
+    } else {
+      // Fallback: legacy resolution for users not yet migrated
+      if (user.clinicId) {
+        const rolePerm = await this.prisma.clinicRolePermission.findFirst({
+          where: {
+            clinicId: user.clinicId,
+            role: user.role,
+          },
+        });
+        if (rolePerm) permissions = rolePerm.permissions;
+      }
+      if (permissions.length === 0) {
+        permissions = DEFAULT_ROLE_PERMISSIONS[userRole] || [];
       }
     }
-    if (permissions.length === 0) {
-      permissions = DEFAULT_ROLE_PERMISSIONS[userRole] || [];
-    }
+    // --- End new resolution ---
 
     const userContext: UserContext = {
       userId: user.id,
       clinicId: user.clinicId ?? null,
       clinicName: user.clinic?.name ?? null,
       clinicSlug: user.clinic?.slug ?? null,
-      role: userRole,
+      role: resolvedRoleCode, // backward compat
+      roleId: resolvedRoleId,
+      roleCode: resolvedRoleCode,
+      roleName: resolvedRoleName,
+      systemRole: resolvedSystemRole,
       permissions,
       email: user.email,
       username: user.username,
@@ -202,7 +248,11 @@ export class AuthService {
       email: user.email,
       username: user.username,
       mustChangePassword: user.mustChangePassword,
-      role: userRole,
+      role: resolvedRoleCode, // backward compat
+      roleId: resolvedRoleId,
+      roleCode: resolvedRoleCode,
+      roleName: resolvedRoleName,
+      systemRole: resolvedSystemRole,
       permissions,
       clinicName: user.clinic?.name ?? null,
       clinicSlug: user.clinic?.slug ?? null,

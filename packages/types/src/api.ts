@@ -41,7 +41,12 @@ export interface UserContext {
   clinicId: string | null;
   clinicName: string | null;
   clinicSlug: string | null;
-  role: Role;
+  // Legacy field kept for backward compat during migration — maps to roleCode
+  role: string;
+  roleId: string;
+  roleCode: string;
+  roleName: string;
+  systemRole: string | null; // "SUPER_ADMIN" | "CUSTOMER" | null
   permissions: string[];
   email?: string | null;
   username?: string | null;
@@ -62,7 +67,11 @@ export interface AuthProfile {
   email?: string | null;
   username?: string | null;
   mustChangePassword?: boolean;
-  role: Role;
+  role: string;         // backward compat — equals roleCode
+  roleId: string;
+  roleCode: string;
+  roleName: string;
+  systemRole: string | null;
   permissions: string[];
   clinicName: string | null;
   clinicSlug?: string | null;

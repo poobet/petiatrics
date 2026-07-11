@@ -30,9 +30,13 @@ export class RolesGuard implements CanActivate {
     }
 
     // SUPER_ADMIN bypasses all role restrictions
-    if (userContext.role === Role.SUPER_ADMIN) return true;
+    if (
+      userContext.role === 'SUPER_ADMIN' ||
+      userContext.systemRole === 'SUPER_ADMIN'
+    ) return true;
 
-    if (!requiredRoles.includes(userContext.role)) {
+    const userRole = userContext.roleCode ?? userContext.role;
+    if (!requiredRoles.includes(userRole as any)) {
       throw new ForbiddenException(
         `Access denied. Required role(s): ${requiredRoles.join(', ')}`,
       );

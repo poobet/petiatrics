@@ -42,7 +42,7 @@ export class BusinessPartnersController {
     @Query() query: ListBusinessPartnersDto,
     @CurrentUser() user: UserContext,
   ) {
-    const isManager = WRITE_ROLES.includes(user.role);
+    const isManager = WRITE_ROLES.includes(user.role as any);
     return this.bpService.list(clinicId, query, isManager);
   }
 

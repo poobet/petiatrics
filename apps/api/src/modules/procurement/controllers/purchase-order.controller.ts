@@ -29,7 +29,7 @@ export class PurchaseOrderController {
     @ActiveBranch() branchId: string,
     @Body() dto: CreatePurchaseOrderDto,
   ) {
-    return this.purchaseOrderService.create(clinicId, user.userId, user.role, branchId, dto);
+    return this.purchaseOrderService.create(clinicId, user.userId, user.role as Role, branchId, dto);
   }
 
   @Get()
@@ -53,7 +53,7 @@ export class PurchaseOrderController {
     @CurrentUser() user: UserContext,
     @Param('id') id: string,
   ) {
-    return this.purchaseOrderService.approve(clinicId, user.userId, user.role, id);
+    return this.purchaseOrderService.approve(clinicId, user.userId, user.role as Role, id);
   }
 
   @Patch(':id/cancel')

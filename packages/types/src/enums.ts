@@ -114,3 +114,17 @@ export enum BusinessPartnerType {
   OTHER = 'OTHER',
 }
 
+// System-level role codes (non-clinic-scoped — these bypass normal permission checks)
+export const SYSTEM_ROLES = {
+  SUPER_ADMIN: 'SUPER_ADMIN',
+  CUSTOMER: 'CUSTOMER',
+} as const;
+export type SystemRole = typeof SYSTEM_ROLES[keyof typeof SYSTEM_ROLES];
+
+// Reserved role codes that clinics cannot delete or rename
+export const SYSTEM_ROLE_CODES = [
+  'CLINIC_OWNER', 'VET', 'CASHIER', 'STAFF', 'ASSISTANT',
+  'SUPER_ADMIN', 'CUSTOMER',
+] as const;
+
+
