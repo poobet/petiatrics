@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
-import { UserContext, Role } from '@petiatrics/types';
+import { UserContext } from '@petiatrics/types';
 import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
 
 @Injectable()
@@ -30,10 +30,18 @@ export class PermissionsGuard implements CanActivate {
     }
 
     // SUPER_ADMIN bypasses all permissions checks
-    if (userContext.role === Role.SUPER_ADMIN) return true;
+    if (userContext.systemRole === 'SUPER_ADMIN' || userContext.role === 'SUPER_ADMIN') {
+      return true;
+    }
+
+    // CLINIC_OWNER has full access
+    if (userContext.roleCode === 'CLINIC_OWNER' || userContext.role === 'CLINIC_OWNER') {
+      return true;
+    }
 
     // CUSTOMER role bypasses read-only permission checks (enforced via ownership checks in handlers)
-    if (userContext.role === Role.CUSTOMER) {
+    const isCustomer = userContext.systemRole === 'CUSTOMER' || userContext.role === 'CUSTOMER';
+    if (isCustomer) {
       const isReadOnly = requiredPermissions.every(perm => perm.endsWith(':VIEW'));
       if (isReadOnly) return true;
     }
