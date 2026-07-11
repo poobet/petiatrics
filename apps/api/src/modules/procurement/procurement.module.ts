@@ -5,7 +5,10 @@ import { GoodsReceiptService } from './services/goods-receipt.service';
 import { PurchaseOrderController } from './controllers/purchase-order.controller';
 import { GoodsReceiptController } from './controllers/goods-receipt.controller';
 
+import { DocumentSequenceModule } from '../document-sequence/document-sequence.module';
+
 @Module({
+  imports: [DocumentSequenceModule],
   controllers: [PurchaseOrderController, GoodsReceiptController],
   providers: [
     {
