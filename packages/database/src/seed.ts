@@ -714,7 +714,167 @@ async function main() {
   });
   console.log('✓ Pending clinic:', pendingClinic.name, '(', pendingClinic.id, ')');
 
+  // ── 11. PageMaster & ActionMaster — system-wide RBAC registry ──────────────
+  const pageSeed = [
+    {
+      code: 'PATIENTS', name: 'Patients', description: 'Patient profiles and medical history', sortOrder: 10,
+      actions: [
+        { code: 'PATIENT:VIEW', name: 'View Patients', description: 'Search and read patient profiles', sortOrder: 1 },
+        { code: 'PATIENT:EDIT', name: 'Edit Patients', description: 'Create and update patient records', sortOrder: 2 },
+      ],
+    },
+    {
+      code: 'VISITS', name: 'Visits & Vaccinations', description: 'SOAP visit notes and vaccination records', sortOrder: 20,
+      actions: [
+        { code: 'VISIT:VIEW', name: 'View Visits', description: 'Read SOAP visit notes', sortOrder: 1 },
+        { code: 'VISIT:ADD', name: 'Create Visits', description: 'Open new visit / SOAP notes', sortOrder: 2 },
+        { code: 'VISIT:EDIT', name: 'Edit & Finalize Visits', description: 'Update and finalize visit notes', sortOrder: 3 },
+        { code: 'VACCINATION:ADD', name: 'Log Vaccinations', description: 'Record vaccination events', sortOrder: 4 },
+      ],
+    },
+    {
+      code: 'INVENTORY', name: 'Inventory', description: 'Products, stock balances and adjustments', sortOrder: 30,
+      actions: [
+        { code: 'INVENTORY:VIEW', name: 'View Inventory', description: 'View stock levels and product catalog', sortOrder: 1 },
+        { code: 'INVENTORY:ADD', name: 'Add Stock', description: 'Receive goods and post new movements', sortOrder: 2 },
+        { code: 'INVENTORY:EDIT', name: 'Edit Products', description: 'Update product details and adjustments', sortOrder: 3 },
+        { code: 'INVENTORY:DELETE', name: 'Deactivate Items', description: 'Deactivate products from active catalog', sortOrder: 4 },
+      ],
+    },
+    {
+      code: 'BILLING', name: 'Billing', description: 'Invoices and payments', sortOrder: 40,
+      actions: [
+        { code: 'BILLING:VIEW', name: 'View Billing', description: 'Read invoices and payment history', sortOrder: 1 },
+        { code: 'BILLING:ADD', name: 'Create Invoices', description: 'Create draft invoices', sortOrder: 2 },
+        { code: 'BILLING:EDIT', name: 'Process Payments', description: 'Mark invoices as issued or paid', sortOrder: 3 },
+        { code: 'BILLING:VOID', name: 'Void Invoices', description: 'Void an invoice (destructive)', sortOrder: 4 },
+      ],
+    },
+    {
+      code: 'PROCUREMENT', name: 'Procurement', description: 'Purchase orders, goods receipt and supplier invoices', sortOrder: 50,
+      actions: [
+        { code: 'PROCUREMENT:VIEW', name: 'View Procurement', description: 'View purchase orders and receipts', sortOrder: 1 },
+        { code: 'PROCUREMENT:CREATE_PO', name: 'Create Purchase Orders', description: 'Create and edit draft POs', sortOrder: 2 },
+        { code: 'PROCUREMENT:APPROVE_PO', name: 'Approve Purchase Orders', description: 'Approve POs for ordering', sortOrder: 3 },
+        { code: 'PROCUREMENT:CREATE_GR', name: 'Create Goods Receipts', description: 'Receive goods against POs', sortOrder: 4 },
+      ],
+    },
+    {
+      code: 'SETTINGS', name: 'Settings', description: 'Clinic configuration and role management', sortOrder: 60,
+      actions: [
+        { code: 'SETTINGS:MANAGE', name: 'Manage Settings', description: 'Manage clinic settings and role permissions', sortOrder: 1 },
+      ],
+    },
+  ];
+
+  const pageIds: Record<string, string> = {};
+  const actionIds: Record<string, string> = {};
+
+  for (const p of pageSeed) {
+    const page = await prisma.pageMaster.upsert({
+      where: { code: p.code },
+      update: { name: p.name, description: p.description, sortOrder: p.sortOrder, isActive: true },
+      create: { code: p.code, name: p.name, description: p.description, sortOrder: p.sortOrder, isActive: true },
+    });
+    pageIds[p.code] = page.id;
+
+    for (const a of p.actions) {
+      const action = await prisma.actionMaster.upsert({
+        where: { code: a.code },
+        update: { name: a.name, description: a.description, sortOrder: a.sortOrder, isActive: true, pageId: page.id },
+        create: { code: a.code, name: a.name, description: a.description, sortOrder: a.sortOrder, isActive: true, pageId: page.id },
+      });
+      actionIds[a.code] = action.id;
+    }
+  }
+  console.log('  ✓ PageMaster & ActionMaster seeded');
+
+  // ── 12. ClinicRole — seed system roles for demo clinic ─────────────────────
+  const roleSeedDefs = [
+    {
+      code: 'CLINIC_OWNER', name: 'Clinic Owner', isSystem: true, isDeletable: false,
+      permissionCodes: [] as string[], // Full access bypassed in code
+    },
+    {
+      code: 'VET', name: 'Veterinarian', isSystem: true, isDeletable: true,
+      permissionCodes: ['PATIENT:VIEW', 'PATIENT:EDIT', 'VISIT:VIEW', 'VISIT:ADD', 'VISIT:EDIT', 'VACCINATION:ADD', 'INVENTORY:VIEW', 'PROCUREMENT:VIEW'],
+    },
+    {
+      code: 'CASHIER', name: 'Cashier', isSystem: true, isDeletable: true,
+      permissionCodes: ['PATIENT:VIEW', 'BILLING:VIEW', 'BILLING:ADD', 'BILLING:EDIT', 'BILLING:VOID'],
+    },
+    {
+      code: 'STAFF', name: 'Staff', isSystem: true, isDeletable: true,
+      permissionCodes: ['PATIENT:VIEW', 'INVENTORY:VIEW', 'BILLING:VIEW'],
+    },
+    {
+      code: 'ASSISTANT', name: 'Assistant', isSystem: true, isDeletable: true,
+      permissionCodes: ['PATIENT:VIEW', 'VISIT:VIEW', 'INVENTORY:VIEW', 'BILLING:VIEW'],
+    },
+  ];
+
+  const clinicRoleIds: Record<string, string> = {};
+
+  for (const rd of roleSeedDefs) {
+    const cr = await prisma.clinicRole.upsert({
+      where: { clinicId_code: { clinicId: clinic.id, code: rd.code } },
+      update: { name: rd.name, isSystem: rd.isSystem, isDeletable: rd.isDeletable, isActive: true },
+      create: { clinicId: clinic.id, code: rd.code, name: rd.name, isSystem: rd.isSystem, isDeletable: rd.isDeletable, isActive: true },
+    });
+    clinicRoleIds[rd.code] = cr.id;
+
+    // Seed permissions for this role
+    for (const actionCode of rd.permissionCodes) {
+      const actionRecord = await prisma.actionMaster.findUnique({ where: { code: actionCode } });
+      if (!actionRecord) continue;
+      await prisma.clinicRolePermissionV2.upsert({
+        where: { roleId_pageId_actionId: { roleId: cr.id, pageId: actionRecord.pageId, actionId: actionRecord.id } },
+        update: {},
+        create: { roleId: cr.id, pageId: actionRecord.pageId, actionId: actionRecord.id },
+      });
+    }
+    console.log(`  ✓ ClinicRole: ${rd.code} (${rd.permissionCodes.length} permissions)`);
+  }
+
+  // Seed system roles (SUPER_ADMIN, CUSTOMER) with clinicId=null
+  // Note: Prisma doesn't support null in @@unique compound key upsert — use findFirst+create
+  for (const [systemCode, systemName] of [['SUPER_ADMIN', 'Super Admin'], ['CUSTOMER', 'Customer']] as const) {
+    const existing = await prisma.clinicRole.findFirst({ where: { code: systemCode, clinicId: null } });
+    if (!existing) {
+      await prisma.clinicRole.create({
+        data: { clinicId: null, code: systemCode, name: systemName, isSystem: true, isDeletable: false, isActive: true },
+      });
+    }
+  }
+  console.log('  ✓ System ClinicRoles (SUPER_ADMIN, CUSTOMER) seeded');
+
+  // ── 13. Migrate existing seed Users → roleId ────────────────────────────────
+  const legacyRoleMap: Record<string, string> = {
+    SUPER_ADMIN: 'SUPER_ADMIN', CLINIC_OWNER: 'CLINIC_OWNER',
+    VET: 'VET', ASSISTANT: 'ASSISTANT', CASHIER: 'CASHIER',
+    STAFF: 'STAFF', CUSTOMER: 'CUSTOMER',
+  };
+
+  const allUsers = await prisma.user.findMany({ select: { id: true, role: true, clinicId: true } });
+  let migratedCount = 0;
+  for (const u of allUsers) {
+    const roleCode = legacyRoleMap[u.role as string];
+    if (!roleCode) continue;
+    const isSystemRole = roleCode === 'SUPER_ADMIN' || roleCode === 'CUSTOMER';
+    const clinicRole = await prisma.clinicRole.findFirst({
+      where: { code: roleCode, clinicId: isSystemRole ? null : (u.clinicId ?? clinic.id) },
+    });
+    if (!clinicRole) continue;
+    await prisma.user.update({
+      where: { id: u.id },
+      data: { roleId: clinicRole.id, systemRole: isSystemRole ? roleCode : null },
+    });
+    migratedCount++;
+  }
+  console.log(`  ✓ Migrated ${migratedCount}/${allUsers.length} users to ClinicRole`);
+
   console.log('\n🎉 Seed complete!\n');
+
   console.log('Login credentials (002 roles):');
   console.log('  Super Admin (SUPER_ADMIN):    admin@petiatrics.io / Admin@1234  → /admin');
   console.log('  Clinic Owner (CLINIC_OWNER):  owner@happypaws.io / Password@1   → /clinic [2 branches]');

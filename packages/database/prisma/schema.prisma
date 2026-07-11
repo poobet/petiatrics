@@ -154,6 +154,7 @@ model Clinic {
   businessPartners    BusinessPartner[]
   bpGroups            BpGroup[]
   rolePermissions     ClinicRolePermission[]
+  clinicRoles         ClinicRole[]             @relation("ClinicRoles")
   purchaseOrders      PurchaseOrder[]
   goodsReceipts       GoodsReceipt[]
   purchaseInvoices    PurchaseInvoice[]
@@ -207,6 +208,8 @@ model User {
   username            String?    @unique
   passwordHash        String
   role                Role
+  roleId              String?    // FK to ClinicRole — nullable during migration
+  systemRole          String?    // "SUPER_ADMIN" | "CUSTOMER" | null (for clinic staff)
   status              UserStatus @default(PENDING)
   mustChangePassword  Boolean    @default(false)
   invitedBy           String?
@@ -217,6 +220,7 @@ model User {
   updatedAt           DateTime   @updatedAt
 
   clinic                  Clinic?          @relation(fields: [clinicId], references: [id])
+  clinicRole              ClinicRole?      @relation("UserClinicRole", fields: [roleId], references: [id])
   businessPartners        BusinessPartner[]
   userBranches            UserBranch[]
   appointments            Appointment[]    @relation("VetAppointments")
@@ -225,7 +229,7 @@ model User {
   createdPOs              PurchaseOrder[] @relation("POCreatedBy")
   approvedPOs             PurchaseOrder[] @relation("POApprovedBy")
   goodsReceipts           GoodsReceipt[]
-  purchaseInvoices        PurchaseInvoice[]
+  purchaseInvoices        PurchaseInvoice[]  
   supplierPayments        SupplierPayment[]
 
   @@index([clinicId])
@@ -734,6 +738,80 @@ model ClinicRolePermission {
 
   @@unique([clinicId, role])
   @@map("clinic_role_permissions")
+}
+
+// ─── Dynamic RBAC — Page & Action Masters ────────────────────────────────────
+
+model PageMaster {
+  id          String         @id @default(uuid())
+  code        String         @unique // e.g. "PATIENTS", "INVENTORY"
+  name        String
+  description String?
+  sortOrder   Int            @default(0)
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  actions         ActionMaster[]
+  rolePermissions ClinicRolePermissionV2[]
+
+  @@map("page_masters")
+}
+
+model ActionMaster {
+  id          String         @id @default(uuid())
+  pageId      String
+  code        String         @unique // e.g. "PATIENT:VIEW", "INVENTORY:ADD"
+  name        String
+  description String?
+  sortOrder   Int            @default(0)
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  page            PageMaster             @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  rolePermissions ClinicRolePermissionV2[]
+
+  @@index([pageId])
+  @@map("action_masters")
+}
+
+model ClinicRole {
+  id          String   @id @default(uuid())
+  clinicId    String?  // null = system-level (SUPER_ADMIN, CUSTOMER)
+  code        String   // e.g. "CLINIC_OWNER", "VET", "CUSTOM_NURSE"
+  name        String
+  isSystem    Boolean  @default(false) // seeded by system; code is reserved
+  isDeletable Boolean  @default(true)  // false = cannot be deleted (CLINIC_OWNER)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  clinic      Clinic?                  @relation("ClinicRoles", fields: [clinicId], references: [id], onDelete: Cascade)
+  users       User[]                   @relation("UserClinicRole")
+  permissions ClinicRolePermissionV2[]
+
+  @@unique([clinicId, code])
+  @@index([clinicId])
+  @@map("clinic_roles")
+}
+
+model ClinicRolePermissionV2 {
+  id        String        @id @default(uuid())
+  roleId    String
+  pageId    String
+  actionId  String?       // null = page-view access only
+  createdAt DateTime      @default(now())
+
+  role      ClinicRole    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  page      PageMaster    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  action    ActionMaster? @relation(fields: [actionId], references: [id], onDelete: SetNull)
+
+  @@unique([roleId, pageId, actionId])
+  @@index([roleId])
+  @@index([pageId])
+  @@index([actionId])
+  @@map("clinic_role_permissions_v2")
 }
 
 // ─── Procurement Enums ────────────────────────────────────────────────────────
