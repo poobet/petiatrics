@@ -61,7 +61,8 @@ export default function StaffPageClient() {
   const [usernamePrefix, setUsernamePrefix] = useState('');
   const [name, setName] = useState('');
   const [temporaryPassword, setTemporaryPassword] = useState('');
-  const [role, setRole] = useState('VET');
+  const [role, setRole] = useState('');
+  const [roles, setRoles] = useState<{ id: string; code: string; name: string }[]>([]);
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -70,9 +71,22 @@ export default function StaffPageClient() {
 
 
   useEffect(() => {
-    apiClient
-      .get<StaffUser[]>('/clinic/staff')
-      .then(setStaff)
+    setLoading(true);
+    Promise.all([
+      apiClient.get<StaffUser[]>('/clinic/staff'),
+      apiClient.get<{ id: string; code: string; name: string }[]>('/clinic/roles'),
+    ])
+      .then(([staffData, rolesData]) => {
+        setStaff(staffData);
+        setRoles(rolesData);
+        const vetRole = rolesData.find((r) => r.code === 'VET');
+        if (vetRole) {
+          setRole(vetRole.id);
+        } else if (rolesData.length > 0) {
+          setRole(rolesData[0].id);
+        }
+      })
+      .catch((err) => console.error('Failed to load staff/roles:', err))
       .finally(() => setLoading(false));
   }, []);
 
@@ -90,7 +104,12 @@ export default function StaffPageClient() {
       setUsernamePrefix('');
       setName('');
       setTemporaryPassword('');
-      setRole('VET');
+      const vetRole = roles.find((r) => r.code === 'VET');
+      if (vetRole) {
+        setRole(vetRole.id);
+      } else if (roles.length > 0) {
+        setRole(roles[0].id);
+      }
     } finally {
       setCreating(false);
     }
@@ -106,7 +125,10 @@ export default function StaffPageClient() {
     }
   }
 
-  function roleLabel(role: string) {
+  function roleLabel(roleCode: string) {
+    const found = roles.find((r) => r.code === roleCode);
+    if (found) return found.name;
+
     const map: Record<string, string> = {
       SUPER_ADMIN: t('roles.platform_admin'),
       CLINIC_OWNER: t('roles.clinic_admin'),
@@ -115,7 +137,7 @@ export default function StaffPageClient() {
       CASHIER: t('roles.receptionist'),
       STAFF: t('roles.receptionist'),
     };
-    return map[role] ?? role;
+    return map[roleCode] ?? roleCode;
   }
 
   function statusVariant(status: string) {
@@ -188,10 +210,11 @@ export default function StaffPageClient() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="VET">{t('roles.vet')}</SelectItem>
-                    <SelectItem value="ASSISTANT">{t('roles.receptionist')}</SelectItem>
-                    <SelectItem value="CASHIER">{t('roles.receptionist')}</SelectItem>
-                    <SelectItem value="CLINIC_OWNER">{t('roles.clinic_admin')}</SelectItem>
+                    {roles.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
