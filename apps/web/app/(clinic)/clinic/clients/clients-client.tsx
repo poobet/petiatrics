@@ -6,19 +6,10 @@ import { apiClient, ApiError } from '@/lib/api-client';
 import { Button } from '@petiatrics/ui/button';
 import { Input } from '@petiatrics/ui/input';
 import { usePermission } from '@/lib/use-permission';
-
-interface ClientUser {
-  id: string;
-  name: string;
-  email: string | null;
-  businessPartners?: {
-    code: string | null;
-    phone: string | null;
-  }[];
-}
+import { BusinessPartnerResponse } from '@petiatrics/types';
 
 export default function ClientsClient() {
-  const [clients, setClients] = useState<ClientUser[]>([]);
+  const [clients, setClients] = useState<BusinessPartnerResponse[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,20 +18,19 @@ export default function ClientsClient() {
 
   useEffect(() => {
     apiClient
-      .get<ClientUser[]>('/clinic/clients')
+      .get<BusinessPartnerResponse[]>('/clinic/business-partners?type=CUSTOMER')
       .then(setClients)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load clients'))
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = clients.filter((c) => {
+  const filtered = clients.filter((bp) => {
     const q = search.toLowerCase();
-    const bp = c.businessPartners?.[0];
     return (
-      c.name.toLowerCase().includes(q) ||
-      (c.email && c.email.toLowerCase().includes(q)) ||
-      (bp?.code && bp.code.toLowerCase().includes(q)) ||
-      (bp?.phone && bp.phone.includes(q))
+      bp.name.toLowerCase().includes(q) ||
+      (bp.email && bp.email.toLowerCase().includes(q)) ||
+      (bp.code && bp.code.toLowerCase().includes(q)) ||
+      (bp.phone && bp.phone.includes(q))
     );
   });
 
@@ -84,26 +74,26 @@ export default function ClientsClient() {
                   </td>
                 </tr>
               )}
-              {filtered.map((c) => {
-                const bp = c.businessPartners?.[0];
-                return (
-                  <tr key={c.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 font-medium">
-                      <Link href={`/clinic/clients/${c.id}`} className="text-primary hover:underline">
-                        {c.name}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{bp?.code ?? '—'}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{c.email ?? '—'}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{bp?.phone ?? '—'}</td>
-                    <td className="px-4 py-3 text-right">
-                      <Link href={`/clinic/clients/${c.id}`} className="text-primary underline-offset-4 hover:underline text-sm font-medium">
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
+              {filtered.map((bp) => (
+                <tr key={bp.id} className="hover:bg-muted/30 transition-colors">
+                  <td className="px-4 py-3 font-medium">
+                    <Link href={`/clinic/clients/${bp.id}`} className="text-primary hover:underline">
+                      {bp.name}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">{bp.code ?? '—'}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{bp.email ?? '—'}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{bp.phone ?? '—'}</td>
+                  <td className="px-4 py-3 text-right">
+                    <Link
+                      href={`/clinic/clients/${bp.id}`}
+                      className="text-primary underline-offset-4 hover:underline text-sm font-medium"
+                    >
+                      View
+                    </Link>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

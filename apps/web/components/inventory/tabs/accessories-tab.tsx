@@ -62,7 +62,7 @@ export default function AccessoriesTab({ values, errors, onChange, currentProduc
         </label>
         <ItemSearchCombobox
           placeholder="Type product or service name to add…"
-          itemType="" // empty string searches both STOCKED_GOOD and SERVICE
+          itemType="" // empty string searches both INVENTORY and SERVICE
           onSelect={(item) => addAccessory(item)}
         />
       </div>

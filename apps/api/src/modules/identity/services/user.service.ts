@@ -46,7 +46,7 @@ function assertPasswordPolicy(password: string): void {
 
 @Injectable()
 export class UserService {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly prisma: PrismaClient) { }
 
   /**
    * US4: Create a new staff member with username@clinicSlug identity.
@@ -122,6 +122,9 @@ export class UserService {
 
       if (resolvedLegacyRole === Role.CUSTOMER) {
         await this.createCustomerBpWithCode(tx, u.id, input.clinicId, input.name, null);
+      } else {
+        // Auto-create a STAFF or VET BusinessPartner linked to the new staff user
+        await this.createStaffBpWithCode(tx, u.id, input.clinicId, input.name, input.role);
       }
 
       return u;
@@ -173,7 +176,7 @@ export class UserService {
         userBranches: true,
       },
       orderBy: { createdAt: 'asc' },
-    });
+    }) as any;
   }
 
   async updateRole(id: string, clinicId: string, dto: UpdateUserRoleDto): Promise<User> {
@@ -258,6 +261,27 @@ export class UserService {
     });
   }
 
+  /**
+   * Admin-initiated password reset for a staff member.
+   * Sets mustChangePassword=true so the staff must set a new password on next login.
+   */
+  async adminResetPassword(id: string, clinicId: string, newPassword: string): Promise<{ ok: true }> {
+    assertPasswordPolicy(newPassword);
+    await this.findOneInClinic(id, clinicId);
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await this.prisma.user.update({
+      where: { id },
+      data: {
+        passwordHash,
+        mustChangePassword: true,
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+        status: UserStatus.ACTIVE as unknown as any,
+      },
+    });
+    return { ok: true };
+  }
+
   private async findOneInClinic(id: string, clinicId: string): Promise<User> {
     const user = await this.prisma.user.findFirst({ where: { id, clinicId } });
     if (!user) throw new NotFoundException(`User ${id} not found in clinic.`);
@@ -270,7 +294,7 @@ export class UserService {
    */
   async linkToBusinessPartner(userId: string, businessPartnerId: string, clinicId: string): Promise<User> {
     const user = await this.findOneInClinic(userId, clinicId);
-    
+
     const bp = await this.prisma.businessPartner.findFirst({
       where: { id: businessPartnerId, clinicId },
     });
@@ -301,6 +325,61 @@ export class UserService {
       data: { linkedUserId: null },
     });
     return user;
+  }
+
+  /**
+   * Transactional helper to auto-generate a sequenced BusinessPartner of type STAFF or VET
+   * and link it to the given user. VET role → BpType VET (prefix 'V-'); all others → STAFF (prefix 'S-').
+   */
+  private async createStaffBpWithCode(
+    tx: any,
+    userId: string,
+    clinicId: string,
+    name: string,
+    role: Role,
+  ): Promise<any> {
+    const isVet = role === Role.VET;
+    const bpType = isVet ? 'VET' : 'STAFF';
+    const prefix = isVet ? 'V-' : 'S-';
+
+    const group = await tx.bpGroup.findFirst({
+      where: { clinicId, prefix },
+    });
+
+    let generatedCode: string | null = null;
+    if (group) {
+      const rows = await tx.$queryRaw`SELECT id, prefix, "currentSequence" FROM bp_groups WHERE id = ${group.id} FOR UPDATE`;
+      const lockedGroup = rows[0];
+      if (lockedGroup) {
+        const newSeq = lockedGroup.currentSequence + 1;
+        await tx.bpGroup.update({
+          where: { id: group.id },
+          data: { currentSequence: newSeq },
+        });
+        generatedCode = `${lockedGroup.prefix}${newSeq.toString().padStart(4, '0')}`;
+      }
+    }
+
+    const bp = await tx.businessPartner.create({
+      data: {
+        clinicId,
+        type: bpType,
+        name,
+        code: generatedCode,
+        groupId: group?.id ?? null,
+        linkedUserId: userId,
+        isActive: true,
+      },
+    });
+
+    // For VET BPs, create the extension row (license number filled in later)
+    if (isVet) {
+      await tx.bpVet.create({
+        data: { bpId: bp.id, licenseNumber: '' },
+      });
+    }
+
+    return bp;
   }
 
   /**
@@ -352,12 +431,12 @@ export class UserService {
    */
   async registerCustomer(dto: RegisterCustomerDto): Promise<User> {
     const emailNorm = dto.email.toLowerCase().trim();
-    
+
     const [existingClinic, existingUser] = await Promise.all([
       this.prisma.clinic.findUnique({ where: { id: dto.clinicId } }),
       this.prisma.user.findFirst({ where: { email: emailNorm } }),
     ]);
-    
+
     if (!existingClinic) throw new NotFoundException(`Clinic ${dto.clinicId} not found.`);
     if (existingUser) throw new ConflictException(`An account with this email already exists.`);
 

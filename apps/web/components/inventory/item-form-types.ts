@@ -1,4 +1,4 @@
-import { ItemType } from '@petiatrics/types';
+import { ItemType, DefaultVatType, WhtRate, DispensingCategory } from '@petiatrics/types';
 import type {
   ItemCategoryResponse,
   UnitOfMeasureResponse,
@@ -12,6 +12,7 @@ export interface ItemFormReferenceData {
   units: UnitOfMeasureResponse[];
   taxCodes: ReferenceSelectorItem[];
   suppliers: ReferenceSelectorItem[];
+  glAccounts: ReferenceSelectorItem[];
 }
 
 // ─── Form values (mirrors CreateItemPayload / UpdateItemPayload) ───────────────
@@ -28,6 +29,13 @@ export interface ItemAccessoryFormValue {
   sku?: string;
   itemType?: ItemType;
   quantityRatio: number | '';
+}
+
+export interface BranchSettingFormValue {
+  branchId: string;
+  isActive: boolean;
+  retailPrice: number | '';
+  movingAverageCost: number | '';
 }
 
 export interface ItemFormValues {
@@ -51,12 +59,19 @@ export interface ItemFormValues {
   barcode: string;
   conversions: ItemConversionFormValue[];
   accessories: ItemAccessoryFormValue[];
+  branchSettings: BranchSettingFormValue[];
+  defaultVatType: DefaultVatType;
+  whtRate: WhtRate;
+  dispensingCategory: DispensingCategory;
+  revenueAccountId: string;
+  cogsAccountId: string;
+  inventoryAssetAccountId: string;
 }
 
 export const ITEM_FORM_DEFAULTS: ItemFormValues = {
   code: '',
   name: '',
-  itemType: ItemType.STOCKED_GOOD,
+  itemType: ItemType.INVENTORY,
   categoryId: '',
   baseUnitId: '',
   genericName: '',
@@ -74,4 +89,11 @@ export const ITEM_FORM_DEFAULTS: ItemFormValues = {
   barcode: '',
   conversions: [],
   accessories: [],
+  branchSettings: [],
+  defaultVatType: DefaultVatType.VAT_7,
+  whtRate: WhtRate.WHT_0,
+  dispensingCategory: DispensingCategory.General_Retail,
+  revenueAccountId: '',
+  cogsAccountId: '',
+  inventoryAssetAccountId: '',
 };

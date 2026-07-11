@@ -18,6 +18,7 @@ import {
   ClipboardList,
   Settings,
   Smartphone,
+  ShoppingCart,
   Menu,
   X,
   Bell,
@@ -79,6 +80,7 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   { key: 'billing', href: '/clinic/billing', icon: CreditCard, requiredPermission: 'BILLING:VIEW' },
+  { key: 'pos', href: '/clinic/pos', icon: ShoppingCart, requiredPermission: 'BILLING:ADD' },
   {
     key: 'staff',
     href: '/clinic/staff',

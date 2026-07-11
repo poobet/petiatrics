@@ -2,57 +2,53 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { BusinessPartnerType } from '@petiatrics/types';
 import ExtensionFields from './extension-fields';
+import { useForm, FormProvider } from 'react-hook-form';
 
 vi.mock('next-intl', () => ({
   useTranslations: (ns: string) => (key: string) => `${ns}.${key}`,
 }));
 
-const noop = () => {};
+const TestWrapper = ({ type, defaultValues }: { type: any, defaultValues?: any }) => {
+  const methods = useForm({
+    defaultValues: defaultValues || {
+      vet: { licenseNumber: 'VET-001', specialty: '', defaultDfRate: undefined }
+    }
+  });
+  return (
+    <FormProvider {...methods}>
+      <ExtensionFields type={type} />
+    </FormProvider>
+  );
+};
 
 describe('ExtensionFields', () => {
   it('renders nothing for non-VET types', () => {
     const { container } = render(
-      <ExtensionFields
-        type={BusinessPartnerType.CUSTOMER}
-        vet={{ licenseNumber: '' }}
-        onVetChange={noop}
-      />,
+      <TestWrapper type={BusinessPartnerType.CUSTOMER} />
     );
     expect(container.firstChild).toBeNull();
   });
 
   it('renders vet fields when type is VET', () => {
     render(
-      <ExtensionFields
-        type={BusinessPartnerType.VET}
-        vet={{ licenseNumber: 'VET-001' }}
-        onVetChange={noop}
-      />,
+      <TestWrapper type={BusinessPartnerType.VET} />
     );
-    expect(screen.getByTestId('vet-fields')).toBeDefined();
+    expect(screen.getByTestId('vet-fields')).toBeInTheDocument();
   });
 
-  it('calls onVetChange when license input changes', () => {
-    const onVetChange = vi.fn();
+  it('renders license number input and allows typing', () => {
     render(
-      <ExtensionFields
-        type={BusinessPartnerType.VET}
-        vet={{ licenseNumber: '' }}
-        onVetChange={onVetChange}
-      />,
+      <TestWrapper type={BusinessPartnerType.VET} />
     );
     const inputs = screen.getAllByRole('textbox');
+    expect(inputs[0]).toHaveValue('VET-001');
     fireEvent.change(inputs[0], { target: { value: 'VET-999' } });
-    expect(onVetChange).toHaveBeenCalledWith({ licenseNumber: 'VET-999' });
+    expect(inputs[0]).toHaveValue('VET-999');
   });
 
   it('renders nothing for SUPPLIER type (supplier fields are now core BP fields)', () => {
     const { container } = render(
-      <ExtensionFields
-        type={BusinessPartnerType.SUPPLIER}
-        vet={{ licenseNumber: '' }}
-        onVetChange={noop}
-      />,
+      <TestWrapper type={BusinessPartnerType.SUPPLIER} />
     );
     expect(container.firstChild).toBeNull();
   });

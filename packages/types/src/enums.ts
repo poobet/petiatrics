@@ -80,8 +80,32 @@ export enum GLAccountType {
 }
 
 export enum ItemType {
-  STOCKED_GOOD = 'STOCKED_GOOD',
+  INVENTORY = 'INVENTORY',
   SERVICE = 'SERVICE',
+  CONSUMABLE = 'CONSUMABLE',
+}
+
+/** Default VAT classification on the Product master (Thai RD context rules). */
+export enum DefaultVatType {
+  VAT_7 = 'VAT_7',         // Standard 7% VAT
+  VAT_EXEMPT = 'VAT_EXEMPT', // Legally exempt (registered animal food/drugs)
+  NON_VAT = 'NON_VAT',     // Out of VAT scope
+}
+
+/** Withholding Tax rates (for procurement / outsourced services). */
+export enum WhtRate {
+  WHT_0 = 'WHT_0',   // 0%
+  WHT_1 = 'WHT_1',   // 1% transport / delivery
+  WHT_3 = 'WHT_3',   // 3% services / consulting
+}
+
+/** Legal dispensing category — enforces Thai FDA and Veterinary Profession Act rules at POS. */
+export enum DispensingCategory {
+  General_Retail = 'General_Retail',
+  Household_Remedy = 'Household_Remedy',
+  Dangerous_Drug = 'Dangerous_Drug',
+  Specially_Controlled_Drug = 'Specially_Controlled_Drug',
+  Clinic_Use_Only = 'Clinic_Use_Only',
 }
 
 export enum AuditOperation {

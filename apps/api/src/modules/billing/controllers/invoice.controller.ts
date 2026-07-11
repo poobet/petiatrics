@@ -8,16 +8,39 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { IsNotEmpty, IsString, Length, Matches } from 'class-validator';
 import { Roles } from '../../../common/guards/roles.decorator';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { CurrentUser, TenantId } from '../../../common/decorators/tenant.decorator';
 import { Role, UserContext } from '@petiatrics/types';
 import { Audit } from '../../../common/interceptors/audit.interceptor';
 import { InvoiceService, CreateInvoiceDto } from '../services/invoice.service';
+import { PinVerificationService } from '../../identity/services/pin-verification.service';
+
+export class VerifyOverridePinDto {
+  @IsString()
+  @IsNotEmpty()
+  @Length(4, 8)
+  @Matches(/^\d+$/, { message: 'PIN must contain digits only' })
+  pin!: string;
+}
 
 @Controller('billing/invoices')
 export class InvoiceController {
-  constructor(private readonly invoiceService: InvoiceService) {}
+  constructor(
+    private readonly invoiceService: InvoiceService,
+    private readonly pinVerification: PinVerificationService,
+  ) {}
+
+  @Post('verify-override-pin')
+  @Roles(Role.CASHIER, Role.CLINIC_OWNER)
+  @Permissions('BILLING:ADD')
+  verifyOverridePin(
+    @TenantId() clinicId: string,
+    @Body() dto: VerifyOverridePinDto,
+  ) {
+    return this.pinVerification.verifyOverridePin(clinicId, dto.pin);
+  }
 
   @Post()
   @Roles(Role.CASHIER, Role.CLINIC_OWNER)

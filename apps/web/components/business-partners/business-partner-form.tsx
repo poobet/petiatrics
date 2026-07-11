@@ -28,6 +28,7 @@ import ContactTab from './tabs/contact-tab';
 import TaxAddressTab from './tabs/tax-address-tab';
 import RolesCommercialTab from './tabs/roles-commercial-tab';
 import FinancialsTab from './tabs/financials-tab';
+import LinkageTab from './tabs/linkage-tab';
 
 interface BusinessPartnerFormProps {
   initial?: BusinessPartnerResponse;
@@ -98,6 +99,9 @@ export default function BusinessPartnerForm({ initial, currencyCode }: BusinessP
   const [groupsLoading, setGroupsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  // Linked user is tracked as component state so LinkageTab can mutate it
+  // without a full page reload
+  const [linkedUser, setLinkedUser] = useState(initial?.user ?? null);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const schema: any = isEdit ? editBpSchema : createBpSchema;
@@ -316,6 +320,15 @@ export default function BusinessPartnerForm({ initial, currencyCode }: BusinessP
                 {t('tabs.financials')}
                 {hasTabErrors('financials') && <AlertCircle className="h-3.5 w-3.5 text-destructive" />}
               </TabsTrigger>
+              {/* Linkage tab — edit mode only */}
+              {isEdit && (
+                <TabsTrigger value="linkage" className="flex-1 gap-1.5">
+                  {t('tabs.linkage')}
+                  {linkedUser && (
+                    <span className="inline-flex h-2 w-2 rounded-full bg-primary" />
+                  )}
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <TabsContent value="contact" className="pt-4">
@@ -336,6 +349,17 @@ export default function BusinessPartnerForm({ initial, currencyCode }: BusinessP
             <TabsContent value="financials" className="pt-4">
               <FinancialsTab />
             </TabsContent>
+            {/* Linkage tab content */}
+            {isEdit && initial && (
+              <TabsContent value="linkage" className="pt-4">
+                <LinkageTab
+                  bpId={initial.id}
+                  bpType={initial.type}
+                  currentUser={linkedUser}
+                  onLinkChanged={setLinkedUser}
+                />
+              </TabsContent>
+            )}
           </Tabs>
 
           {type === BusinessPartnerType.VET && (

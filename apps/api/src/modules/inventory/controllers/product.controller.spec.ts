@@ -84,7 +84,7 @@ describe('ProductController', () => {
 
   describe('create()', () => {
     it('delegates to service.create with clinicId and dto', async () => {
-      const dto = { code: 'MED-001', name: 'Test', itemType: ItemType.STOCKED_GOOD, categoryId: 'c1', baseUnitId: 'u1', standardCost: 100, baseSellingPrice: 180 };
+      const dto = { code: 'MED-001', name: 'Test', itemType: ItemType.INVENTORY, categoryId: 'c1', baseUnitId: 'u1', standardCost: 100, baseSellingPrice: 180 };
       await controller.create(CLINIC_ID, dto as any);
       expect(service.create).toHaveBeenCalledWith(CLINIC_ID, dto);
     });

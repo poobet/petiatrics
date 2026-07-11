@@ -13,7 +13,7 @@ function makeItem(overrides: Partial<ItemSummaryResponse> = {}): ItemSummaryResp
     sku: 'SKU-00001',
     barcode: null,
     name: 'Test Medication',
-    itemType: ItemType.STOCKED_GOOD,
+    itemType: ItemType.INVENTORY,
     isActive: true,
     standardCost: 80,
     baseSellingPrice: 150,

@@ -106,7 +106,7 @@ export default function InventoryClient({ categories }: Props) {
     if (tab === 'movements') void loadMovements();
   }
 
-  const lowStockCount = lowStockItems.filter((p) => p.itemType === ItemType.STOCKED_GOOD).length;
+  const lowStockCount = lowStockItems.filter((p) => p.itemType === ItemType.INVENTORY).length;
 
   if (!activeBranch) {
     return (

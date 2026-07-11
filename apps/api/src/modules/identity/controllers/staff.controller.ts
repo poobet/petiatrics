@@ -11,6 +11,13 @@ import {
   Post,
   Put,
 } from '@nestjs/common';
+import { IsString, MinLength } from 'class-validator';
+
+class ResetStaffPasswordDto {
+  @IsString()
+  @MinLength(8)
+  newPassword!: string;
+}
 import {
   UserService,
   UpdateUserRoleDto,
@@ -37,6 +44,7 @@ export class StaffController {
    * List all staff in the current clinic.
    */
   @Get()
+  @Roles(Role.CLINIC_OWNER, Role.VET, Role.ASSISTANT, Role.CASHIER, Role.STAFF)
   list(@TenantId() clinicId: string) {
     return this.users.findByClinic(clinicId);
   }
@@ -118,5 +126,21 @@ export class StaffController {
     @TenantId() clinicId: string,
   ) {
     return this.users.deactivate(id, clinicId);
+  }
+
+  /**
+   * PATCH /api/v1/clinic/staff/:id/reset-password
+   * Clinic Owner resets a staff member's password.
+   * Sets mustChangePassword=true so staff must change it on next login.
+   */
+  @Patch(':id/reset-password')
+  @HttpCode(HttpStatus.OK)
+  @Audit({ entity: 'users', operation: 'password_reset' })
+  async resetPassword(
+    @Param('id') id: string,
+    @Body() dto: ResetStaffPasswordDto,
+    @TenantId() clinicId: string,
+  ) {
+    return this.users.adminResetPassword(id, clinicId, dto.newPassword);
   }
 }
