@@ -27,6 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  Checkbox,
 } from '@petiatrics/ui';
 import {
   DropdownMenu,
@@ -44,7 +45,9 @@ interface StaffUser {
   username: string | null;
   email: string | null;
   role: string;
+  roleId?: string;
   status: string;
+  userBranches?: { branchId: string }[];
   permissions?: string[];
 }
 
@@ -65,6 +68,16 @@ export default function StaffPageClient() {
   const [roles, setRoles] = useState<{ id: string; code: string; name: string }[]>([]);
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+
+  // Edit staff state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingStaff, setEditingStaff] = useState<StaffUser | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editRole, setEditRole] = useState('');
+  const [editBranchIds, setEditBranchIds] = useState<string[]>([]);
+  const [updating, setUpdating] = useState(false);
+
+  const branches = useSessionStore((s) => s.authorizedBranches);
 
 
 
@@ -118,10 +131,30 @@ export default function StaffPageClient() {
   async function handleDeactivate(userId: string) {
     setBusy(userId);
     try {
-      const updated = await apiClient.delete<StaffUser>(`/clinic/staff/${userId}`);
-      setStaff((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+      await apiClient.delete(`/clinic/staff/${userId}`);
+      setStaff((prev) => prev.filter((u) => u.id !== userId));
     } finally {
       setBusy(null);
+    }
+  }
+
+  async function handleEditSubmit() {
+    if (!editingStaff) return;
+    setUpdating(true);
+    try {
+      await apiClient.patch(`/clinic/staff/${editingStaff.id}/role`, {
+        name: editName,
+        role: editRole,
+        branchIds: editBranchIds,
+      });
+      // Refresh staff list
+      const data = await apiClient.get<StaffUser[]>('/clinic/staff');
+      setStaff(data);
+      setEditOpen(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUpdating(false);
     }
   }
 
@@ -275,6 +308,17 @@ export default function StaffPageClient() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
+                        onClick={() => {
+                          setEditingStaff(user);
+                          setEditName(user.name);
+                          setEditRole(user.roleId || user.role);
+                          setEditBranchIds(user.userBranches?.map((ub) => ub.branchId) || []);
+                          setEditOpen(true);
+                        }}
+                      >
+                        {tCommon('edit')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
                         className="text-red-600 focus:text-red-600"
                         onClick={() => handleDeactivate(user.id)}
                       >
@@ -290,6 +334,72 @@ export default function StaffPageClient() {
       </div>
 
 
+      {/* Edit Staff Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Staff — {editingStaff?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div className="space-y-1.5">
+              <Label>{t('name')}</Label>
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t('role')}</Label>
+              <Select value={editRole} onValueChange={setEditRole}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Branches</Label>
+              <div className="space-y-2 border rounded-lg p-3 bg-gray-50/50">
+                {branches.map((b) => {
+                  const checked = editBranchIds.includes(b.id);
+                  return (
+                    <div key={b.id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`edit-branch-${b.id}`}
+                        checked={checked}
+                        onCheckedChange={(val) => {
+                          if (val) {
+                            setEditBranchIds((prev) => [...prev, b.id]);
+                          } else {
+                            setEditBranchIds((prev) => prev.filter((id) => id !== b.id));
+                          }
+                        }}
+                      />
+                      <Label htmlFor={`edit-branch-${b.id}`} className="cursor-pointer font-normal text-sm">
+                        {b.name}
+                      </Label>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <Button
+              className="w-full"
+              disabled={updating || !editName.trim()}
+              onClick={handleEditSubmit}
+            >
+              {updating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {tCommon('save')}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

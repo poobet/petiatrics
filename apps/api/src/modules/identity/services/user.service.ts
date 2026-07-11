@@ -22,6 +22,8 @@ export interface InviteUserDto {
 
 export interface UpdateUserRoleDto {
   role: Role;
+  name?: string;
+  branchIds?: string[];
 }
 
 export interface CreateStaffInput {
@@ -167,6 +169,9 @@ export class UserService {
   async findByClinic(clinicId: string): Promise<User[]> {
     return this.prisma.user.findMany({
       where: { clinicId },
+      include: {
+        userBranches: true,
+      },
       orderBy: { createdAt: 'asc' },
     });
   }
@@ -210,12 +215,25 @@ export class UserService {
       }
     }
 
-    return this.prisma.user.update({
-      where: { id },
-      data: {
-        role: resolvedLegacyRole,
-        roleId: resolvedRoleId,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      if (dto.branchIds) {
+        await tx.userBranch.deleteMany({ where: { userId: id } });
+        if (dto.branchIds.length > 0) {
+          await tx.userBranch.createMany({
+            data: dto.branchIds.map((branchId) => ({ userId: id, branchId })),
+            skipDuplicates: true,
+          });
+        }
+      }
+
+      return tx.user.update({
+        where: { id },
+        data: {
+          role: resolvedLegacyRole,
+          roleId: resolvedRoleId,
+          ...(dto.name ? { name: dto.name } : {}),
+        },
+      });
     });
   }
 
@@ -475,5 +493,69 @@ export class UserService {
         },
       });
     }) as any;
+  }
+
+  async updateClient(id: string, clinicId: string, dto: any): Promise<User> {
+    await this.findOneInClinic(id, clinicId);
+    return this.prisma.$transaction(async (tx) => {
+      const u = await tx.user.update({
+        where: { id },
+        data: {
+          name: dto.name,
+          email: dto.email || null,
+        },
+      });
+
+      const bp = await tx.businessPartner.findFirst({
+        where: { clinicId, linkedUserId: id },
+      });
+
+      if (bp) {
+        await tx.businessPartner.update({
+          where: { id: bp.id },
+          data: {
+            name: dto.name,
+            email: dto.email || null,
+            phone: dto.phone || null,
+            lineId: dto.lineId || null,
+            taxId: dto.taxId || null,
+            addressLine1: dto.addressLine1 || null,
+            subDistrict: dto.subDistrict || null,
+            district: dto.district || null,
+            province: dto.province || null,
+            zipcode: dto.zipcode || null,
+          },
+        });
+      } else {
+        await this.createCustomerBpWithCode(tx, u.id, clinicId, dto.name, dto.email || null);
+        const newBp = await tx.businessPartner.findFirst({
+          where: { clinicId, linkedUserId: id },
+        });
+        if (newBp) {
+          await tx.businessPartner.update({
+            where: { id: newBp.id },
+            data: {
+              phone: dto.phone || null,
+              lineId: dto.lineId || null,
+              taxId: dto.taxId || null,
+              addressLine1: dto.addressLine1 || null,
+              subDistrict: dto.subDistrict || null,
+              district: dto.district || null,
+              province: dto.province || null,
+              zipcode: dto.zipcode || null,
+            },
+          });
+        }
+      }
+
+      return tx.user.findUnique({
+        where: { id },
+        include: {
+          businessPartners: {
+            where: { clinicId },
+          },
+        },
+      }) as any;
+    });
   }
 }
