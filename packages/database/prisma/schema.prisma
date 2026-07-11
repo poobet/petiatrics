@@ -153,12 +153,12 @@ model Clinic {
   invoices            Invoice[]
   businessPartners    BusinessPartner[]
   bpGroups            BpGroup[]
-  clinicItemSequence  ClinicItemSequence?
   rolePermissions     ClinicRolePermission[]
   purchaseOrders      PurchaseOrder[]
   goodsReceipts       GoodsReceipt[]
   purchaseInvoices    PurchaseInvoice[]
   supplierPayments    SupplierPayment[]
+  documentSequenceConfigs DocumentSequenceConfig[]
 
   @@map("clinics")
 }
@@ -591,17 +591,6 @@ model BranchStockBalance {
   @@map("branch_stock_balances")
 }
 
-// ─── ClinicItemSequence (per-clinic SKU counter) ─────────────────────────────
-
-model ClinicItemSequence {
-  clinicId  String   @id
-  nextVal   Int      @default(1)
-  updatedAt DateTime @updatedAt
-
-  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-
-  @@map("clinic_item_sequences")
-}
 
 // ─── StockMovement (Immutable Ledger) ────────────────────────────────────────
 
@@ -973,4 +962,52 @@ model SupplierPaymentAllocation {
   @@index([paymentId])
   @@index([purchaseInvoiceId])
   @@map("supplier_payment_allocations")
+}
+
+// ─── Document Sequencing ─────────────────────────────────────────────────────
+
+enum DocumentType {
+  PURCHASE_ORDER
+  GOODS_RECEIPT
+  PURCHASE_INVOICE
+  SUPPLIER_PAYMENT
+  CUSTOMER_INVOICE
+  APPOINTMENT
+}
+
+enum ResetInterval {
+  YEARLY
+  MONTHLY
+  DAILY
+  NEVER
+}
+
+model DocumentSequenceConfig {
+  id            String        @id @default(uuid())
+  clinicId      String
+  documentType  DocumentType
+  template      String        // e.g. "PO{yyyy}-{number:4}"
+  resetInterval ResetInterval @default(YEARLY)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  clinic        Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@unique([clinicId, documentType])
+  @@index([clinicId])
+  @@map("document_sequence_configs")
+}
+
+model DocumentSequence {
+  id            String       @id @default(uuid())
+  clinicId      String
+  documentType  DocumentType
+  period        String       // "2026", "2026-07", "2026-07-11", or "GLOBAL"
+  lastNumber    Int          @default(0)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@unique([clinicId, documentType, period])
+  @@index([clinicId])
+  @@map("document_sequences")
 }
