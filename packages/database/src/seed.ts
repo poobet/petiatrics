@@ -267,7 +267,11 @@ async function main() {
   // ── 1. Super Admin (no clinicId) ──────────────────────────────────────────
   const platformAdmin = await prisma.user.upsert({
     where: { email: 'admin@petiatrics.io' },
-    update: {},
+    update: {
+      name: 'Platform Admin',
+      role: 'SUPER_ADMIN',
+      status: 'ACTIVE',
+    },
     create: {
       email: 'admin@petiatrics.io',
       name: 'Platform Admin',
@@ -337,7 +341,13 @@ async function main() {
   for (const s of staffSeed) {
     const u = await prisma.user.upsert({
       where: { email: s.email },
-      update: {},
+      update: {
+        name: s.name,
+        username: s.username,
+        role: s.role,
+        status: 'ACTIVE',
+        clinicId: clinic.id,
+      },
       create: {
         email: s.email,
         name: s.name,
@@ -475,7 +485,13 @@ async function main() {
   // Seed Customer User
   const customerUser = await prisma.user.upsert({
     where: { email: 'customer@happypaws.io' },
-    update: {},
+    update: {
+      name: 'Happy Paws Customer',
+      username: 'customer@happy-paws',
+      role: 'CUSTOMER',
+      status: 'ACTIVE',
+      clinicId: clinic.id,
+    },
     create: {
       email: 'customer@happypaws.io',
       name: 'Happy Paws Customer',
