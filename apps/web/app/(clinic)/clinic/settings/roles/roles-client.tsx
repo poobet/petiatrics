@@ -2,312 +2,493 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { Shield, CheckCircle2, Loader2, RotateCcw } from 'lucide-react';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Shield,
+  CheckCircle2,
+  Loader2,
+  Lock,
+  Plus,
+  Trash2,
+  AlertCircle,
+  Settings,
+} from 'lucide-react';
+import {
+  Button,
+  Checkbox,
+  Input,
+  Label,
+  Badge,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
 } from '@petiatrics/ui';
-import { Button } from '@petiatrics/ui';
-import { Checkbox } from '@petiatrics/ui';
-import { Label } from '@petiatrics/ui';
-import { Badge } from '@petiatrics/ui';
 import { apiClient } from '../../../../../lib/api-client';
 
-// ─── Permission Groups ──────────────────────────────────────────────────────
-
-interface PermissionEntry {
+interface ActionMaster {
   id: string;
-  label: string;
-  desc: string;
+  code: string;
+  name: string;
+  description: string | null;
 }
 
-interface PermissionGroup {
-  title: string;
-  permissions: PermissionEntry[];
+interface PageMaster {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  actions: ActionMaster[];
 }
 
-const PERMISSION_GROUPS: PermissionGroup[] = [
-  {
-    title: 'Patients',
-    permissions: [
-      { id: 'PATIENT:VIEW', label: 'View Patients', desc: 'Search and read patient profiles.' },
-      { id: 'PATIENT:EDIT', label: 'Add / Edit Patients', desc: 'Create and update patient records.' },
-    ],
-  },
-  {
-    title: 'Visits & Vaccinations',
-    permissions: [
-      { id: 'VISIT:VIEW', label: 'View Visits', desc: 'Read SOAP visit notes.' },
-      { id: 'VISIT:ADD', label: 'Create Visits', desc: 'Open new visit / SOAP notes.' },
-      { id: 'VISIT:EDIT', label: 'Edit & Finalize Visits', desc: 'Update and finalize visit notes.' },
-      { id: 'VACCINATION:ADD', label: 'Log Vaccinations', desc: 'Record vaccination events.' },
-    ],
-  },
-  {
-    title: 'Inventory',
-    permissions: [
-      { id: 'INVENTORY:VIEW', label: 'View Inventory', desc: 'View stock, products, and ledger.' },
-      { id: 'INVENTORY:ADD', label: 'Add Stock', desc: 'Receive goods and post new movements.' },
-      { id: 'INVENTORY:EDIT', label: 'Edit Products', desc: 'Update product details and adjustments.' },
-      { id: 'INVENTORY:DELETE', label: 'Deactivate Items', desc: 'Deactivate products from active catalog.' },
-    ],
-  },
-  {
-    title: 'Billing',
-    permissions: [
-      { id: 'BILLING:VIEW', label: 'View Billing', desc: 'Read invoices and payment history.' },
-      { id: 'BILLING:ADD', label: 'Create Invoices', desc: 'Create draft invoices.' },
-      { id: 'BILLING:EDIT', label: 'Process Payments', desc: 'Mark invoices as issued or paid.' },
-      { id: 'BILLING:VOID', label: 'Void Invoices', desc: 'Void an invoice (destructive).' },
-    ],
-  },
-  {
-    title: 'Settings',
-    permissions: [
-      { id: 'SETTINGS:MANAGE', label: 'Manage Settings', desc: 'Manage clinic settings and role permissions.' },
-    ],
-  },
-];
-
-// ─── Default Role Permissions ──────────────────────────────────────────────
-
-const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
-  CLINIC_OWNER: [
-    'PATIENT:VIEW', 'PATIENT:EDIT',
-    'VISIT:VIEW', 'VISIT:ADD', 'VISIT:EDIT', 'VACCINATION:ADD',
-    'INVENTORY:VIEW', 'INVENTORY:ADD', 'INVENTORY:EDIT', 'INVENTORY:DELETE',
-    'BILLING:VIEW', 'BILLING:ADD', 'BILLING:EDIT', 'BILLING:VOID',
-    'SETTINGS:MANAGE',
-  ],
-  VET: [
-    'PATIENT:VIEW', 'PATIENT:EDIT',
-    'VISIT:VIEW', 'VISIT:ADD', 'VISIT:EDIT', 'VACCINATION:ADD',
-    'INVENTORY:VIEW',
-  ],
-  ASSISTANT: ['PATIENT:VIEW', 'VISIT:VIEW', 'INVENTORY:VIEW', 'BILLING:VIEW'],
-  STAFF: ['PATIENT:VIEW', 'INVENTORY:VIEW', 'BILLING:VIEW'],
-  CASHIER: ['PATIENT:VIEW', 'BILLING:VIEW', 'BILLING:ADD', 'BILLING:EDIT', 'BILLING:VOID'],
-};
-
-const CONFIGURABLE_ROLES = [
-  { value: 'CLINIC_OWNER', label: 'Clinic Owner' },
-  { value: 'VET', label: 'Veterinarian (VET)' },
-  { value: 'ASSISTANT', label: 'Assistant' },
-  { value: 'STAFF', label: 'Staff' },
-  { value: 'CASHIER', label: 'Cashier' },
-];
-
-// ─── Component ─────────────────────────────────────────────────────────────
-
-interface ClinicRolePermission {
+interface ClinicRole {
   id: string;
-  clinicId: string;
-  role: string;
-  permissions: string[];
+  code: string;
+  name: string;
+  isSystem: boolean;
+  isDeletable: boolean;
+  _count?: { users: number };
+}
+
+interface AssignedPermission {
+  pageCode: string;
+  pageName: string;
+  actionCode: string | null;
+  actionName: string | null;
 }
 
 export default function RolesClient() {
   const t = useTranslations('common');
 
-  const [selectedRole, setSelectedRole] = useState<string>('VET');
-  const [overrideList, setOverrideList] = useState<ClinicRolePermission[]>([]);
+  // Core state
+  const [roles, setRoles] = useState<ClinicRole[]>([]);
+  const [pages, setPages] = useState<PageMaster[]>([]);
+  const [selectedRoleId, setSelectedRoleId] = useState<string>('');
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
-  const [loadingOverrides, setLoadingOverrides] = useState(true);
+
+  // UI state
+  const [loading, setLoading] = useState(true);
+  const [loadingPermissions, setLoadingPermissions] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Fetch all clinic-specific overrides once on mount
+  // Create role dialog state
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newRoleName, setNewRoleName] = useState('');
+  const [creatingRole, setCreatingRole] = useState(false);
+
+  // Fetch initial roles and page master registry
   useEffect(() => {
-    setLoadingOverrides(true);
-    apiClient
-      .get<ClinicRolePermission[]>('/clinic/staff/role-permissions')
-      .then((list) => setOverrideList(list))
-      .catch(console.error)
-      .finally(() => setLoadingOverrides(false));
+    async function loadInitialData() {
+      setLoading(true);
+      try {
+        const [rolesList, pagesList] = await Promise.all([
+          apiClient.get<ClinicRole[]>('/clinic/roles'),
+          apiClient.get<PageMaster[]>('/clinic/pages'),
+        ]);
+        setRoles(rolesList);
+        setPages(pagesList);
+        if (rolesList.length > 0) {
+          setSelectedRoleId(rolesList[0].id);
+        }
+      } catch (err) {
+        console.error('Failed to load roles and permissions registry:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadInitialData();
   }, []);
 
-  // Sync selectedPermissions whenever role or overrideList changes
+  // Fetch permissions when active role changes
   useEffect(() => {
-    const override = overrideList.find((o) => o.role === selectedRole);
-    setSelectedPermissions(
-      override ? override.permissions : (DEFAULT_ROLE_PERMISSIONS[selectedRole] ?? [])
-    );
+    if (!selectedRoleId) return;
+    setLoadingPermissions(true);
     setSaved(false);
-  }, [selectedRole, overrideList]);
+    setErrorMessage(null);
 
-  const hasCustomOverride = overrideList.some((o) => o.role === selectedRole);
-  const defaultForRole = DEFAULT_ROLE_PERMISSIONS[selectedRole] ?? [];
+    apiClient
+      .get<AssignedPermission[]>(`/clinic/roles/${selectedRoleId}/permissions`)
+      .then((perms) => {
+        // Collect all non-null action codes
+        const codes = perms
+          .filter((p) => p.actionCode)
+          .map((p) => p.actionCode as string);
+        setSelectedPermissions(codes);
+      })
+      .catch((err) => {
+        console.error('Failed to load role permissions:', err);
+      })
+      .finally(() => {
+        setLoadingPermissions(false);
+      });
+  }, [selectedRoleId]);
 
-  function togglePermission(permId: string, checked: boolean) {
+  const activeRole = roles.find((r) => r.id === selectedRoleId);
+  const isOwner = activeRole?.code === 'CLINIC_OWNER';
+  const isSystemRole = activeRole?.isSystem === true;
+
+  // Toggle permission checkbox
+  function togglePermission(actionCode: string, checked: boolean) {
+    if (isOwner) return; // Read-only for owner role
     setSelectedPermissions((prev) =>
-      checked ? [...prev, permId] : prev.filter((p) => p !== permId)
+      checked ? [...prev, actionCode] : prev.filter((code) => code !== actionCode)
     );
     setSaved(false);
   }
 
-  function resetToDefaults() {
-    setSelectedPermissions([...defaultForRole]);
+  // Toggle all permissions inside a page group
+  function togglePageAll(page: PageMaster, checked: boolean) {
+    if (isOwner) return;
+    const actionCodes = page.actions.map((a) => a.code);
+    setSelectedPermissions((prev) => {
+      if (checked) {
+        // Add missing ones
+        const unique = new Set([...prev, ...actionCodes]);
+        return Array.from(unique);
+      } else {
+        // Remove all
+        return prev.filter((code) => !actionCodes.includes(code));
+      }
+    });
     setSaved(false);
   }
 
+  // Handle Save
   const handleSave = useCallback(async () => {
+    if (!selectedRoleId || isOwner) return;
     setSaving(true);
+    setErrorMessage(null);
     try {
-      const updated = await apiClient.put<ClinicRolePermission>(
-        `/clinic/staff/roles/${selectedRole}/permissions`,
-        { permissions: selectedPermissions }
-      );
-      setOverrideList((prev) => {
-        const idx = prev.findIndex((o) => o.role === selectedRole);
-        if (idx > -1) return prev.map((o) => (o.role === selectedRole ? updated : o));
-        return [...prev, updated];
+      await apiClient.put(`/clinic/roles/${selectedRoleId}/permissions`, {
+        permissions: selectedPermissions,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-    } catch (err) {
-      console.error('Failed to save role permissions', err);
+    } catch (err: any) {
+      console.error('Failed to save role permissions:', err);
+      setErrorMessage(err?.message ?? 'Failed to update permissions.');
     } finally {
       setSaving(false);
     }
-  }, [selectedRole, selectedPermissions]);
+  }, [selectedRoleId, selectedPermissions, isOwner]);
+
+  // Handle Create Role
+  async function handleCreateRole() {
+    if (!newRoleName.trim()) return;
+    setCreatingRole(true);
+    setErrorMessage(null);
+    try {
+      const created = await apiClient.post<ClinicRole>('/clinic/roles', {
+        name: newRoleName.trim(),
+      });
+      setRoles((prev) => [...prev, created]);
+      setSelectedRoleId(created.id);
+      setNewRoleName('');
+      setCreateOpen(false);
+    } catch (err: any) {
+      console.error('Failed to create custom role:', err);
+      setErrorMessage(err?.message ?? 'Role creation failed.');
+    } finally {
+      setCreatingRole(false);
+    }
+  }
+
+  // Handle Delete Role
+  async function handleDeleteRole(roleId: string, e: React.MouseEvent) {
+    e.stopPropagation(); // Avoid selecting role on click
+    if (!confirm('Are you sure you want to delete this custom role? This action cannot be undone.')) {
+      return;
+    }
+    setErrorMessage(null);
+    try {
+      await apiClient.delete(`/clinic/roles/${roleId}`);
+      setRoles((prev) => prev.filter((r) => r.id !== roleId));
+      if (selectedRoleId === roleId && roles.length > 0) {
+        const remaining = roles.filter((r) => r.id !== roleId);
+        if (remaining.length > 0) {
+          setSelectedRoleId(remaining[0].id);
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to delete role:', err);
+      alert(err?.message ?? 'Failed to delete role. Ensure no users are assigned to this role.');
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-32">
+    <div className="max-w-6xl mx-auto space-y-6 pb-24">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
-          <Shield className="w-5 h-5 text-indigo-600" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Roles & Permissions</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            Configure granular permissions for each role. Changes apply to all staff with that role.
-          </p>
-        </div>
-      </div>
-
-      {/* Role Selector */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <label className="text-sm font-semibold text-gray-700">Select Role to Configure</label>
-            <p className="text-xs text-gray-400">Choose a role to view and modify its permission set.</p>
-          </div>
-          {hasCustomOverride && (
-            <Badge variant="secondary" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
-              Custom Override Active
-            </Badge>
-          )}
-        </div>
-
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Select value={selectedRole} onValueChange={setSelectedRole} disabled={loadingOverrides}>
-            <SelectTrigger className="w-64">
-              <SelectValue placeholder="Select a role…" />
-            </SelectTrigger>
-            <SelectContent>
-              {CONFIGURABLE_ROLES.map((r) => (
-                <SelectItem key={r.value} value={r.value}>
-                  {r.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={resetToDefaults}
-            className="text-gray-500 hover:text-gray-700 gap-1.5"
-            title="Reset to system defaults"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            Reset to defaults
-          </Button>
+          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+            <Shield className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Roles & Permissions</h1>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Manage roles and customize page-action security settings for clinic staff.
+            </p>
+          </div>
         </div>
-      </div>
 
-      {/* Permission Matrix */}
-      {loadingOverrides ? (
-        <div className="flex items-center justify-center py-24">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {PERMISSION_GROUPS.map((group) => (
-            <div key={group.title} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/60">
-                <h2 className="text-sm font-semibold text-gray-800">{group.title}</h2>
-              </div>
-              <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-3">
-                {group.permissions.map((perm) => {
-                  const isChecked = selectedPermissions.includes(perm.id);
-                  return (
-                    <div
-                      key={perm.id}
-                      className={`
-                        flex items-start gap-3 p-3.5 rounded-lg border transition-all cursor-pointer
-                        ${isChecked
-                          ? 'border-indigo-200 bg-indigo-50/60'
-                          : 'border-gray-100 bg-gray-50/40 hover:bg-gray-50'
-                        }
-                      `}
-                      onClick={() => togglePermission(perm.id, !isChecked)}
-                    >
-                      <Checkbox
-                        id={perm.id}
-                        checked={isChecked}
-                        onCheckedChange={(checked) => togglePermission(perm.id, !!checked)}
-                        className="mt-0.5"
-                      />
-                      <div className="space-y-0.5 select-none">
-                        <Label
-                          htmlFor={perm.id}
-                          className="text-sm font-medium leading-none cursor-pointer text-gray-800"
-                        >
-                          {perm.label}
-                        </Label>
-                        <p className="text-xs text-gray-500 leading-relaxed">{perm.desc}</p>
-                      </div>
-                    </div>
-                  );
-                })}
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all duration-150">
+              <Plus className="w-4 h-4 mr-1.5" />
+              Add Custom Role
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md bg-white border rounded-xl shadow-2xl p-6">
+            <DialogHeader className="mb-4">
+              <DialogTitle className="text-lg font-bold text-gray-900">Create Custom Role</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="roleName" className="text-sm font-semibold text-gray-700">Role Name</Label>
+                <Input
+                  id="roleName"
+                  value={newRoleName}
+                  onChange={(e) => setNewRoleName(e.target.value)}
+                  placeholder="e.g. Senior Vet Nurse"
+                  className="w-full focus:ring-2 focus:ring-blue-500"
+                />
               </div>
             </div>
-          ))}
+            <DialogFooter className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+              <Button variant="ghost" onClick={() => setCreateOpen(false)} disabled={creatingRole}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreateRole}
+                disabled={creatingRole || !newRoleName.trim()}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4"
+              >
+                {creatingRole && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Create Role
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {errorMessage && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 text-sm text-red-700">
+          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+          <div>{errorMessage}</div>
         </div>
       )}
 
-      {/* Sticky Save Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-t border-gray-200 px-6 py-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
-          <p className="text-sm text-gray-500">
-            Configuring permissions for{' '}
-            <span className="font-semibold text-gray-800">
-              {CONFIGURABLE_ROLES.find((r) => r.value === selectedRole)?.label ?? selectedRole}
-            </span>
-          </p>
-          <div className="flex items-center gap-3">
-            {saved && (
-              <span className="flex items-center gap-1.5 text-sm text-green-600 font-medium">
-                <CheckCircle2 className="w-4 h-4" />
-                Saved
-              </span>
-            )}
-            <Button
-              onClick={handleSave}
-              disabled={saving || loadingOverrides}
-              className="min-w-[120px] bg-indigo-600 hover:bg-indigo-700 text-white"
-            >
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {saving ? 'Saving…' : t('save')}
-            </Button>
+      {/* Main Grid: Left sidebar, Right detail panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Side: Roles List */}
+        <div className="lg:col-span-4 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50">
+            <h2 className="text-sm font-bold text-gray-800">Clinic Roles</h2>
+          </div>
+          <div className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
+            {roles.map((r) => {
+              const isActive = r.id === selectedRoleId;
+              return (
+                <div
+                  key={r.id}
+                  onClick={() => setSelectedRoleId(r.id)}
+                  className={`
+                    flex items-center justify-between px-5 py-4 cursor-pointer transition-all duration-150 group
+                    ${isActive ? 'bg-blue-50/70 border-l-4 border-blue-600 pl-4' : 'hover:bg-gray-50/60 border-l-4 border-transparent'}
+                  `}
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-sm font-semibold transition-colors duration-150 ${isActive ? 'text-blue-700' : 'text-gray-800'}`}>
+                        {r.name}
+                      </span>
+                      {r.isSystem && (
+                        <Badge className="bg-gray-100 text-gray-600 border border-gray-200 text-[10px] py-0 px-1 font-medium select-none">
+                          System
+                        </Badge>
+                      )}
+                    </div>
+                    {r._count && (
+                      <p className="text-xs text-gray-400">
+                        {r._count.users} staff assigned
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                    {r.code === 'CLINIC_OWNER' && (
+                      <Lock className="w-3.5 h-3.5 text-gray-400" />
+                    )}
+                    {r.isDeletable && (
+                      <button
+                        onClick={(e) => handleDeleteRole(r.id, e)}
+                        className="p-1 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        title="Delete custom role"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
+
+        {/* Right Side: Permissions Grid Matrix */}
+        <div className="lg:col-span-8 space-y-6">
+          {activeRole && (
+            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-gray-100 pb-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-blue-600" />
+                    <h2 className="text-lg font-bold text-gray-900">{activeRole.name}</h2>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Role Code: <code className="font-mono text-gray-700 bg-gray-100 px-1 py-0.5 rounded">{activeRole.code}</code>
+                  </p>
+                </div>
+                {isOwner && (
+                  <Badge className="bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
+                    <Lock className="w-3 h-3" />
+                    Locked Role
+                  </Badge>
+                )}
+              </div>
+
+              {isOwner && (
+                <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-xl flex items-start gap-2.5 text-xs text-amber-800 leading-normal">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold">Notice:</span> The Clinic Owner role possesses immutable administrative access across all screens and actions. Its permission set cannot be restricted.
+                  </div>
+                </div>
+              )}
+
+              {loadingPermissions ? (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {pages.map((page) => {
+                    const allActionCodes = page.actions.map((a) => a.code);
+                    const allChecked = allActionCodes.every((code) => selectedPermissions.includes(code));
+                    const someChecked = allActionCodes.some((code) => selectedPermissions.includes(code)) && !allChecked;
+
+                    return (
+                      <div key={page.id} className="border border-gray-150 rounded-xl overflow-hidden shadow-sm bg-white">
+                        {/* Page Module Title Row */}
+                        <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <h3 className="text-sm font-bold text-gray-800">{page.name}</h3>
+                            {page.description && (
+                              <p className="text-xs text-gray-400">{page.description}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              id={`page-select-all-${page.id}`}
+                              checked={allChecked ? true : someChecked ? 'indeterminate' : false}
+                              onCheckedChange={(checked) => togglePageAll(page, !!checked)}
+                              disabled={isOwner}
+                            />
+                            <Label
+                              htmlFor={`page-select-all-${page.id}`}
+                              className="text-xs font-semibold text-gray-500 cursor-pointer select-none"
+                            >
+                              Select All
+                            </Label>
+                          </div>
+                        </div>
+
+                        {/* Actions List Grid */}
+                        <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                          {page.actions.map((act) => {
+                            const isChecked = selectedPermissions.includes(act.code);
+                            return (
+                              <div
+                                key={act.id}
+                                onClick={() => togglePermission(act.code, !isChecked)}
+                                className={`
+                                  flex items-start gap-3 p-3.5 border rounded-xl transition-all duration-150
+                                  ${isOwner ? 'opacity-85 border-gray-100 bg-gray-50 cursor-not-allowed' : 'cursor-pointer'}
+                                  ${isChecked && !isOwner
+                                    ? 'border-blue-200 bg-blue-50/40 hover:bg-blue-50/65'
+                                    : !isOwner ? 'border-gray-100 bg-white hover:bg-gray-50/50' : ''
+                                  }
+                                `}
+                              >
+                                <Checkbox
+                                  id={act.id}
+                                  checked={isOwner || isChecked}
+                                  onCheckedChange={(checked) => togglePermission(act.code, !!checked)}
+                                  disabled={isOwner}
+                                  className="mt-0.5 focus:ring-blue-500"
+                                />
+                                <div className="space-y-1 select-none">
+                                  <Label
+                                    htmlFor={act.id}
+                                    className={`text-xs font-bold leading-none cursor-pointer ${isOwner ? 'cursor-not-allowed text-gray-600' : 'text-gray-800'}`}
+                                  >
+                                    {act.name}
+                                  </Label>
+                                  {act.description && (
+                                    <p className="text-[11px] text-gray-400 leading-normal">{act.description}</p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Sticky Save Bar */}
+      {activeRole && !isOwner && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-t border-gray-200 px-6 py-4 shadow-xl">
+          <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
+            <div className="text-sm text-gray-500">
+              Saving changes for <span className="font-bold text-gray-800">{activeRole.name}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              {saved && (
+                <span className="flex items-center gap-1.5 text-sm text-green-600 font-bold animate-pulse">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Permissions Saved
+                </span>
+              )}
+              <Button
+                onClick={handleSave}
+                disabled={saving || loadingPermissions}
+                className="min-w-[125px] bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md transition-all duration-150"
+              >
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {saving ? 'Saving…' : 'Save Permissions'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
