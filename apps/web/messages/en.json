@@ -103,6 +103,8 @@
     "settings": "Settings",
     "settingsGeneral": "General",
     "rolePermissions": "Roles & Permissions",
+    "documentSequence": "Document Sequencing",
+    "pos": "POS",
     "mobileApp": "Mobile App",
     "mobileAppSubtitle": "Owner mobile view"
   },

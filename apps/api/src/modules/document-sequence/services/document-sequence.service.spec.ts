@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { PrismaClient, DocumentType, ResetInterval } from '@prisma/client';
-import { DocumentSequenceService } from './document-sequence.service';
+import { PrismaClient, ResetInterval } from '@prisma/client';
+import { DocumentSequenceService, DOC_TYPE } from './document-sequence.service';
 
 function buildPrismaMock() {
   const configs: Record<string, any> = {};
@@ -9,24 +9,41 @@ function buildPrismaMock() {
   return {
     configs,
     sequences,
+    branch: {
+      findFirst: jest.fn().mockImplementation(({ where }) => {
+        return Promise.resolve({
+          id: where.id,
+          clinicId: where.clinicId,
+          name: `Branch ${where.id}`,
+          code: where.id === 'branch-1' ? 'BKK' : 'CNX',
+        });
+      }),
+    },
     documentSequenceConfig: {
       findUnique: jest.fn().mockImplementation(({ where }) => {
         const key = `${where.clinicId_documentType.clinicId}_${where.clinicId_documentType.documentType}`;
-        return Promise.resolve(configs[key] || null);
+        const val = configs[key];
+        return Promise.resolve(val ? { scope: 'CLINIC', ...val } : null);
       }),
     },
+    // System-type registry fallback - returns null by default (falls back to hard-coded constants)
+    documentTypeDefinition: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
     documentSequence: {
-      upsert: jest.fn().mockImplementation(({ where, create, update }) => {
-        const key = `${where.clinicId_documentType_period.clinicId}_${where.clinicId_documentType_period.documentType}_${where.clinicId_documentType_period.period}`;
+      upsert: jest.fn().mockImplementation(({ where, create }) => {
+        const payload = where.clinicId_branchId_documentType_period;
+        const key = `${payload.clinicId}_${payload.branchId}_${payload.documentType}_${payload.period}`;
         if (sequences[key] === undefined) {
           sequences[key] = create.lastNumber;
         } else {
           sequences[key] += 1;
         }
         return Promise.resolve({
-          clinicId: where.clinicId_documentType_period.clinicId,
-          documentType: where.clinicId_documentType_period.documentType,
-          period: where.clinicId_documentType_period.period,
+          clinicId: payload.clinicId,
+          branchId: payload.branchId,
+          documentType: payload.documentType,
+          period: payload.period,
           lastNumber: sequences[key],
         });
       }),
@@ -55,7 +72,7 @@ describe('DocumentSequenceService', () => {
   });
 
   it('should generate code using system fallback template when no custom config exists', async () => {
-    const code = await service.generate('clinic-123', DocumentType.PURCHASE_ORDER, new Date(2026, 6, 11)); // July 11, 2026
+    const code = await service.generate('clinic-123', DOC_TYPE.PURCHASE_ORDER, new Date(2026, 6, 11)); // July 11, 2026
     expect(code).toBe('PO2026-0001');
   });
 
@@ -65,10 +82,10 @@ describe('DocumentSequenceService', () => {
       resetInterval: ResetInterval.MONTHLY,
     };
 
-    const code1 = await service.generate('clinic-123', DocumentType.PURCHASE_ORDER, new Date(2026, 6, 11));
+    const code1 = await service.generate('clinic-123', DOC_TYPE.PURCHASE_ORDER, new Date(2026, 6, 11));
     expect(code1).toBe('CUSTOM-PO-202607-000001');
 
-    const code2 = await service.generate('clinic-123', DocumentType.PURCHASE_ORDER, new Date(2026, 6, 11));
+    const code2 = await service.generate('clinic-123', DOC_TYPE.PURCHASE_ORDER, new Date(2026, 6, 11));
     expect(code2).toBe('CUSTOM-PO-202607-000002');
   });
 
@@ -78,10 +95,10 @@ describe('DocumentSequenceService', () => {
       resetInterval: ResetInterval.MONTHLY,
     };
 
-    const codeJul = await service.generate('clinic-123', DocumentType.PURCHASE_ORDER, new Date(2026, 6, 15)); // July 15
+    const codeJul = await service.generate('clinic-123', DOC_TYPE.PURCHASE_ORDER, new Date(2026, 6, 15)); // July 15
     expect(codeJul).toBe('PO-202607-0001');
 
-    const codeAug = await service.generate('clinic-123', DocumentType.PURCHASE_ORDER, new Date(2026, 7, 1)); // Aug 1
+    const codeAug = await service.generate('clinic-123', DOC_TYPE.PURCHASE_ORDER, new Date(2026, 7, 1)); // Aug 1
     expect(codeAug).toBe('PO-202608-0001');
   });
 
@@ -91,10 +108,10 @@ describe('DocumentSequenceService', () => {
       resetInterval: ResetInterval.DAILY,
     };
 
-    const codeDay1 = await service.generate('clinic-123', DocumentType.GOODS_RECEIPT, new Date(2026, 6, 11));
+    const codeDay1 = await service.generate('clinic-123', DOC_TYPE.GOODS_RECEIPT, new Date(2026, 6, 11));
     expect(codeDay1).toBe('GR-20260711-001');
 
-    const codeDay2 = await service.generate('clinic-123', DocumentType.GOODS_RECEIPT, new Date(2026, 6, 12));
+    const codeDay2 = await service.generate('clinic-123', DOC_TYPE.GOODS_RECEIPT, new Date(2026, 6, 12));
     expect(codeDay2).toBe('GR-20260712-001');
   });
 
@@ -104,10 +121,10 @@ describe('DocumentSequenceService', () => {
       resetInterval: ResetInterval.NEVER,
     };
 
-    const code1 = await service.generate('clinic-123', DocumentType.APPOINTMENT, new Date(2026, 6, 11));
+    const code1 = await service.generate('clinic-123', DOC_TYPE.APPOINTMENT, new Date(2026, 6, 11));
     expect(code1).toBe('APT-00001');
 
-    const code2 = await service.generate('clinic-123', DocumentType.APPOINTMENT, new Date(2027, 8, 25)); // Even way in future
+    const code2 = await service.generate('clinic-123', DOC_TYPE.APPOINTMENT, new Date(2027, 8, 25)); // Even way in future
     expect(code2).toBe('APT-00002');
   });
 
@@ -118,7 +135,7 @@ describe('DocumentSequenceService', () => {
     };
 
     const promises = Array.from({ length: 10 }).map(() =>
-      service.generate('clinic-123', DocumentType.PURCHASE_ORDER, new Date(2026, 6, 11)),
+      service.generate('clinic-123', DOC_TYPE.PURCHASE_ORDER, new Date(2026, 6, 11)),
     );
 
     const results = await Promise.all(promises);
@@ -129,5 +146,31 @@ describe('DocumentSequenceService', () => {
 
     expect(results).toContain('PO-0001');
     expect(results).toContain('PO-0010');
+  });
+
+  it('should use a custom string document type with hard-coded fallback template', async () => {
+    const code = await service.generate('clinic-123', 'MY_CUSTOM_DOC', new Date(2026, 6, 11));
+    // Falls through to the hard-coded fallback: "{MY_CUSTOM_DOC}-{yyyy}-{number:4}"
+    expect(code).toBe('MY_CUSTOM_DOC-2026-0001');
+  });
+
+  it('should generate independent sequence numbers per branch when scope is BRANCH', async () => {
+    prismaMock.configs['clinic-123_PURCHASE_ORDER'] = {
+      template: 'PO-{branchCode}-{number:4}',
+      resetInterval: ResetInterval.NEVER,
+      scope: 'BRANCH',
+    };
+
+    // branch-1
+    const code1 = await service.generate('clinic-123', DOC_TYPE.PURCHASE_ORDER, new Date(2026, 6, 11), 'branch-1');
+    expect(code1).toBe('PO-BKK-0001');
+
+    // branch-2
+    const code2 = await service.generate('clinic-123', DOC_TYPE.PURCHASE_ORDER, new Date(2026, 6, 11), 'branch-2');
+    expect(code2).toBe('PO-CNX-0001');
+
+    // branch-1 again (should increment to 2)
+    const code3 = await service.generate('clinic-123', DOC_TYPE.PURCHASE_ORDER, new Date(2026, 6, 11), 'branch-1');
+    expect(code3).toBe('PO-BKK-0002');
   });
 });

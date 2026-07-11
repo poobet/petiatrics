@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { PrismaClient, GoodsReceiptStatus, PurchaseOrderStatus, StockMovementReason, StockMovementRefType, StockMovementStatus, DocumentType } from '@prisma/client';
+import { PrismaClient, GoodsReceiptStatus, PurchaseOrderStatus, StockMovementReason, StockMovementRefType, StockMovementStatus } from '@prisma/client';
 import { CreateGoodsReceiptDto } from '../dtos/create-goods-receipt.dto';
-import { DocumentSequenceService } from '../../document-sequence/services/document-sequence.service';
+import { DocumentSequenceService, DOC_TYPE } from '../../document-sequence/services/document-sequence.service';
 
 @Injectable()
 export class GoodsReceiptService {
@@ -10,8 +10,8 @@ export class GoodsReceiptService {
     private readonly sequenceService: DocumentSequenceService,
   ) {}
 
-  async createAndCommit(clinicId: string, userId: string, dto: CreateGoodsReceiptDto) {
-    const code = await this.sequenceService.generate(clinicId, DocumentType.GOODS_RECEIPT);
+  async createAndCommit(clinicId: string, userId: string, branchId: string, dto: CreateGoodsReceiptDto) {
+    const code = await this.sequenceService.generate(clinicId, DOC_TYPE.GOODS_RECEIPT, new Date(), branchId);
 
     return this.prisma.$transaction(async (tx) => {
       // 1. Validation loop

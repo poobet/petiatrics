@@ -19,7 +19,7 @@ This module enforces strict transaction-level matching (Approach A) to ensure th
 ### 2.1 Clinic-Wide Purchase Orders (PO)
 *   **FR-101**: The system MUST support creating, updating, and viewing Purchase Orders at the **Clinic (Tenant) level**.
 *   **FR-102**: Every PO MUST reference a valid Supplier (`BusinessPartner` with type `SUPPLIER` or role `AP_BUY_FROM`).
-*   **FR-103**: Every PO MUST generate a unique, human-readable document code (e.g., `PO-YYYY-XXXX`) scoped to the clinic.
+*   **FR-103**: Every PO MUST generate a unique, human-readable document code (e.g., `PO-YYYY-XXXX`) scoped to the clinic (or branch-scoped if configured).
 *   **FR-104**: Every PO Line item MUST reference a `Product` and specify `quantityOrdered`, purchase `unitPriceMinor` (integer cents), and optional alternate `UnitOfMeasure`.
 *   **FR-105**: PO status transitions MUST follow: `DRAFT` $\rightarrow$ `PENDING_APPROVAL` $\rightarrow$ `APPROVED` $\rightarrow$ `PARTIALLY_RECEIVED` $\rightarrow$ `FULLY_RECEIVED` $\rightarrow$ `CLOSED` or `CANCELLED`.
 

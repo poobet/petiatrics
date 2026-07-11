@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { Roles } from '../../../common/guards/roles.decorator';
-import { CurrentUser, TenantId } from '../../../common/decorators/tenant.decorator';
+import { CurrentUser, TenantId, ActiveBranch } from '../../../common/decorators/tenant.decorator';
+import { BranchContextGuard } from '../../../common/guards/branch-context.guard';
 import { UserContext, Role } from '@petiatrics/types';
 import { PurchaseOrderService } from '../services/purchase-order.service';
 import { CreatePurchaseOrderDto } from '../dtos/create-purchase-order.dto';
@@ -20,13 +21,15 @@ export class PurchaseOrderController {
   constructor(private readonly purchaseOrderService: PurchaseOrderService) {}
 
   @Post()
+  @UseGuards(BranchContextGuard)
   @HttpCode(HttpStatus.CREATED)
   create(
     @TenantId() clinicId: string,
     @CurrentUser() user: UserContext,
+    @ActiveBranch() branchId: string,
     @Body() dto: CreatePurchaseOrderDto,
   ) {
-    return this.purchaseOrderService.create(clinicId, user.userId, user.role, dto);
+    return this.purchaseOrderService.create(clinicId, user.userId, user.role, branchId, dto);
   }
 
   @Get()

@@ -1,7 +1,7 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { PrismaClient, PurchaseOrderStatus, Role, DocumentType } from '@prisma/client';
+import { PrismaClient, PurchaseOrderStatus, Role } from '@prisma/client';
 import { CreatePurchaseOrderDto } from '../dtos/create-purchase-order.dto';
-import { DocumentSequenceService } from '../../document-sequence/services/document-sequence.service';
+import { DocumentSequenceService, DOC_TYPE } from '../../document-sequence/services/document-sequence.service';
 
 @Injectable()
 export class PurchaseOrderService {
@@ -10,9 +10,9 @@ export class PurchaseOrderService {
     private readonly sequenceService: DocumentSequenceService,
   ) {}
 
-  async create(clinicId: string, userId: string, userRole: Role, dto: CreatePurchaseOrderDto) {
+  async create(clinicId: string, userId: string, userRole: Role, branchId: string, dto: CreatePurchaseOrderDto) {
     // Generate sequential PO code
-    const code = await this.sequenceService.generate(clinicId, DocumentType.PURCHASE_ORDER);
+    const code = await this.sequenceService.generate(clinicId, DOC_TYPE.PURCHASE_ORDER, new Date(), branchId);
 
     let subtotal = 0;
     let taxTotal = 0;

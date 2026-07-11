@@ -69,6 +69,33 @@ async function main() {
   await mongoose.connect(MONGO_URI);
   console.log('✓ MongoDB connected');
 
+  // ── 0a. DocumentTypeDefinition — system built-in types ─────────────────────
+  const systemDocTypes = [
+    { code: 'PURCHASE_ORDER', label: 'Purchase Order', defaultTemplate: 'PO{yyyy}-{number:4}' },
+    { code: 'GOODS_RECEIPT', label: 'Goods Receipt', defaultTemplate: 'GR{yyyy}-{number:4}' },
+    { code: 'PURCHASE_INVOICE', label: 'Purchase Invoice', defaultTemplate: 'PI{yyyy}-{number:4}' },
+    { code: 'SUPPLIER_PAYMENT', label: 'Supplier Payment', defaultTemplate: 'SP{yyyy}-{number:4}' },
+    { code: 'CUSTOMER_INVOICE', label: 'Customer Invoice', defaultTemplate: 'INV{yyyy}-{number:4}' },
+    { code: 'APPOINTMENT', label: 'Appointment', defaultTemplate: 'APT{yyyy}-{number:4}' },
+  ];
+
+  for (const dt of systemDocTypes) {
+    const existing = await prisma.documentTypeDefinition.findFirst({
+      where: { clinicId: null, code: dt.code },
+    });
+    if (existing) {
+      await prisma.documentTypeDefinition.update({
+        where: { id: existing.id },
+        data: { label: dt.label, defaultTemplate: dt.defaultTemplate, isSystem: true },
+      });
+    } else {
+      await prisma.documentTypeDefinition.create({
+        data: { clinicId: null, code: dt.code, label: dt.label, defaultTemplate: dt.defaultTemplate, isSystem: true },
+      });
+    }
+  }
+  console.log('  ✓ System DocumentTypeDefinitions seeded');
+
   // ── 0. TaxCode — global RD-compliant reference data ───────────────────────
   //
   // TaxCode is NOT tenant-owned. It is seeded once and shared across all
@@ -158,17 +185,17 @@ async function main() {
   // ── 1b. GLAccount — global chart of accounts (006-item-master ERP) ─────────
   const glAccounts = [
     // Revenue accounts
-    { code: '4000', name: 'Medicine Revenue',      type: 'REVENUE' as const },
-    { code: '4001', name: 'Retail Revenue',         type: 'REVENUE' as const },
-    { code: '4002', name: 'Service Revenue',         type: 'REVENUE' as const },
-    { code: '4003', name: 'Laboratory Revenue',      type: 'REVENUE' as const },
-    { code: '4004', name: 'Procedure Revenue',       type: 'REVENUE' as const },
-    { code: '4005', name: 'Consultation Revenue',    type: 'REVENUE' as const },
+    { code: '4000', name: 'Medicine Revenue', type: 'REVENUE' as const },
+    { code: '4001', name: 'Retail Revenue', type: 'REVENUE' as const },
+    { code: '4002', name: 'Service Revenue', type: 'REVENUE' as const },
+    { code: '4003', name: 'Laboratory Revenue', type: 'REVENUE' as const },
+    { code: '4004', name: 'Procedure Revenue', type: 'REVENUE' as const },
+    { code: '4005', name: 'Consultation Revenue', type: 'REVENUE' as const },
     // COGS accounts
-    { code: '5000', name: 'Medicine COGS',           type: 'COGS' as const },
-    { code: '5001', name: 'Retail COGS',             type: 'COGS' as const },
+    { code: '5000', name: 'Medicine COGS', type: 'COGS' as const },
+    { code: '5001', name: 'Retail COGS', type: 'COGS' as const },
     // Asset accounts
-    { code: '1100', name: 'Inventory Asset',         type: 'ASSET' as const },
+    { code: '1100', name: 'Inventory Asset', type: 'ASSET' as const },
     // Expense accounts
     { code: '6000', name: 'General Operating Expense', type: 'EXPENSE' as const },
   ];
@@ -186,12 +213,12 @@ async function main() {
 
   // ── 1c. ItemCategory — global reference, no clinicId (006-item-master) ──
   const itemCategories = [
-    { code: 'MEDICINE',     name: 'Medicine',      revenueGlCode: '4000', expenseGlCode: '5000' },
-    { code: 'RETAIL',       name: 'Retail',         revenueGlCode: '4001', expenseGlCode: '5001' },
-    { code: 'SERVICE',      name: 'Service',         revenueGlCode: '4002', expenseGlCode: null },
-    { code: 'LABORATORY',   name: 'Laboratory',      revenueGlCode: '4003', expenseGlCode: null },
-    { code: 'PROCEDURE',    name: 'Procedure',       revenueGlCode: '4004', expenseGlCode: null },
-    { code: 'CONSULTATION', name: 'Consultation',    revenueGlCode: '4005', expenseGlCode: null },
+    { code: 'MEDICINE', name: 'Medicine', revenueGlCode: '4000', expenseGlCode: '5000' },
+    { code: 'RETAIL', name: 'Retail', revenueGlCode: '4001', expenseGlCode: '5001' },
+    { code: 'SERVICE', name: 'Service', revenueGlCode: '4002', expenseGlCode: null },
+    { code: 'LABORATORY', name: 'Laboratory', revenueGlCode: '4003', expenseGlCode: null },
+    { code: 'PROCEDURE', name: 'Procedure', revenueGlCode: '4004', expenseGlCode: null },
+    { code: 'CONSULTATION', name: 'Consultation', revenueGlCode: '4005', expenseGlCode: null },
   ];
 
   const categoryIds: Record<string, string> = {};
@@ -218,11 +245,11 @@ async function main() {
 
   // ── 1c. UnitOfMeasure — global reference, no clinicId (006-item-master) ──
   const unitsOfMeasure = [
-    { name: 'Piece',   symbol: 'pc' },
-    { name: 'Box',     symbol: 'bx' },
-    { name: 'Bottle',  symbol: 'btl' },
-    { name: 'Vial',    symbol: 'vl' },
-    { name: 'Visit',   symbol: 'visit' },
+    { name: 'Piece', symbol: 'pc' },
+    { name: 'Box', symbol: 'bx' },
+    { name: 'Bottle', symbol: 'btl' },
+    { name: 'Vial', symbol: 'vl' },
+    { name: 'Visit', symbol: 'visit' },
     { name: 'Session', symbol: 'sess' },
   ];
 
@@ -276,20 +303,22 @@ async function main() {
   // ── 3. Branches ──────────────────────────────────────────────────────────
   const branchMain = await prisma.branch.upsert({
     where: { id: 'branch-happypaws-main-00000001' },
-    update: {},
+    update: { name: 'Main Branch', code: 'MAIN' },
     create: {
       id: 'branch-happypaws-main-00000001',
       clinicId: clinic.id,
       name: 'Main Branch',
+      code: 'MAIN',
     },
   });
   const branchNorth = await prisma.branch.upsert({
     where: { id: 'branch-happypaws-north-0000001' },
-    update: {},
+    update: { name: 'North Branch', code: 'NORTH' },
     create: {
       id: 'branch-happypaws-north-0000001',
       clinicId: clinic.id,
       name: 'North Branch',
+      code: 'NORTH',
     },
   });
   console.log('✓ Branch:', branchMain.name, '(', branchMain.id, ')');
@@ -515,12 +544,12 @@ async function main() {
 
   // ── 7. Inventory Products (006-item-master expanded schema) ─────────────
   const productSeed = [
-    { code: 'MED-001', name: 'Metronidazole 125mg (50 tabs)', itemType: 'STOCKED_GOOD' as const, categoryKey: 'MEDICINE',    unitName: 'Box',   stdCost: 120, sellPrice: 180, quantity: 15, reorderThreshold: 5 },
-    { code: 'MED-002', name: 'Amoxicillin 250mg (30 caps)',   itemType: 'STOCKED_GOOD' as const, categoryKey: 'MEDICINE',    unitName: 'Box',   stdCost: 95,  sellPrice: 150, quantity: 3,  reorderThreshold: 5 },
-    { code: 'VAX-001', name: 'Rabies Vaccine',                itemType: 'STOCKED_GOOD' as const, categoryKey: 'MEDICINE',    unitName: 'Vial',  stdCost: 200, sellPrice: 350, quantity: 20, reorderThreshold: 8 },
-    { code: 'VAX-002', name: 'DHPPiL Combo Vaccine',          itemType: 'STOCKED_GOOD' as const, categoryKey: 'MEDICINE',    unitName: 'Vial',  stdCost: 180, sellPrice: 320, quantity: 2,  reorderThreshold: 5 },
-    { code: 'SUP-001', name: 'Surgical Gloves (100 pcs)',     itemType: 'STOCKED_GOOD' as const, categoryKey: 'RETAIL',      unitName: 'Box',   stdCost: 80,  sellPrice: 120, quantity: 12, reorderThreshold: 3 },
-    { code: 'SVC-001', name: 'Standard Consultation',         itemType: 'SERVICE'       as const, categoryKey: 'CONSULTATION', unitName: 'Visit', stdCost: 0,   sellPrice: 500, quantity: 0,  reorderThreshold: 0 },
+    { code: 'MED-001', name: 'Metronidazole 125mg (50 tabs)', itemType: 'STOCKED_GOOD' as const, categoryKey: 'MEDICINE', unitName: 'Box', stdCost: 120, sellPrice: 180, quantity: 15, reorderThreshold: 5 },
+    { code: 'MED-002', name: 'Amoxicillin 250mg (30 caps)', itemType: 'STOCKED_GOOD' as const, categoryKey: 'MEDICINE', unitName: 'Box', stdCost: 95, sellPrice: 150, quantity: 3, reorderThreshold: 5 },
+    { code: 'VAX-001', name: 'Rabies Vaccine', itemType: 'STOCKED_GOOD' as const, categoryKey: 'MEDICINE', unitName: 'Vial', stdCost: 200, sellPrice: 350, quantity: 20, reorderThreshold: 8 },
+    { code: 'VAX-002', name: 'DHPPiL Combo Vaccine', itemType: 'STOCKED_GOOD' as const, categoryKey: 'MEDICINE', unitName: 'Vial', stdCost: 180, sellPrice: 320, quantity: 2, reorderThreshold: 5 },
+    { code: 'SUP-001', name: 'Surgical Gloves (100 pcs)', itemType: 'STOCKED_GOOD' as const, categoryKey: 'RETAIL', unitName: 'Box', stdCost: 80, sellPrice: 120, quantity: 12, reorderThreshold: 3 },
+    { code: 'SVC-001', name: 'Standard Consultation', itemType: 'SERVICE' as const, categoryKey: 'CONSULTATION', unitName: 'Visit', stdCost: 0, sellPrice: 500, quantity: 0, reorderThreshold: 0 },
   ];
 
   const productIds: string[] = [];

@@ -43,7 +43,7 @@ import type { AuthProfile } from '@petiatrics/types';
 import { BranchSelector } from './branch-selector';
 import { useSessionStore } from '../../lib/session-store';
 
-type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'products' | 'stockLedger' | 'goodsReceipt' | 'goodsIssue' | 'adjustments' | 'billing' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings' | 'settingsGeneral' | 'rolePermissions';
+type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'products' | 'stockLedger' | 'goodsReceipt' | 'goodsIssue' | 'adjustments' | 'billing' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings' | 'settingsGeneral' | 'rolePermissions' | 'documentSequence';
 
 interface SubNavItem {
   key: NavKey;
@@ -106,6 +106,12 @@ const NAV_ITEMS: NavItem[] = [
         key: 'rolePermissions',
         href: '/clinic/settings/roles',
         icon: Shield,
+        requiredPermission: 'SETTINGS:MANAGE',
+      },
+      {
+        key: 'documentSequence',
+        href: '/clinic/settings/document-sequence',
+        icon: ClipboardList,
         requiredPermission: 'SETTINGS:MANAGE',
       },
     ],
