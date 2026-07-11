@@ -61,13 +61,50 @@ export class UserService {
     assertPasswordPolicy(input.temporaryPassword);
     const passwordHash = await bcrypt.hash(input.temporaryPassword, BCRYPT_ROUNDS);
 
+    // Resolve dynamic ClinicRole record
+    let resolvedRoleId: string | null = null;
+    let resolvedLegacyRole: Role = Role.STAFF; // default fallback
+
+    const clinicRole = await this.prisma.clinicRole.findFirst({
+      where: {
+        OR: [
+          { id: input.role as string },
+          { code: input.role as string, clinicId: input.clinicId },
+          { code: input.role as string, clinicId: null },
+        ],
+      },
+    });
+
+    if (clinicRole) {
+      resolvedRoleId = clinicRole.id;
+      const codeUpper = clinicRole.code.toUpperCase();
+      if (Object.values(Role).includes(codeUpper as Role)) {
+        resolvedLegacyRole = codeUpper as Role;
+      }
+    } else {
+      if (Object.values(Role).includes(input.role as Role)) {
+        resolvedLegacyRole = input.role as Role;
+        const cr = await this.prisma.clinicRole.findFirst({
+          where: {
+            code: input.role as string,
+            OR: [
+              { clinicId: input.clinicId },
+              { clinicId: null },
+            ],
+          },
+        });
+        if (cr) resolvedRoleId = cr.id;
+      }
+    }
+
     const user = await this.prisma.$transaction(async (tx) => {
       const u = await tx.user.create({
         data: {
           username,
           name: input.name,
           passwordHash,
-          role: input.role as any,
+          role: resolvedLegacyRole,
+          roleId: resolvedRoleId,
           clinicId: input.clinicId,
           status: UserStatus.ACTIVE as any,
           mustChangePassword: true,
@@ -81,7 +118,7 @@ export class UserService {
         });
       }
 
-      if (input.role === Role.CUSTOMER || input.role === ('CUSTOMER' as any)) {
+      if (resolvedLegacyRole === Role.CUSTOMER) {
         await this.createCustomerBpWithCode(tx, u.id, input.clinicId, input.name, null);
       }
 
@@ -136,9 +173,49 @@ export class UserService {
 
   async updateRole(id: string, clinicId: string, dto: UpdateUserRoleDto): Promise<User> {
     await this.findOneInClinic(id, clinicId);
+
+    // Resolve dynamic ClinicRole record
+    let resolvedRoleId: string | null = null;
+    let resolvedLegacyRole: Role = Role.STAFF; // default fallback
+
+    const clinicRole = await this.prisma.clinicRole.findFirst({
+      where: {
+        OR: [
+          { id: dto.role as string },
+          { code: dto.role as string, clinicId },
+          { code: dto.role as string, clinicId: null },
+        ],
+      },
+    });
+
+    if (clinicRole) {
+      resolvedRoleId = clinicRole.id;
+      const codeUpper = clinicRole.code.toUpperCase();
+      if (Object.values(Role).includes(codeUpper as Role)) {
+        resolvedLegacyRole = codeUpper as Role;
+      }
+    } else {
+      if (Object.values(Role).includes(dto.role as Role)) {
+        resolvedLegacyRole = dto.role as Role;
+        const cr = await this.prisma.clinicRole.findFirst({
+          where: {
+            code: dto.role as string,
+            OR: [
+              { clinicId },
+              { clinicId: null },
+            ],
+          },
+        });
+        if (cr) resolvedRoleId = cr.id;
+      }
+    }
+
     return this.prisma.user.update({
       where: { id },
-      data: { role: dto.role as unknown as any },
+      data: {
+        role: resolvedLegacyRole,
+        roleId: resolvedRoleId,
+      },
     });
   }
 
