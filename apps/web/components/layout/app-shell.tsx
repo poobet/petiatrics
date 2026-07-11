@@ -83,19 +83,18 @@ const NAV_ITEMS: NavItem[] = [
     key: 'staff',
     href: '/clinic/staff',
     icon: UserCog,
-    roles: ['CLINIC_OWNER', 'SUPER_ADMIN'],
+    requiredPermission: 'SETTINGS:MANAGE',
   },
   {
     key: 'businessPartners',
     href: '/clinic/business-partners',
     icon: Briefcase,
-    roles: ['CLINIC_OWNER', 'SUPER_ADMIN', 'STAFF'],
   },
   {
     key: 'audit',
     href: '/clinic/audit',
     icon: ClipboardList,
-    roles: ['CLINIC_OWNER', 'SUPER_ADMIN'],
+    requiredPermission: 'SETTINGS:MANAGE',
   },
   {
     key: 'settings',
@@ -157,16 +156,30 @@ export function AppShell({ children, user }: AppShellProps) {
   }
 
   function canAccess(item: NavItem | SubNavItem): boolean {
-    if ('roles' in item && item.roles && !item.roles.includes(user.role)) {
-      return false;
+    const isSuperAdmin = user.systemRole === 'SUPER_ADMIN' || user.role === 'SUPER_ADMIN';
+    const isClinicOwner = user.roleCode === 'CLINIC_OWNER' || user.role === 'CLINIC_OWNER';
+
+    // SUPER_ADMIN and CLINIC_OWNER bypass all menu restrictions
+    if (isSuperAdmin || isClinicOwner) {
+      return true;
     }
+
+    // Role-based filtering fallback (if roles field is specified)
+    if ('roles' in item && item.roles) {
+      const activeRoleCode = user.roleCode ?? user.role;
+      if (!item.roles.includes(activeRoleCode)) {
+        return false;
+      }
+    }
+
+    // Permission-based filtering
     if (item.requiredPermission) {
-      if (user.role === 'SUPER_ADMIN') return true;
       const userPermissions = user.permissions || [];
       if (!userPermissions.includes(item.requiredPermission)) {
         return false;
       }
     }
+
     return true;
   }
 
