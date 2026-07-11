@@ -508,10 +508,14 @@ async function main() {
   const ownerUser = customerUser;
 
   // ── 4. Pet Profiles (MongoDB) ─────────────────────────────────────────────
-  const existingPets = await PetProfile.find({ clinicId: clinic.id }).lean();
-  let petIds: string[] = existingPets.map((p: any) => p._id.toString());
+  if (ownerUser) {
+    await PetProfile.deleteMany({ clinicId: clinic.id });
+    await VisitRecord.deleteMany({ clinicId: clinic.id });
+    await VaccinationRecord.deleteMany({ clinicId: clinic.id });
+  }
+  let petIds: string[] = [];
 
-  if (existingPets.length === 0 && ownerUser) {
+  if (ownerUser) {
     const petSeed = [
       { name: 'Mochi', species: 'dog', breed: 'Shih Tzu', dateOfBirth: new Date('2020-03-15'), weightKg: 5.2 },
       { name: 'Luna', species: 'cat', breed: 'Domestic Shorthair', dateOfBirth: new Date('2019-07-22'), weightKg: 3.8 },
