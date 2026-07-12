@@ -77,7 +77,7 @@ export default function ClientsClient() {
               {filtered.map((bp) => (
                 <tr key={bp.id} className="hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 font-medium">
-                    <Link href={`/clinic/clients/${bp.id}`} className="text-primary hover:underline">
+                    <Link href={`/clinic/clients/${bp.user?.id || bp.id}`} className="text-primary hover:underline">
                       {bp.name}
                     </Link>
                   </td>
@@ -86,7 +86,7 @@ export default function ClientsClient() {
                   <td className="px-4 py-3 text-muted-foreground">{bp.phone ?? '—'}</td>
                   <td className="px-4 py-3 text-right">
                     <Link
-                      href={`/clinic/clients/${bp.id}`}
+                      href={`/clinic/clients/${bp.user?.id || bp.id}`}
                       className="text-primary underline-offset-4 hover:underline text-sm font-medium"
                     >
                       View

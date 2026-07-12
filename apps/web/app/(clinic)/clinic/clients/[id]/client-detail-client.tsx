@@ -94,11 +94,10 @@ export default function ClientDetailClient({ params }: { params: Promise<{ id: s
 
   async function loadData() {
     try {
-      const [clientData, petsData] = await Promise.all([
-        apiClient.get<Client>(`/clinic/clients/${id}`),
-        apiClient.get<Pet[]>(`/patients?ownerUserId=${id}`),
-      ]);
+      const clientData = await apiClient.get<Client>(`/clinic/clients/${id}`);
       setClient(clientData);
+
+      const petsData = await apiClient.get<Pet[]>(`/patients?ownerUserId=${clientData.id}`);
       setPets(petsData);
 
       // Prepopulate form

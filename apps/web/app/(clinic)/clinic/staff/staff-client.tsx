@@ -63,7 +63,7 @@ export default function StaffPageClient() {
   const clinicSlug = useSessionStore((s) => s.user?.clinicSlug ?? '');
   const router = useRouter();
 
-  const [staff, setStaff] = useState<BusinessPartnerResponse[]>([]);
+  const [staff, setStaff] = useState<StaffUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [usernamePrefix, setUsernamePrefix] = useState('');
@@ -125,11 +125,8 @@ export default function StaffPageClient() {
         temporaryPassword,
         role,
       });
-      // Reload the BP list so the newly created Staff shows up with a BP record
-      const params = new URLSearchParams();
-      params.append('types', 'STAFF');
-      params.append('types', 'VET');
-      const updated = await apiClient.get<BusinessPartnerResponse[]>(`/clinic/business-partners?${params.toString()}`);
+      // Reload the staff list so the newly created Staff shows up with a BP record
+      const updated = await apiClient.get<StaffUser[]>('/clinic/staff');
       setStaff(updated);
       setCreateOpen(false);
       setUsernamePrefix('');
@@ -381,31 +378,36 @@ export default function StaffPageClient() {
                 </TableCell>
               </TableRow>
             )}
-            {staff.map((bp) => {
+            {staff.map((user) => {
+              const bp = user.businessPartners?.[0];
               return (
-                <TableRow key={bp.id}>
-                  <TableCell className="font-medium">{bp.name}</TableCell>
+                <TableRow key={user.id}>
+                  <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell className="font-mono text-sm text-gray-600">
-                    {bp.user?.username ?? bp.user?.email ?? bp.email ?? '-'}
+                    {user.username ?? user.email ?? '-'}
                   </TableCell>
                   <TableCell>
-                    <Link
-                      href={`/clinic/business-partners/${bp.id}/edit`}
-                      className="font-mono text-xs text-primary hover:underline"
-                    >
-                      {bp.code ?? 'View BP'}
-                    </Link>
+                    {bp ? (
+                      <Link
+                        href={`/clinic/business-partners/${bp.id}/edit`}
+                        className="font-mono text-xs text-primary hover:underline"
+                      >
+                        {bp.code ?? 'View BP'}
+                      </Link>
+                    ) : (
+                      '—'
+                    )}
                   </TableCell>
-                  <TableCell>{roleLabel(bp.user?.role ?? bp.type)}</TableCell>
+                  <TableCell>{roleLabel(user.role)}</TableCell>
                   <TableCell>
-                    <Badge variant={statusVariant(bp.isActive ? 'ACTIVE' : 'INACTIVE') as any}>
-                      {bp.isActive ? 'ACTIVE' : 'INACTIVE'}
+                    <Badge variant={statusVariant(user.status) as any}>
+                      {user.status}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" disabled={busy === bp.id}>
+                        <Button variant="ghost" size="sm" disabled={busy === user.id}>
                           <MoreHorizontal className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -421,41 +423,28 @@ export default function StaffPageClient() {
                         >
                           {tCommon('edit')}
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setEditingStaff(user);
-                            setEditName(user.name);
-                            setEditRole(user.roleId || user.role);
-                            setEditBranchIds(user.userBranches?.map((ub) => ub.branchId) || []);
-                            setEditOpen(true);
-                          }}
-                        >
-                          {tCommon('edit')}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="flex items-center gap-2 cursor-pointer"
-                          onClick={() => router.push(`/clinic/business-partners/${bp.id}/edit`)}
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                          ดูข้อมูล BP
-                        </DropdownMenuItem>
-                        {bp.user && (
+                        {bp && (
                           <DropdownMenuItem
-                            className="flex items-center gap-2"
-                            onClick={() => openResetDialog({ id: bp.user!.id, name: bp.name, username: bp.user!.username, email: bp.user!.email, role: bp.user!.role, status: bp.user!.status })}
+                            className="flex items-center gap-2 cursor-pointer"
+                            onClick={() => router.push(`/clinic/business-partners/${bp.id}/edit`)}
                           >
-                            <KeyRound className="h-4 w-4" />
-                            รีเซ็ตรหัสผ่าน
+                            <ExternalLink className="h-4 w-4" />
+                            ดูข้อมูล BP
                           </DropdownMenuItem>
                         )}
-                        {bp.user && (
-                          <DropdownMenuItem
-                            className="text-red-600 focus:text-red-600"
-                            onClick={() => handleDeactivate(bp.user!.id)}
-                          >
-                            {t('deactivate')}
-                          </DropdownMenuItem>
-                        )}
+                        <DropdownMenuItem
+                          className="flex items-center gap-2"
+                          onClick={() => openResetDialog(user)}
+                        >
+                          <KeyRound className="h-4 w-4" />
+                          รีเซ็ตรหัสผ่าน
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-red-600 focus:text-red-600"
+                          onClick={() => handleDeactivate(user.id)}
+                        >
+                          {t('deactivate')}
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

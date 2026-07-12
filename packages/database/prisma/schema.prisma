@@ -90,7 +90,6 @@ enum ItemType {
   INVENTORY
   SERVICE
   CONSUMABLE
-  STOCKED_GOOD
 }
 
 enum DefaultVatType {

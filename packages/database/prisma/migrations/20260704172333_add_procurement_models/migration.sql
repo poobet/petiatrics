@@ -16,17 +16,6 @@ CREATE TYPE "PurchaseInvoiceStatus" AS ENUM ('DRAFT', 'POSTED', 'PARTIALLY_PAID'
 -- AlterTable
 ALTER TABLE "users" DROP COLUMN "permissions";
 
--- CreateTable
-CREATE TABLE "clinic_role_permissions" (
-    "id" TEXT NOT NULL,
-    "clinicId" TEXT NOT NULL,
-    "role" "Role" NOT NULL,
-    "permissions" TEXT[],
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "clinic_role_permissions_pkey" PRIMARY KEY ("id")
-);
 
 -- CreateTable
 CREATE TABLE "purchase_orders" (
@@ -172,8 +161,6 @@ CREATE TABLE "supplier_payment_allocations" (
     CONSTRAINT "supplier_payment_allocations_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
-CREATE UNIQUE INDEX "clinic_role_permissions_clinicId_role_key" ON "clinic_role_permissions"("clinicId", "role");
 
 -- CreateIndex
 CREATE INDEX "purchase_orders_clinicId_idx" ON "purchase_orders"("clinicId");
@@ -235,8 +222,6 @@ CREATE INDEX "supplier_payment_allocations_paymentId_idx" ON "supplier_payment_a
 -- CreateIndex
 CREATE INDEX "supplier_payment_allocations_purchaseInvoiceId_idx" ON "supplier_payment_allocations"("purchaseInvoiceId");
 
--- AddForeignKey
-ALTER TABLE "clinic_role_permissions" ADD CONSTRAINT "clinic_role_permissions_clinicId_fkey" FOREIGN KEY ("clinicId") REFERENCES "clinics"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "purchase_orders" ADD CONSTRAINT "purchase_orders_clinicId_fkey" FOREIGN KEY ("clinicId") REFERENCES "clinics"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

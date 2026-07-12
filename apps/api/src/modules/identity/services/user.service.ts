@@ -171,9 +171,15 @@ export class UserService {
 
   async findByClinic(clinicId: string): Promise<User[]> {
     return this.prisma.user.findMany({
-      where: { clinicId },
+      where: {
+        clinicId,
+        role: { notIn: ['CUSTOMER', 'SUPER_ADMIN'] },
+      },
       include: {
         userBranches: true,
+        businessPartners: {
+          where: { clinicId },
+        },
       },
       orderBy: { createdAt: 'asc' },
     }) as any;
@@ -506,7 +512,7 @@ export class UserService {
   }
 
   async findClientById(clinicId: string, id: string): Promise<User> {
-    const user = await this.prisma.user.findFirst({
+    let user = await this.prisma.user.findFirst({
       where: {
         id,
         clinicId,
@@ -518,6 +524,29 @@ export class UserService {
         },
       },
     });
+
+    if (!user) {
+      // Try finding by BusinessPartner.id and using its linkedUserId
+      const bp = await this.prisma.businessPartner.findFirst({
+        where: { id, clinicId, type: 'CUSTOMER' },
+        select: { linkedUserId: true },
+      });
+      if (bp?.linkedUserId) {
+        user = await this.prisma.user.findFirst({
+          where: {
+            id: bp.linkedUserId,
+            clinicId,
+            role: Role.CUSTOMER as any,
+          },
+          include: {
+            businessPartners: {
+              where: { clinicId },
+            },
+          },
+        });
+      }
+    }
+
     if (!user) throw new NotFoundException(`Client ${id} not found in this clinic.`);
     return user as any;
   }

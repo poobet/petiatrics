@@ -639,11 +639,11 @@ async function main() {
 
   // ── 7. Inventory Products (006-item-master expanded schema) ─────────────
   const productSeed = [
-    { code: 'MED-001', name: 'Metronidazole 125mg (50 tabs)', itemType: 'STOCKED_GOOD' as const, categoryKey: 'MEDICINE', unitName: 'Box', stdCost: 120, sellPrice: 180, quantity: 15, reorderThreshold: 5 },
-    { code: 'MED-002', name: 'Amoxicillin 250mg (30 caps)', itemType: 'STOCKED_GOOD' as const, categoryKey: 'MEDICINE', unitName: 'Box', stdCost: 95, sellPrice: 150, quantity: 3, reorderThreshold: 5 },
-    { code: 'VAX-001', name: 'Rabies Vaccine', itemType: 'STOCKED_GOOD' as const, categoryKey: 'MEDICINE', unitName: 'Vial', stdCost: 200, sellPrice: 350, quantity: 20, reorderThreshold: 8 },
-    { code: 'VAX-002', name: 'DHPPiL Combo Vaccine', itemType: 'STOCKED_GOOD' as const, categoryKey: 'MEDICINE', unitName: 'Vial', stdCost: 180, sellPrice: 320, quantity: 2, reorderThreshold: 5 },
-    { code: 'SUP-001', name: 'Surgical Gloves (100 pcs)', itemType: 'STOCKED_GOOD' as const, categoryKey: 'RETAIL', unitName: 'Box', stdCost: 80, sellPrice: 120, quantity: 12, reorderThreshold: 3 },
+    { code: 'MED-001', name: 'Metronidazole 125mg (50 tabs)', itemType: 'INVENTORY' as const, categoryKey: 'MEDICINE', unitName: 'Box', stdCost: 120, sellPrice: 180, quantity: 15, reorderThreshold: 5 },
+    { code: 'MED-002', name: 'Amoxicillin 250mg (30 caps)', itemType: 'INVENTORY' as const, categoryKey: 'MEDICINE', unitName: 'Box', stdCost: 95, sellPrice: 150, quantity: 3, reorderThreshold: 5 },
+    { code: 'VAX-001', name: 'Rabies Vaccine', itemType: 'INVENTORY' as const, categoryKey: 'MEDICINE', unitName: 'Vial', stdCost: 200, sellPrice: 350, quantity: 20, reorderThreshold: 8 },
+    { code: 'VAX-002', name: 'DHPPiL Combo Vaccine', itemType: 'INVENTORY' as const, categoryKey: 'MEDICINE', unitName: 'Vial', stdCost: 180, sellPrice: 320, quantity: 2, reorderThreshold: 5 },
+    { code: 'SUP-001', name: 'Surgical Gloves (100 pcs)', itemType: 'INVENTORY' as const, categoryKey: 'RETAIL', unitName: 'Box', stdCost: 80, sellPrice: 120, quantity: 12, reorderThreshold: 3 },
     { code: 'SVC-001', name: 'Standard Consultation', itemType: 'SERVICE' as const, categoryKey: 'CONSULTATION', unitName: 'Visit', stdCost: 0, sellPrice: 500, quantity: 0, reorderThreshold: 0 },
   ];
 
