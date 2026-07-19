@@ -16,6 +16,9 @@ import {
   AlertTriangle,
   Receipt,
   FileCheck2,
+  Eye,
+  ArrowLeft,
+  Calendar,
 } from 'lucide-react';
 import { apiClient } from '../../../../lib/api-client';
 import { useSessionStore } from '../../../../lib/session-store';
@@ -33,6 +36,14 @@ interface PO {
   totalMinor: number;
   supplier: { name: string };
   createdBy?: { name: string };
+  lines?: Array<{
+    id: string;
+    product: { name: string; code: string };
+    quantityOrdered: number;
+    quantityReceived: number;
+    quantityInvoiced: number;
+    unitPriceMinor: number;
+  }>;
 }
 
 interface GR {
@@ -41,6 +52,13 @@ interface GR {
   receivedDate: string;
   receivedBy: { name: string };
   purchaseOrder?: { code: string } | null;
+  lines?: Array<{
+    id: string;
+    product: { name: string; code: string };
+    quantityReceived: number;
+    lotNumber?: string | null;
+    expiryDate?: string | null;
+  }>;
 }
 
 interface PI {
@@ -58,6 +76,14 @@ interface PI {
   supplier: { id: string; name: string };
   purchaseOrder?: { id: string; code: string } | null;
   createdBy?: { name: string } | null;
+  lines?: Array<{
+    id: string;
+    product: { name: string; code: string };
+    quantity: number;
+    unitPriceMinor: number;
+    taxRateBps: number;
+    totalMinor: number;
+  }>;
 }
 
 interface Payment {
@@ -69,10 +95,11 @@ interface Payment {
   amountMinor: number;
   whtAmountMinor: number;
   whtRateBps: number;
-  supplier: { name: string };
+  supplier: { name: string; taxId?: string | null };
   createdBy?: { name: string } | null;
   allocations: Array<{
     amountAllocatedMinor: number;
+    invoice: { code: string; totalMinor: number };
   }>;
 }
 
@@ -103,11 +130,14 @@ export default function ProcurementClient() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Form states
-  const [poFormOpen, setPoFormOpen] = useState(false);
-  const [grFormOpen, setGrFormOpen] = useState(false);
-  const [invoiceFormOpen, setInvoiceFormOpen] = useState(false);
-  const [paymentFormOpen, setPaymentFormOpen] = useState(false);
+  // View states: 'list' or creation pages
+  const [viewMode, setViewMode] = useState<'list' | 'create-po' | 'create-gr' | 'create-invoice' | 'create-payment'>('list');
+
+  // Detail modal states
+  const [selectedPoDetails, setSelectedPoDetails] = useState<PO | null>(null);
+  const [selectedGrDetails, setSelectedGrDetails] = useState<GR | null>(null);
+  const [selectedInvoiceDetails, setSelectedInvoiceDetails] = useState<PI | null>(null);
+  const [selectedPaymentDetails, setSelectedPaymentDetails] = useState<Payment | null>(null);
 
   // Match details state
   const [selectedMatchResult, setSelectedMatchResult] = useState<any>(null);
@@ -183,9 +213,9 @@ export default function ProcurementClient() {
     setWhtAmount(Math.round((paymentAmount * whtRateBps) / 10000 * 100) / 100);
   }, [paymentAmount, whtRateBps]);
 
-  // Load PO form references
-  const openPoForm = async () => {
-    setPoFormOpen(true);
+  // Load PO references and open PO page
+  const openPoCreatePage = async () => {
+    setViewMode('create-po');
     try {
       const [suppData, prodData] = await Promise.all([
         apiClient.get<Supplier[]>('/clinic/business-partners'),
@@ -198,9 +228,9 @@ export default function ProcurementClient() {
     }
   };
 
-  // Load GR form references
-  const openGrForm = async () => {
-    setGrFormOpen(true);
+  // Load GR references and open GR page
+  const openGrCreatePage = async () => {
+    setViewMode('create-gr');
     try {
       const poList = await apiClient.get<PO[]>('/procurement/purchase-orders');
       setPos(poList.filter(po => ['APPROVED', 'PARTIALLY_RECEIVED'].includes(po.status)));
@@ -209,9 +239,9 @@ export default function ProcurementClient() {
     }
   };
 
-  // Load Invoice form references
-  const openInvoiceForm = async () => {
-    setInvoiceFormOpen(true);
+  // Load Invoice references and open Invoice page
+  const openInvoiceCreatePage = async () => {
+    setViewMode('create-invoice');
     try {
       const [suppData, prodData, poList] = await Promise.all([
         apiClient.get<Supplier[]>('/clinic/business-partners'),
@@ -220,16 +250,15 @@ export default function ProcurementClient() {
       ]);
       setSuppliers((suppData ?? []).filter(s => s.isActive && (s.type === 'SUPPLIER' || s.type === 'OTHER')));
       setProducts(prodData?.items ?? []);
-      // Only POs that are approved/partially received can be invoiced
       setPos(poList.filter(po => ['APPROVED', 'PARTIALLY_RECEIVED', 'FULLY_RECEIVED'].includes(po.status)));
     } catch (err) {
       console.error('Failed to load Invoice references', err);
     }
   };
 
-  // Load Payment form references
-  const openPaymentForm = async () => {
-    setPaymentFormOpen(true);
+  // Load Payment references and open Payment page
+  const openPaymentCreatePage = async () => {
+    setViewMode('create-payment');
     try {
       const suppData = await apiClient.get<Supplier[]>('/clinic/business-partners');
       setSuppliers((suppData ?? []).filter(s => s.isActive && (s.type === 'SUPPLIER' || s.type === 'OTHER')));
@@ -279,7 +308,6 @@ export default function ProcurementClient() {
       );
       setUnpaidInvoices(supplierUnpaid);
       
-      // Clear allocations
       const initialAllocs: Record<string, number> = {};
       supplierUnpaid.forEach(inv => {
         initialAllocs[inv.id] = 0;
@@ -300,7 +328,6 @@ export default function ProcurementClient() {
     try {
       const fullPo = await apiClient.get<any>(`/procurement/purchase-orders/${poId}`);
       setSelectedPo(fullPo);
-      // Pre-populate receipt lines with outstanding quantities
       const initialGrLines = fullPo.lines.map((line: any) => {
         const remaining = Number(line.quantityOrdered) - Number(line.quantityReceived);
         return {
@@ -338,8 +365,7 @@ export default function ProcurementClient() {
           taxRateBps: line.taxRateBps,
         })),
       });
-      setPoFormOpen(false);
-      // Reset form
+      setViewMode('list');
       setSelectedSupplierId('');
       setCreditTermDays(0);
       setExpectedDeliveryDate('');
@@ -358,7 +384,6 @@ export default function ProcurementClient() {
       return;
     }
 
-    // Verify target branch exists
     if (!activeBranch) {
       alert('Please select a branch first from the top navigation.');
       return;
@@ -371,14 +396,13 @@ export default function ProcurementClient() {
         lines: grLines.map(line => ({
           poLineId: line.poLineId,
           productId: line.productId,
-          branchId: activeBranch.id, // Current active branch scoping delivery!
+          branchId: activeBranch.id,
           quantityReceived: line.quantityReceived,
           lotNumber: line.lotNumber || undefined,
           expiryDate: line.expiryDate ? new Date(line.expiryDate).toISOString() : undefined,
         })),
       });
-      setGrFormOpen(false);
-      // Reset form
+      setViewMode('list');
       setSelectedPoId('');
       setSelectedPo(null);
       setOverrideReason('');
@@ -411,8 +435,7 @@ export default function ProcurementClient() {
           taxRateBps: line.taxRateBps,
         })),
       });
-      setInvoiceFormOpen(false);
-      // Reset form
+      setViewMode('list');
       setSelectedSupplierId('');
       setSelectedPoId('');
       setInvoiceNumber('');
@@ -432,7 +455,6 @@ export default function ProcurementClient() {
       return;
     }
 
-    // Verify branch context
     if (!activeBranch) {
       alert('Please select a branch first from the top navigation.');
       return;
@@ -456,8 +478,7 @@ export default function ProcurementClient() {
         whtAmountMinor: Math.round(whtAmount * 100),
         allocations: payloadAllocations,
       });
-      setPaymentFormOpen(false);
-      // Reset form
+      setViewMode('list');
       setSelectedSupplierId('');
       setPaymentMethod('BANK_TRANSFER');
       setPaymentDate('');
@@ -501,7 +522,6 @@ export default function ProcurementClient() {
     }
   };
 
-  // Perform 3-way matching on Invoice
   const runThreeWayMatch = async (invoiceId: string) => {
     setMatchingInvoiceId(invoiceId);
     try {
@@ -515,7 +535,6 @@ export default function ProcurementClient() {
     }
   };
 
-  // Post invoice to status POSTED
   const postInvoice = async (invoiceId: string) => {
     try {
       await apiClient.patch(`/procurement/purchase-invoices/${invoiceId}/post`, {});
@@ -525,7 +544,6 @@ export default function ProcurementClient() {
     }
   };
 
-  // Void invoice
   const voidInvoice = async (invoiceId: string) => {
     try {
       await apiClient.patch(`/procurement/purchase-invoices/${invoiceId}/void`, {});
@@ -535,8 +553,589 @@ export default function ProcurementClient() {
     }
   };
 
+  // Fetch detailed document fields for viewing
+  const showPoDetails = async (poId: string) => {
+    try {
+      const details = await apiClient.get<PO>(`/procurement/purchase-orders/${poId}`);
+      setSelectedPoDetails(details);
+    } catch (err) {
+      alert('Failed to load purchase order details');
+    }
+  };
+
+  const showGrDetails = async (grId: string) => {
+    try {
+      const details = await apiClient.get<GR>(`/procurement/goods-receipts/${grId}`);
+      setSelectedGrDetails(details);
+    } catch (err) {
+      alert('Failed to load goods receipt details');
+    }
+  };
+
+  const showInvoiceDetails = async (invoiceId: string) => {
+    try {
+      const details = await apiClient.get<PI>(`/procurement/purchase-invoices/${invoiceId}`);
+      setSelectedInvoiceDetails(details);
+    } catch (err) {
+      alert('Failed to load purchase invoice details');
+    }
+  };
+
+  const showPaymentDetails = async (paymentId: string) => {
+    try {
+      const details = await apiClient.get<Payment>(`/procurement/supplier-payments/${paymentId}`);
+      setSelectedPaymentDetails(details);
+    } catch (err) {
+      alert('Failed to load supplier payment details');
+    }
+  };
+
+  if (viewMode === 'create-po') {
+    return (
+      <div className="p-6 max-w-4xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setViewMode('list')} className="p-2 border rounded-lg hover:bg-gray-50 transition-colors text-gray-500">
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Create Purchase Order</h1>
+            <p className="text-xs text-gray-500">Draft a new procurement order contract with a supplier partner.</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleCreatePo} className="bg-white border rounded-xl p-6 shadow-sm space-y-6">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="col-span-2">
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Supplier *</label>
+              <select
+                required
+                value={selectedSupplierId}
+                onChange={(e) => setSelectedSupplierId(e.target.value)}
+                className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
+              >
+                <option value="">Select Supplier...</option>
+                {suppliers.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Credit Terms (Days)</label>
+              <input
+                type="number"
+                min={0}
+                value={creditTermDays}
+                onChange={(e) => setCreditTermDays(parseInt(e.target.value) || 0)}
+                className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Expected Delivery Date</label>
+            <input
+              type="date"
+              value={expectedDeliveryDate}
+              onChange={(e) => setExpectedDeliveryDate(e.target.value)}
+              className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Notes</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="w-full border rounded px-3 py-2 text-sm h-24 focus:outline-blue-500"
+              placeholder="Additional order notes or terms..."
+            />
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b pb-2">
+              <h3 className="text-sm font-bold text-gray-900">PO Lines</h3>
+              <Button type="button" variant="outline" size="sm" onClick={addPoLine}>
+                + Add Item
+              </Button>
+            </div>
+
+            {poLines.map((line, idx) => (
+              <div key={idx} className="flex gap-3 items-end border-b pb-3">
+                <div className="flex-1">
+                  <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Product</label>
+                  <select
+                    required
+                    value={line.productId}
+                    onChange={(e) => updatePoLine(idx, 'productId', e.target.value)}
+                    className="w-full border rounded px-2 py-1.5 text-xs focus:outline-blue-500"
+                  >
+                    <option value="">Select Product...</option>
+                    {products.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} ({p.code})</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="w-24">
+                  <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Qty</label>
+                  <input
+                    type="number"
+                    min={1}
+                    required
+                    value={line.quantityOrdered}
+                    onChange={(e) => updatePoLine(idx, 'quantityOrdered', parseInt(e.target.value) || 1)}
+                    className="w-full border rounded px-2 py-1 text-xs focus:outline-blue-500"
+                  />
+                </div>
+                <div className="w-32">
+                  <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Price (฿)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    required
+                    value={line.unitPrice}
+                    onChange={(e) => updatePoLine(idx, 'unitPrice', parseFloat(e.target.value) || 0)}
+                    className="w-full border rounded px-2 py-1 text-xs focus:outline-blue-500"
+                  />
+                </div>
+                <button type="button" onClick={() => removePoLine(idx)} className="text-red-500 hover:text-red-700 pb-1.5">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-4 border-t flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={() => setViewMode('list')}>
+              Cancel
+            </Button>
+            <Button type="submit">
+              Save Purchase Order
+            </Button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
+  if (viewMode === 'create-gr') {
+    return (
+      <div className="p-6 max-w-4xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setViewMode('list')} className="p-2 border rounded-lg hover:bg-gray-50 transition-colors text-gray-500">
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Receive Inbound Goods</h1>
+            <p className="text-xs text-gray-500">Check in delivery quantities and record batches/expiry dates against an approved PO.</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleCreateGr} className="bg-white border rounded-xl p-6 shadow-sm space-y-6">
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Select Purchase Order *</label>
+            <select
+              required
+              value={selectedPoId}
+              onChange={(e) => selectPoForReceipt(e.target.value)}
+              className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
+            >
+              <option value="">Select PO...</option>
+              {pos.map(po => (
+                <option key={po.id} value={po.id}>{po.code} - {po.supplier.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {selectedPo && (
+            <>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Override Reason</label>
+                <input
+                  type="text"
+                  value={overrideReason}
+                  onChange={(e) => setOverrideReason(e.target.value)}
+                  className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
+                  placeholder="Required if receiving quantities exceed PO limits..."
+                />
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-gray-900 border-b pb-2">PO Items to Receive</h3>
+
+                {grLines.map((line, idx) => (
+                  <div key={idx} className="border-b pb-4 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-gray-950">{line.name}</span>
+                      {line.requiresTracking && (
+                        <span className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-semibold">
+                          Batch/Lot Required
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Quantity Received</label>
+                        <input
+                          type="number"
+                          min={0}
+                          required
+                          value={line.quantityReceived}
+                          onChange={(e) => updateGrLine(idx, 'quantityReceived', parseFloat(e.target.value) || 0)}
+                          className="w-full border rounded px-2 py-1 text-xs focus:outline-blue-500"
+                        />
+                      </div>
+
+                      {line.requiresTracking && (
+                        <>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Lot Number *</label>
+                            <input
+                              type="text"
+                              required
+                              value={line.lotNumber || ''}
+                              onChange={(e) => updateGrLine(idx, 'lotNumber', e.target.value)}
+                              className="w-full border rounded px-2 py-1 text-xs focus:outline-blue-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Expiry Date *</label>
+                            <input
+                              type="date"
+                              required
+                              value={line.expiryDate || ''}
+                              onChange={(e) => updateGrLine(idx, 'expiryDate', e.target.value)}
+                              className="w-full border rounded px-2 py-1 text-xs focus:outline-blue-500"
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-4 border-t flex justify-end gap-3">
+                <Button type="button" variant="outline" onClick={() => setViewMode('list')}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  Commit Inbound Receipt
+                </Button>
+              </div>
+            </>
+          )}
+        </form>
+      </div>
+    );
+  }
+
+  if (viewMode === 'create-invoice') {
+    return (
+      <div className="p-6 max-w-4xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setViewMode('list')} className="p-2 border rounded-lg hover:bg-gray-50 transition-colors text-gray-500">
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Create Supplier Invoice</h1>
+            <p className="text-xs text-gray-500">Record a supplier tax invoice details to match and queue for payments.</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleCreateInvoice} className="bg-white border rounded-xl p-6 shadow-sm space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Supplier *</label>
+              <select
+                required
+                value={selectedSupplierId}
+                onChange={(e) => setSelectedSupplierId(e.target.value)}
+                className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
+              >
+                <option value="">Select Supplier...</option>
+                {suppliers.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Link Purchase Order</label>
+              <select
+                value={selectedPoId}
+                onChange={(e) => selectPoForInvoice(e.target.value)}
+                className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
+              >
+                <option value="">Select PO (Optional)...</option>
+                {pos.filter(po => !selectedSupplierId || po.supplier.name === suppliers.find(s=>s.id===selectedSupplierId)?.name).map(po => (
+                  <option key={po.id} value={po.id}>{po.code} - ฿{(po.totalMinor/100).toFixed(2)}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Vendor Invoice # *</label>
+              <input
+                type="text"
+                required
+                value={invoiceNumber}
+                onChange={(e) => setInvoiceNumber(e.target.value)}
+                className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
+                placeholder="e.g. TAX-88392"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Invoice Date *</label>
+              <input
+                type="date"
+                required
+                value={invoiceDate}
+                onChange={(e) => setInvoiceDate(e.target.value)}
+                className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Due Date *</label>
+              <input
+                type="date"
+                required
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
+              />
+            </div>
+          </div>
+
+          {invoiceLines.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-gray-900 border-b pb-2">Invoice Line Items</h3>
+              {invoiceLines.map((line, idx) => (
+                <div key={idx} className="border-b pb-3 space-y-2">
+                  <div className="text-xs font-bold text-gray-800">{line.name}</div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Invoice Qty</label>
+                      <input
+                        type="number"
+                        min={0.001}
+                        step="0.001"
+                        required
+                        value={line.quantity}
+                        onChange={(e) => updateInvoiceLine(idx, 'quantity', parseFloat(e.target.value) || 0)}
+                        className="w-full border rounded px-2 py-1 text-xs focus:outline-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Unit Price (฿)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        required
+                        value={line.unitPrice}
+                        onChange={(e) => updateInvoiceLine(idx, 'unitPrice', parseFloat(e.target.value) || 0)}
+                        className="w-full border rounded px-2 py-1 text-xs focus:outline-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Tax (VAT %)</label>
+                      <select
+                        value={line.taxRateBps}
+                        onChange={(e) => updateInvoiceLine(idx, 'taxRateBps', parseInt(e.target.value) || 0)}
+                        className="w-full border rounded px-2 py-1 text-xs focus:outline-blue-500"
+                      >
+                        <option value={700}>7% VAT</option>
+                        <option value={0}>0% / Exempt</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="pt-4 border-t flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={() => setViewMode('list')}>
+              Cancel
+            </Button>
+            <Button type="submit">
+              Save Invoice
+            </Button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
+  if (viewMode === 'create-payment') {
+    return (
+      <div className="p-6 max-w-4xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setViewMode('list')} className="p-2 border rounded-lg hover:bg-gray-50 transition-colors text-gray-500">
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Record Supplier Payment</h1>
+            <p className="text-xs text-gray-500">Record a supplier disbursement payment transaction with tax withholding.</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleCreatePayment} className="bg-white border rounded-xl p-6 shadow-sm space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Supplier *</label>
+              <select
+                required
+                value={selectedSupplierId}
+                onChange={(e) => selectSupplierForPayment(e.target.value)}
+                className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
+              >
+                <option value="">Select Supplier...</option>
+                {suppliers.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Payment Date</label>
+              <input
+                type="date"
+                value={paymentDate}
+                onChange={(e) => setPaymentDate(e.target.value)}
+                className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Payment Method *</label>
+              <select
+                required
+                value={paymentMethod}
+                onChange={(e) => {
+                  const method = e.target.value as any;
+                  setPaymentMethod(method);
+                  if (method === 'BANK_TRANSFER') setWhtRateBps(100);
+                  else setWhtRateBps(0);
+                }}
+                className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
+              >
+                <option value="BANK_TRANSFER">Bank Transfer (e-Tax flat 1% WHT)</option>
+                <option value="CASH">Cash (No WHT)</option>
+                <option value="CHEQUE">Cheque (3% standard WHT)</option>
+                <option value="PROMISSORY_NOTE">Promissory Note</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Reference Number</label>
+              <input
+                type="text"
+                value={referenceNumber}
+                onChange={(e) => setReferenceNumber(e.target.value)}
+                className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
+                placeholder="e.g. TRX-20260719-89"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 border-t pt-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Payment Amount (฿) *</label>
+              <input
+                type="number"
+                min={0.01}
+                step="0.01"
+                required
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
+                className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500 font-semibold"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Withholding Tax (WHT %)</label>
+              <select
+                value={whtRateBps}
+                onChange={(e) => setWhtRateBps(parseInt(e.target.value) || 0)}
+                className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500 text-red-600 font-semibold"
+              >
+                <option value={100}>1% e-WHT flat rate (Incentive through 2027)</option>
+                <option value={300}>3% Standard Service rate</option>
+                <option value={0}>0% No WHT</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Auto-Calc WHT Amount</label>
+              <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-red-600 font-bold">
+                ฿{whtAmount.toFixed(2)}
+              </div>
+            </div>
+          </div>
+
+          {unpaidInvoices.length > 0 ? (
+            <div className="space-y-3">
+              <div className="border-b pb-2">
+                <h3 className="text-sm font-bold text-gray-900">Allocate Payment to Outstanding Invoices</h3>
+                <p className="text-xs text-gray-500">Unpaid posted invoices for the selected supplier.</p>
+              </div>
+
+              <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                {unpaidInvoices.map((inv) => {
+                  const outstanding = (inv.totalMinor - inv.amountPaidMinor) / 100;
+                  return (
+                    <div key={inv.id} className="flex justify-between items-center border-b pb-2 gap-4">
+                      <div className="flex-1">
+                        <div className="text-xs font-bold text-gray-900">{inv.code} ({inv.invoiceNumber})</div>
+                        <div className="text-[10px] text-gray-500">
+                          Outstanding: ฿{outstanding.toFixed(2)} | Due: {new Date(inv.dueDate).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <div className="w-36 flex items-center gap-2">
+                        <span className="text-xs font-semibold text-gray-500">฿</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={outstanding}
+                          step="0.01"
+                          value={allocations[inv.id] || ''}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            setAllocations(prev => ({ ...prev, [inv.id]: val }));
+                          }}
+                          className="w-full border rounded px-2 py-1 text-xs focus:outline-blue-500 font-mono text-right"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : selectedSupplierId ? (
+            <div className="p-4 border rounded-lg bg-gray-50 text-center text-xs text-gray-500">
+              No unpaid invoices found for this supplier.
+            </div>
+          ) : null}
+
+          <div className="pt-4 border-t flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={() => setViewMode('list')}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={paymentAmount <= 0}>
+              Confirm Payment & Tax Withholding
+            </Button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
+      {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -546,7 +1145,6 @@ export default function ProcurementClient() {
           <p className="text-sm text-gray-500 mt-1">Manage purchase orders, goods receipts, supplier invoices, and digital payments.</p>
         </div>
         <div className="flex gap-2">
-          {/* Global Analytics Link */}
           <Link href="/clinic/procurement/analytics">
             <Button size="sm" variant="outline" className="flex items-center gap-1.5 border-blue-200 text-blue-600 hover:bg-blue-50">
               <TrendingUp className="w-4 h-4" />
@@ -555,25 +1153,25 @@ export default function ProcurementClient() {
           </Link>
           
           {activeTab === 'pos' && (
-            <Button size="sm" onClick={openPoForm}>
+            <Button size="sm" onClick={openPoCreatePage}>
               <Plus className="w-4 h-4 mr-2" />
               New Purchase Order
             </Button>
           )}
           {activeTab === 'grs' && (
-            <Button size="sm" onClick={openGrForm}>
+            <Button size="sm" onClick={openGrCreatePage}>
               <Plus className="w-4 h-4 mr-2" />
               Receive Inbound Goods
             </Button>
           )}
           {activeTab === 'invoices' && (
-            <Button size="sm" onClick={openInvoiceForm}>
+            <Button size="sm" onClick={openInvoiceCreatePage}>
               <Plus className="w-4 h-4 mr-2" />
               New Purchase Invoice
             </Button>
           )}
           {activeTab === 'payments' && (
-            <Button size="sm" onClick={openPaymentForm}>
+            <Button size="sm" onClick={openPaymentCreatePage}>
               <Plus className="w-4 h-4 mr-2" />
               Record Supplier Payment
             </Button>
@@ -666,6 +1264,12 @@ export default function ProcurementClient() {
                     </td>
                     <td className="p-3 font-medium">฿{(po.totalMinor / 100).toFixed(2)}</td>
                     <td className="p-3 text-right flex justify-end gap-2">
+                      <button
+                        onClick={() => showPoDetails(po.id)}
+                        className="inline-flex items-center px-2 py-1 text-xs bg-gray-50 text-gray-600 rounded border border-gray-100 hover:bg-gray-100"
+                      >
+                        <Eye className="w-3 h-3 mr-1" /> View
+                      </button>
                       {po.status === 'DRAFT' && (
                         <button
                           onClick={() => handleAction(po.id, 'submit')}
@@ -706,12 +1310,13 @@ export default function ProcurementClient() {
                 <th className="p-3">Received Date</th>
                 <th className="p-3">Received By</th>
                 <th className="p-3">Linked PO</th>
+                <th className="p-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {grs.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-gray-400">No Goods Receipts found.</td>
+                  <td colSpan={5} className="p-8 text-center text-gray-400">No Goods Receipts found.</td>
                 </tr>
               ) : (
                 grs.map(gr => (
@@ -720,6 +1325,14 @@ export default function ProcurementClient() {
                     <td className="p-3">{new Date(gr.receivedDate).toLocaleString()}</td>
                     <td className="p-3">{gr.receivedBy.name}</td>
                     <td className="p-3">{gr.purchaseOrder?.code ?? 'N/A'}</td>
+                    <td className="p-3 text-right">
+                      <button
+                        onClick={() => showGrDetails(gr.id)}
+                        className="inline-flex items-center px-2 py-1 text-xs bg-gray-50 text-gray-600 rounded border border-gray-100 hover:bg-gray-100"
+                      >
+                        <Eye className="w-3 h-3 mr-1" /> View
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -778,6 +1391,13 @@ export default function ProcurementClient() {
                       </span>
                     </td>
                     <td className="p-3 text-right flex justify-end gap-2">
+                      <button
+                        onClick={() => showInvoiceDetails(inv.id)}
+                        className="inline-flex items-center px-2 py-1 text-xs bg-gray-50 text-gray-600 rounded border border-gray-100 hover:bg-gray-100"
+                      >
+                        <Eye className="w-3 h-3 mr-1" /> View
+                      </button>
+                      
                       {inv.status === 'DRAFT' && (
                         <>
                           <button
@@ -807,19 +1427,6 @@ export default function ProcurementClient() {
                           Void
                         </button>
                       )}
-
-                      {inv.matchStatus !== 'PENDING' && (
-                        <button
-                          onClick={async () => {
-                            // Re-fetch match result details to display
-                            const r = await apiClient.post<any>(`/procurement/purchase-invoices/${inv.id}/match`, {});
-                            setSelectedMatchResult(r);
-                          }}
-                          className="inline-flex items-center px-2 py-1 text-xs bg-gray-50 text-gray-600 rounded border border-gray-100 hover:bg-gray-100"
-                        >
-                          View Matching
-                        </button>
-                      )}
                     </td>
                   </tr>
                 ))
@@ -839,12 +1446,13 @@ export default function ProcurementClient() {
                 <th className="p-3">Reference #</th>
                 <th className="p-3">WHT Deducted</th>
                 <th className="p-3">Paid Amount</th>
+                <th className="p-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {payments.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-gray-400">No Supplier Payments found.</td>
+                  <td colSpan={8} className="p-8 text-center text-gray-400">No Supplier Payments found.</td>
                 </tr>
               ) : (
                 payments.map(pay => (
@@ -856,11 +1464,255 @@ export default function ProcurementClient() {
                     <td className="p-3 font-mono text-xs">{pay.referenceNumber ?? 'N/A'}</td>
                     <td className="p-3 text-red-600 font-medium">฿{(pay.whtAmountMinor / 100).toFixed(2)} ({pay.whtRateBps / 100}%)</td>
                     <td className="p-3 font-medium text-green-600">฿{(pay.amountMinor / 100).toFixed(2)}</td>
+                    <td className="p-3 text-right">
+                      <button
+                        onClick={() => showPaymentDetails(pay.id)}
+                        className="inline-flex items-center px-2 py-1 text-xs bg-gray-50 text-gray-600 rounded border border-gray-100 hover:bg-gray-100"
+                      >
+                        <Eye className="w-3 h-3 mr-1" /> View
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* PO View Modal */}
+      {selectedPoDetails && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-3xl max-h-[85vh] rounded-xl flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95">
+            <div className="p-6 border-b flex items-center justify-between bg-gray-50">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-blue-600" />
+                  Purchase Order: {selectedPoDetails.code}
+                </h2>
+                <p className="text-xs text-gray-500 mt-1">Detailed view of contract line items and auditing history.</p>
+              </div>
+              <button onClick={() => setSelectedPoDetails(null)} className="text-gray-500 hover:text-gray-700">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div><strong>Supplier:</strong> {selectedPoDetails.supplier.name}</div>
+                <div><strong>Order Date:</strong> {new Date(selectedPoDetails.orderDate).toLocaleString()}</div>
+                <div><strong>Credit Terms:</strong> {selectedPoDetails.creditTermDays} days</div>
+                <div><strong>Expected Delivery Date:</strong> {selectedPoDetails.expectedDeliveryDate ? new Date(selectedPoDetails.expectedDeliveryDate).toLocaleDateString() : 'N/A'}</div>
+                <div className="col-span-2"><strong>Notes:</strong> {selectedPoDetails.notes || 'No notes added'}</div>
+              </div>
+
+              {selectedPoDetails.lines && (
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-gray-100 font-semibold border-b text-gray-700">
+                      <tr>
+                        <th className="p-3">Product</th>
+                        <th className="p-3 text-center">Ordered</th>
+                        <th className="p-3 text-center">Received</th>
+                        <th className="p-3 text-center">Invoiced</th>
+                        <th className="p-3 text-right">Unit Price</th>
+                        <th className="p-3 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedPoDetails.lines.map((line: any, idx: number) => (
+                        <tr key={idx} className="border-b hover:bg-gray-50">
+                          <td className="p-3 font-semibold text-gray-800">{line.product.name} ({line.product.code})</td>
+                          <td className="p-3 text-center font-mono">{line.quantityOrdered}</td>
+                          <td className="p-3 text-center font-mono">{line.quantityReceived}</td>
+                          <td className="p-3 text-center font-mono">{line.quantityInvoiced}</td>
+                          <td className="p-3 text-right font-mono">฿{(line.unitPriceMinor / 100).toFixed(2)}</td>
+                          <td className="p-3 text-right font-mono font-semibold">฿{((line.quantityOrdered * line.unitPriceMinor) / 100).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+            <div className="p-4 bg-gray-50 border-t flex justify-end">
+              <Button size="sm" onClick={() => setSelectedPoDetails(null)}>Close</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* GR View Modal */}
+      {selectedGrDetails && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-3xl max-h-[85vh] rounded-xl flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95">
+            <div className="p-6 border-b flex items-center justify-between bg-gray-50">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-green-600" />
+                  Goods Receipt: {selectedGrDetails.code}
+                </h2>
+                <p className="text-xs text-gray-500 mt-1">Detailed inventory check-in list.</p>
+              </div>
+              <button onClick={() => setSelectedGrDetails(null)} className="text-gray-500 hover:text-gray-700">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div><strong>Linked PO:</strong> {selectedGrDetails.purchaseOrder?.code || 'N/A'}</div>
+                <div><strong>Received Date:</strong> {new Date(selectedGrDetails.receivedDate).toLocaleString()}</div>
+                <div><strong>Received By:</strong> {selectedGrDetails.receivedBy.name}</div>
+              </div>
+
+              {selectedGrDetails.lines && (
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-gray-100 font-semibold border-b text-gray-700">
+                      <tr>
+                        <th className="p-3">Product</th>
+                        <th className="p-3 text-center">Received Qty</th>
+                        <th className="p-3">Lot Number</th>
+                        <th className="p-3">Expiry Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedGrDetails.lines.map((line: any, idx: number) => (
+                        <tr key={idx} className="border-b hover:bg-gray-50">
+                          <td className="p-3 font-semibold text-gray-800">{line.product.name} ({line.product.code})</td>
+                          <td className="p-3 text-center font-mono">{line.quantityReceived}</td>
+                          <td className="p-3 font-mono">{line.lotNumber || 'N/A'}</td>
+                          <td className="p-3">{line.expiryDate ? new Date(line.expiryDate).toLocaleDateString() : 'N/A'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+            <div className="p-4 bg-gray-50 border-t flex justify-end">
+              <Button size="sm" onClick={() => setSelectedGrDetails(null)}>Close</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invoice View Modal */}
+      {selectedInvoiceDetails && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-3xl max-h-[85vh] rounded-xl flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95">
+            <div className="p-6 border-b flex items-center justify-between bg-gray-50">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Receipt className="w-5 h-5 text-indigo-600" />
+                  Supplier Invoice: {selectedInvoiceDetails.code}
+                </h2>
+                <p className="text-xs text-gray-500 mt-1">Vendor tax invoice billing details.</p>
+              </div>
+              <button onClick={() => setSelectedInvoiceDetails(null)} className="text-gray-500 hover:text-gray-700">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div><strong>Supplier:</strong> {selectedInvoiceDetails.supplier.name}</div>
+                <div><strong>Linked PO:</strong> {selectedInvoiceDetails.purchaseOrder?.code || 'N/A'}</div>
+                <div><strong>Vendor Invoice #:</strong> {selectedInvoiceDetails.invoiceNumber}</div>
+                <div><strong>Invoice Date:</strong> {new Date(selectedInvoiceDetails.invoiceDate).toLocaleDateString()}</div>
+                <div><strong>Due Date:</strong> {new Date(selectedInvoiceDetails.dueDate).toLocaleDateString()}</div>
+                <div><strong>Status:</strong> {selectedInvoiceDetails.status}</div>
+                <div><strong>Match Verification:</strong> {selectedInvoiceDetails.matchStatus}</div>
+                <div><strong>Amount Paid:</strong> ฿{(selectedInvoiceDetails.amountPaidMinor / 100).toFixed(2)}</div>
+              </div>
+
+              {selectedInvoiceDetails.lines && (
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-gray-100 font-semibold border-b text-gray-700">
+                      <tr>
+                        <th className="p-3">Product</th>
+                        <th className="p-3 text-center">Qty</th>
+                        <th className="p-3 text-right">Unit Price</th>
+                        <th className="p-3 text-right">VAT Rate</th>
+                        <th className="p-3 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedInvoiceDetails.lines.map((line: any, idx: number) => (
+                        <tr key={idx} className="border-b hover:bg-gray-50">
+                          <td className="p-3 font-semibold text-gray-800">{line.product.name} ({line.product.code})</td>
+                          <td className="p-3 text-center font-mono">{line.quantity}</td>
+                          <td className="p-3 text-right font-mono">฿{(line.unitPriceMinor / 100).toFixed(2)}</td>
+                          <td className="p-3 text-right font-mono">{(line.taxRateBps / 100)}%</td>
+                          <td className="p-3 text-right font-mono font-semibold">฿{(line.totalMinor / 100).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+            <div className="p-4 bg-gray-50 border-t flex justify-end">
+              <Button size="sm" onClick={() => setSelectedInvoiceDetails(null)}>Close</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment View Modal */}
+      {selectedPaymentDetails && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-3xl max-h-[85vh] rounded-xl flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95">
+            <div className="p-6 border-b flex items-center justify-between bg-gray-50">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-indigo-600" />
+                  Supplier Payment: {selectedPaymentDetails.code}
+                </h2>
+                <p className="text-xs text-gray-500 mt-1">Disbursement allocations and tax withholding audit trace.</p>
+              </div>
+              <button onClick={() => setSelectedPaymentDetails(null)} className="text-gray-500 hover:text-gray-700">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div><strong>Supplier:</strong> {selectedPaymentDetails.supplier.name}</div>
+                <div><strong>Tax ID:</strong> {selectedPaymentDetails.supplier.taxId || 'N/A'}</div>
+                <div><strong>Payment Date:</strong> {new Date(selectedPaymentDetails.paymentDate).toLocaleDateString()}</div>
+                <div><strong>Method:</strong> {selectedPaymentDetails.paymentMethod}</div>
+                <div><strong>Reference #:</strong> {selectedPaymentDetails.referenceNumber || 'N/A'}</div>
+                <div><strong>WHT Deducted Rate:</strong> {selectedPaymentDetails.whtRateBps / 100}%</div>
+                <div><strong>WHT Amount:</strong> ฿{(selectedPaymentDetails.whtAmountMinor / 100).toFixed(2)}</div>
+                <div><strong>Grand Paid Amount:</strong> ฿{(selectedPaymentDetails.amountMinor / 100).toFixed(2)}</div>
+              </div>
+
+              {selectedPaymentDetails.allocations && (
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-gray-100 font-semibold border-b text-gray-700">
+                      <tr>
+                        <th className="p-3">Invoice Ref</th>
+                        <th className="p-3 text-right">Invoice Total</th>
+                        <th className="p-3 text-right">Amount Allocated</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedPaymentDetails.allocations.map((alloc: any, idx: number) => (
+                        <tr key={idx} className="border-b hover:bg-gray-50">
+                          <td className="p-3 font-semibold text-gray-800">{alloc.invoice.code}</td>
+                          <td className="p-3 text-right font-mono">฿{(alloc.invoice.totalMinor / 100).toFixed(2)}</td>
+                          <td className="p-3 text-right font-mono font-semibold text-green-600">฿{(alloc.amountAllocatedMinor / 100).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+            <div className="p-4 bg-gray-50 border-t flex justify-end">
+              <Button size="sm" onClick={() => setSelectedPaymentDetails(null)}>Close</Button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -882,7 +1734,6 @@ export default function ProcurementClient() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* Header result banner */}
               <div className={`p-4 rounded-lg flex items-start gap-3 border ${
                 selectedMatchResult.status === 'MATCHED' ? 'bg-green-50 border-green-200 text-green-800' :
                 selectedMatchResult.status === 'TOLERANCE_APPROVED' ? 'bg-blue-50 border-blue-200 text-blue-800' :
@@ -908,7 +1759,6 @@ export default function ProcurementClient() {
                 </div>
               </div>
 
-              {/* Exception routing box (AP Matrix Alerts) */}
               {selectedMatchResult.status === 'EXCEPTION' && (
                 <div className="grid grid-cols-2 gap-4">
                   {selectedMatchResult.lineResults.some((r: any) => r.status === 'EXCEPTION' && (r.discrepancyType === 'PRICE' || r.discrepancyType === 'BOTH')) && (
@@ -933,7 +1783,6 @@ export default function ProcurementClient() {
                 </div>
               )}
 
-              {/* Lines comparison */}
               <div className="border rounded-lg overflow-hidden">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className="bg-gray-100 font-semibold border-b text-gray-700">
@@ -988,542 +1837,6 @@ export default function ProcurementClient() {
             <div className="p-4 bg-gray-50 border-t flex justify-end">
               <Button size="sm" onClick={() => setSelectedMatchResult(null)}>Close Window</Button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* PO Form Drawer */}
-      {poFormOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-end z-50">
-          <div className="bg-white w-full max-w-2xl h-full flex flex-col shadow-2xl animate-in slide-in-from-right animate-out slide-out-to-right">
-            <div className="p-6 border-b flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900">Create Purchase Order</h2>
-              <button onClick={() => setPoFormOpen(false)} className="text-gray-500 hover:text-gray-700">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreatePo} className="flex-1 overflow-y-auto p-6 space-y-6">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Supplier *</label>
-                  <select
-                    required
-                    value={selectedSupplierId}
-                    onChange={(e) => setSelectedSupplierId(e.target.value)}
-                    className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
-                  >
-                    <option value="">Select Supplier...</option>
-                    {suppliers.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Credit Terms (Days)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={creditTermDays}
-                    onChange={(e) => setCreditTermDays(parseInt(e.target.value) || 0)}
-                    className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Expected Delivery Date</label>
-                <input
-                  type="date"
-                  value={expectedDeliveryDate}
-                  onChange={(e) => setExpectedDeliveryDate(e.target.value)}
-                  className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Notes</label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full border rounded px-3 py-2 text-sm h-20 focus:outline-blue-500"
-                  placeholder="Additional order notes or terms..."
-                />
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between border-b pb-2">
-                  <h3 className="text-sm font-bold text-gray-900">PO Lines</h3>
-                  <Button type="button" variant="outline" size="sm" onClick={addPoLine}>
-                    + Add Item
-                  </Button>
-                </div>
-
-                {poLines.map((line, idx) => (
-                  <div key={idx} className="flex gap-3 items-end border-b pb-3">
-                    <div className="flex-1">
-                      <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Product</label>
-                      <select
-                        required
-                        value={line.productId}
-                        onChange={(e) => updatePoLine(idx, 'productId', e.target.value)}
-                        className="w-full border rounded px-2 py-1.5 text-xs focus:outline-blue-500"
-                      >
-                        <option value="">Select Product...</option>
-                        {products.map(p => (
-                          <option key={p.id} value={p.id}>{p.name} ({p.code})</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="w-20">
-                      <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Qty</label>
-                      <input
-                        type="number"
-                        min={1}
-                        required
-                        value={line.quantityOrdered}
-                        onChange={(e) => updatePoLine(idx, 'quantityOrdered', parseInt(e.target.value) || 1)}
-                        className="w-full border rounded px-2 py-1 text-xs focus:outline-blue-500"
-                      />
-                    </div>
-                    <div className="w-24">
-                      <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Price (฿)</label>
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        required
-                        value={line.unitPrice}
-                        onChange={(e) => updatePoLine(idx, 'unitPrice', parseFloat(e.target.value) || 0)}
-                        className="w-full border rounded px-2 py-1 text-xs focus:outline-blue-500"
-                      />
-                    </div>
-                    <button type="button" onClick={() => removePoLine(idx)} className="text-red-500 hover:text-red-700 pb-1.5">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div className="pt-4 border-t flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setPoFormOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">
-                  Save Purchase Order
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* GR Form Drawer */}
-      {grFormOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-end z-50">
-          <div className="bg-white w-full max-w-2xl h-full flex flex-col shadow-2xl animate-in slide-in-from-right">
-            <div className="p-6 border-b flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900">Receive Inbound Goods</h2>
-              <button onClick={() => setGrFormOpen(false)} className="text-gray-500 hover:text-gray-700">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateGr} className="flex-1 overflow-y-auto p-6 space-y-6">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Select Purchase Order *</label>
-                <select
-                  required
-                  value={selectedPoId}
-                  onChange={(e) => selectPoForReceipt(e.target.value)}
-                  className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
-                >
-                  <option value="">Select PO...</option>
-                  {pos.map(po => (
-                    <option key={po.id} value={po.id}>{po.code} - {po.supplier.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {selectedPo && (
-                <>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Override Reason</label>
-                    <input
-                      type="text"
-                      value={overrideReason}
-                      onChange={(e) => setOverrideReason(e.target.value)}
-                      className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
-                      placeholder="Required if receiving quantities exceed PO limits..."
-                    />
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-gray-900 border-b pb-2">PO Items to Receive</h3>
-
-                    {grLines.map((line, idx) => (
-                      <div key={idx} className="border-b pb-4 space-y-3">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-bold text-gray-900">{line.name}</span>
-                          {line.requiresTracking && (
-                            <span className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-semibold">
-                              Batch/Lot Required
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-3">
-                          <div>
-                            <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Quantity Received</label>
-                            <input
-                              type="number"
-                              min={0}
-                              required
-                              value={line.quantityReceived}
-                              onChange={(e) => updateGrLine(idx, 'quantityReceived', parseFloat(e.target.value) || 0)}
-                              className="w-full border rounded px-2 py-1 text-xs focus:outline-blue-500"
-                            />
-                          </div>
-
-                          {line.requiresTracking && (
-                            <>
-                              <div>
-                                <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Lot Number *</label>
-                                <input
-                                  type="text"
-                                  required
-                                  value={line.lotNumber || ''}
-                                  onChange={(e) => updateGrLine(idx, 'lotNumber', e.target.value)}
-                                  className="w-full border rounded px-2 py-1 text-xs focus:outline-blue-500"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Expiry Date *</label>
-                                <input
-                                  type="date"
-                                  required
-                                  value={line.expiryDate || ''}
-                                  onChange={(e) => updateGrLine(idx, 'expiryDate', e.target.value)}
-                                  className="w-full border rounded px-2 py-1 text-xs focus:outline-blue-500"
-                                />
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="pt-4 border-t flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setGrFormOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit">
-                      Commit Inbound Receipt
-                    </Button>
-                  </div>
-                </>
-              )}
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Purchase Invoice Form Drawer */}
-      {invoiceFormOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-end z-50">
-          <div className="bg-white w-full max-w-2xl h-full flex flex-col shadow-2xl animate-in slide-in-from-right">
-            <div className="p-6 border-b flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900">Create Supplier Invoice</h2>
-              <button onClick={() => setInvoiceFormOpen(false)} className="text-gray-500 hover:text-gray-700">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateInvoice} className="flex-1 overflow-y-auto p-6 space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Supplier *</label>
-                  <select
-                    required
-                    value={selectedSupplierId}
-                    onChange={(e) => setSelectedSupplierId(e.target.value)}
-                    className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
-                  >
-                    <option value="">Select Supplier...</option>
-                    {suppliers.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Link Purchase Order</label>
-                  <select
-                    value={selectedPoId}
-                    onChange={(e) => selectPoForInvoice(e.target.value)}
-                    className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
-                  >
-                    <option value="">Select PO (Optional)...</option>
-                    {pos.filter(po => !selectedSupplierId || po.supplier.name === suppliers.find(s=>s.id===selectedSupplierId)?.name).map(po => (
-                      <option key={po.id} value={po.id}>{po.code} - ฿{(po.totalMinor/100).toFixed(2)}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Vendor Invoice # *</label>
-                  <input
-                    type="text"
-                    required
-                    value={invoiceNumber}
-                    onChange={(e) => setInvoiceNumber(e.target.value)}
-                    className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
-                    placeholder="e.g. TAX-88392"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Invoice Date *</label>
-                  <input
-                    type="date"
-                    required
-                    value={invoiceDate}
-                    onChange={(e) => setInvoiceDate(e.target.value)}
-                    className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Due Date *</label>
-                  <input
-                    type="date"
-                    required
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                    className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
-                  />
-                </div>
-              </div>
-
-              {invoiceLines.length > 0 && (
-                <div className="space-y-4">
-                  <h3 className="text-sm font-bold text-gray-900 border-b pb-2">Invoice Line Items</h3>
-                  {invoiceLines.map((line, idx) => (
-                    <div key={idx} className="border-b pb-3 space-y-2">
-                      <div className="text-xs font-bold text-gray-800">{line.name}</div>
-                      <div className="grid grid-cols-3 gap-3">
-                        <div>
-                          <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Invoice Qty</label>
-                          <input
-                            type="number"
-                            min={0.001}
-                            step="0.001"
-                            required
-                            value={line.quantity}
-                            onChange={(e) => updateInvoiceLine(idx, 'quantity', parseFloat(e.target.value) || 0)}
-                            className="w-full border rounded px-2 py-1 text-xs focus:outline-blue-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Unit Price (฿)</label>
-                          <input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            required
-                            value={line.unitPrice}
-                            onChange={(e) => updateInvoiceLine(idx, 'unitPrice', parseFloat(e.target.value) || 0)}
-                            className="w-full border rounded px-2 py-1 text-xs focus:outline-blue-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-semibold text-gray-500 mb-0.5">Tax (VAT %)</label>
-                          <select
-                            value={line.taxRateBps}
-                            onChange={(e) => updateInvoiceLine(idx, 'taxRateBps', parseInt(e.target.value) || 0)}
-                            className="w-full border rounded px-2 py-1 text-xs focus:outline-blue-500"
-                          >
-                            <option value={700}>7% VAT</option>
-                            <option value={0}>0% / Exempt</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="pt-4 border-t flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setInvoiceFormOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">
-                  Save Invoice
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Supplier Payment Form Drawer */}
-      {paymentFormOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-end z-50">
-          <div className="bg-white w-full max-w-2xl h-full flex flex-col shadow-2xl animate-in slide-in-from-right">
-            <div className="p-6 border-b flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900">Record Supplier Payment</h2>
-              <button onClick={() => setPaymentFormOpen(false)} className="text-gray-500 hover:text-gray-700">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreatePayment} className="flex-1 overflow-y-auto p-6 space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Supplier *</label>
-                  <select
-                    required
-                    value={selectedSupplierId}
-                    onChange={(e) => selectSupplierForPayment(e.target.value)}
-                    className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
-                  >
-                    <option value="">Select Supplier...</option>
-                    {suppliers.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Payment Date</label>
-                  <input
-                    type="date"
-                    value={paymentDate}
-                    onChange={(e) => setPaymentDate(e.target.value)}
-                    className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Payment Method *</label>
-                  <select
-                    required
-                    value={paymentMethod}
-                    onChange={(e) => {
-                      const method = e.target.value as any;
-                      setPaymentMethod(method);
-                      // Apply flat 1% e-tax WHT incentive for BANK_TRANSFER, standard 3% otherwise
-                      if (method === 'BANK_TRANSFER') setWhtRateBps(100);
-                      else setWhtRateBps(0);
-                    }}
-                    className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
-                  >
-                    <option value="BANK_TRANSFER">Bank Transfer (e-Tax flat 1% WHT)</option>
-                    <option value="CASH">Cash (No WHT)</option>
-                    <option value="CHEQUE">Cheque (3% standard WHT)</option>
-                    <option value="PROMISSORY_NOTE">Promissory Note</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Reference Number (Tx ID / Cheque #)</label>
-                  <input
-                    type="text"
-                    value={referenceNumber}
-                    onChange={(e) => setReferenceNumber(e.target.value)}
-                    className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500"
-                    placeholder="e.g. TRX-20260719-89"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4 border-t pt-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Payment Amount (฿) *</label>
-                  <input
-                    type="number"
-                    min={0.01}
-                    step="0.01"
-                    required
-                    value={paymentAmount}
-                    onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
-                    className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500 font-semibold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Withholding Tax (WHT %)</label>
-                  <select
-                    value={whtRateBps}
-                    onChange={(e) => setWhtRateBps(parseInt(e.target.value) || 0)}
-                    className="w-full border rounded px-3 py-2 text-sm focus:outline-blue-500 text-red-600 font-semibold"
-                  >
-                    <option value={100}>1% e-WHT flat rate (Incentive through 2027)</option>
-                    <option value={300}>3% Standard Service rate</option>
-                    <option value={0}>0% No WHT</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Auto-Calc WHT Amount</label>
-                  <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-red-600 font-bold">
-                    ฿{whtAmount.toFixed(2)}
-                  </div>
-                </div>
-              </div>
-
-              {unpaidInvoices.length > 0 ? (
-                <div className="space-y-3">
-                  <div className="border-b pb-2">
-                    <h3 className="text-sm font-bold text-gray-900">Allocate Payment to Outstanding Invoices</h3>
-                    <p className="text-xs text-gray-500">Unpaid posted invoices for the selected supplier.</p>
-                  </div>
-
-                  <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-                    {unpaidInvoices.map((inv) => {
-                      const outstanding = (inv.totalMinor - inv.amountPaidMinor) / 100;
-                      return (
-                        <div key={inv.id} className="flex justify-between items-center border-b pb-2 gap-4">
-                          <div className="flex-1">
-                            <div className="text-xs font-bold text-gray-900">{inv.code} ({inv.invoiceNumber})</div>
-                            <div className="text-[10px] text-gray-500">
-                              Outstanding: ฿{outstanding.toFixed(2)} | Due: {new Date(inv.dueDate).toLocaleDateString()}
-                            </div>
-                          </div>
-                          <div className="w-36 flex items-center gap-2">
-                            <span className="text-xs font-semibold text-gray-500">฿</span>
-                            <input
-                              type="number"
-                              min={0}
-                              max={outstanding}
-                              step="0.01"
-                              value={allocations[inv.id] || ''}
-                              onChange={(e) => {
-                                const val = parseFloat(e.target.value) || 0;
-                                setAllocations(prev => ({ ...prev, [inv.id]: val }));
-                              }}
-                              className="w-full border rounded px-2 py-1 text-xs focus:outline-blue-500 font-mono text-right"
-                              placeholder="0.00"
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : selectedSupplierId ? (
-                <div className="p-4 border rounded-lg bg-gray-50 text-center text-xs text-gray-500">
-                  No unpaid invoices found for this supplier.
-                </div>
-              ) : null}
-
-              <div className="pt-4 border-t flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setPaymentFormOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={paymentAmount <= 0}>
-                  Confirm Payment & Tax Withholding
-                </Button>
-              </div>
-            </form>
           </div>
         </div>
       )}
