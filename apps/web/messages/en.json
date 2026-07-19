@@ -107,7 +107,8 @@
     "documentSequence": "Document Sequencing",
     "pos": "POS",
     "mobileApp": "Mobile App",
-    "mobileAppSubtitle": "Owner mobile view"
+    "mobileAppSubtitle": "Owner mobile view",
+    "procurement": "Procurement"
   },
   "dashboard": {
     "title": "Dashboard",

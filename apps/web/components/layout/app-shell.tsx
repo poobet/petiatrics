@@ -44,7 +44,7 @@ import type { AuthProfile } from '@petiatrics/types';
 import { BranchSelector } from './branch-selector';
 import { useSessionStore } from '../../lib/session-store';
 
-type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'products' | 'stockLedger' | 'goodsReceipt' | 'goodsIssue' | 'adjustments' | 'billing' | 'pos' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings' | 'settingsGeneral' | 'rolePermissions' | 'documentSequence';
+type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'products' | 'stockLedger' | 'goodsReceipt' | 'goodsIssue' | 'adjustments' | 'billing' | 'pos' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings' | 'settingsGeneral' | 'rolePermissions' | 'documentSequence' | 'procurement';
 
 interface SubNavItem {
   key: NavKey;
@@ -79,6 +79,7 @@ const NAV_ITEMS: NavItem[] = [
       { key: 'adjustments', href: '/clinic/inventory/adjustments', icon: Boxes, requiredPermission: 'INVENTORY:EDIT' },
     ],
   },
+  { key: 'procurement', href: '/clinic/procurement', icon: ClipboardList, requiredPermission: 'INVENTORY:VIEW' },
   { key: 'billing', href: '/clinic/billing', icon: CreditCard, requiredPermission: 'BILLING:VIEW' },
   { key: 'pos', href: '/clinic/pos', icon: ShoppingCart, requiredPermission: 'BILLING:ADD' },
   {

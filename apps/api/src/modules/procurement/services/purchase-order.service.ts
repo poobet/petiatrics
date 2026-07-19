@@ -16,24 +16,34 @@ export class PurchaseOrderService {
 
     let subtotal = 0;
     let taxTotal = 0;
+    let lineDiscounts = 0;
 
     const linesToCreate = dto.lines.map(line => {
-      const lineSubtotal = Math.round(Number(line.quantityOrdered) * line.unitPriceMinor);
+      const lineGross = Math.round(Number(line.quantityOrdered) * line.unitPriceMinor);
+      const lineDiscount = line.discountMinor || 0;
+      const lineSubtotal = lineGross - lineDiscount;
       const lineTax = Math.round(lineSubtotal * ((line.taxRateBps || 0) / 10000));
+
       subtotal += lineSubtotal;
       taxTotal += lineTax;
+      lineDiscounts += lineDiscount;
 
       return {
         productId: line.productId,
         uomId: line.uomId,
         quantityOrdered: line.quantityOrdered,
         unitPriceMinor: line.unitPriceMinor,
+        discountMinor: lineDiscount,
         subtotalMinor: lineSubtotal,
         taxRateBps: line.taxRateBps || 0,
         taxTotalMinor: lineTax,
         totalMinor: lineSubtotal + lineTax,
       };
     });
+
+    const headerDiscount = dto.discountTotalMinor || 0;
+    const totalDiscount = headerDiscount + lineDiscounts;
+    const finalTotal = subtotal + taxTotal - headerDiscount;
 
     // Auto-approve if Manager, Owner, or Vet
     const canAutoApprove = ([Role.SUPER_ADMIN, Role.CLINIC_OWNER, Role.VET] as Role[]).includes(userRole);
@@ -44,12 +54,15 @@ export class PurchaseOrderService {
         clinicId,
         supplierId: dto.supplierId,
         code,
+        referenceNumber: dto.referenceNumber,
         status,
         creditTermDays: dto.creditTermDays || 0,
+        expectedDeliveryDate: dto.expectedDeliveryDate ? new Date(dto.expectedDeliveryDate) : null,
         notes: dto.notes,
         subtotalMinor: subtotal,
+        discountTotalMinor: totalDiscount,
         taxTotalMinor: taxTotal,
-        totalMinor: subtotal + taxTotal,
+        totalMinor: finalTotal,
         createdById: userId,
         approvedById: canAutoApprove ? userId : null,
         approvedAt: canAutoApprove ? new Date() : null,
@@ -71,7 +84,7 @@ export class PurchaseOrderService {
 
   async findOne(clinicId: string, id: string) {
     const po = await this.prisma.purchaseOrder.findFirst({
-      where: { id, clinicId },
+      where: { id, clinicId, deletedAt: null },
       include: {
         lines: {
           include: {
@@ -90,6 +103,7 @@ export class PurchaseOrderService {
     return this.prisma.purchaseOrder.findMany({
       where: {
         clinicId,
+        deletedAt: null,
         status: status || undefined,
       },
       include: {
@@ -104,7 +118,7 @@ export class PurchaseOrderService {
 
   async submitForApproval(clinicId: string, id: string) {
     const po = await this.prisma.purchaseOrder.findFirst({
-      where: { id, clinicId },
+      where: { id, clinicId, deletedAt: null },
     });
     if (!po) throw new NotFoundException(`Purchase Order with ID ${id} not found`);
     if (po.status !== PurchaseOrderStatus.DRAFT) {
@@ -125,7 +139,7 @@ export class PurchaseOrderService {
     }
 
     const po = await this.prisma.purchaseOrder.findFirst({
-      where: { id, clinicId },
+      where: { id, clinicId, deletedAt: null },
     });
     if (!po) throw new NotFoundException(`Purchase Order with ID ${id} not found`);
     if (po.status !== PurchaseOrderStatus.PENDING_APPROVAL && po.status !== PurchaseOrderStatus.DRAFT) {
@@ -144,7 +158,7 @@ export class PurchaseOrderService {
 
   async cancel(clinicId: string, id: string) {
     const po = await this.prisma.purchaseOrder.findFirst({
-      where: { id, clinicId },
+      where: { id, clinicId, deletedAt: null },
     });
     if (!po) throw new NotFoundException(`Purchase Order with ID ${id} not found`);
     if (([PurchaseOrderStatus.CLOSED, PurchaseOrderStatus.FULLY_RECEIVED, PurchaseOrderStatus.PARTIALLY_RECEIVED] as PurchaseOrderStatus[]).includes(po.status)) {

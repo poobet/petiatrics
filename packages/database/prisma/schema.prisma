@@ -182,6 +182,7 @@ model Clinic {
   supplierPayments        SupplierPayment[]
   documentSequenceConfigs DocumentSequenceConfig[]
   documentTypeDefinitions DocumentTypeDefinition[]
+  matchingToleranceConfigs MatchingToleranceConfig[]
 
   @@map("clinics")
 }
@@ -503,9 +504,10 @@ model ItemCategory {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  products         Product[]
-  revenueGlAccount GLAccount? @relation("RevenueGLAccount", fields: [revenueGlAccountId], references: [id])
-  expenseGlAccount GLAccount? @relation("ExpenseGLAccount", fields: [expenseGlAccountId], references: [id])
+  products                 Product[]
+  revenueGlAccount         GLAccount?                @relation("RevenueGLAccount", fields: [revenueGlAccountId], references: [id])
+  expenseGlAccount         GLAccount?                @relation("ExpenseGLAccount", fields: [expenseGlAccountId], references: [id])
+  matchingToleranceConfigs MatchingToleranceConfig[]
 
   @@map("item_categories")
 }
@@ -903,36 +905,58 @@ enum PurchaseInvoiceStatus {
   VOIDED
 }
 
+enum InvoiceMatchStatus {
+  PENDING
+  MATCHED
+  TOLERANCE_APPROVED
+  EXCEPTION
+}
+
+enum MatchDiscrepancyType {
+  PRICE
+  QUANTITY
+  BOTH
+}
+
 // ─── Procurement Models ───────────────────────────────────────────────────────
 
 model PurchaseOrder {
-  id             String              @id @default(uuid())
-  clinicId       String
-  supplierId     String
-  code           String // e.g., "PO-2026-0001"
-  status         PurchaseOrderStatus @default(DRAFT)
-  orderDate      DateTime            @default(now())
-  creditTermDays Int                 @default(0)
-  notes          String?             @db.Text
-  subtotalMinor  Int                 @default(0)
-  taxTotalMinor  Int                 @default(0)
-  totalMinor     Int                 @default(0)
-  createdById    String
-  approvedById   String?
-  approvedAt     DateTime?
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  id                 String              @id @default(uuid())
+  clinicId           String
+  supplierId         String
+  code               String              // System-generated running number
+  referenceNumber    String?             // Supplier's quotation or reference doc
+  status             PurchaseOrderStatus @default(DRAFT)
+  orderDate          DateTime            @default(now())
+  expectedDeliveryDate DateTime?
+  creditTermDays     Int                 @default(0)
+  notes              String?             @db.Text
 
-  clinic           Clinic              @relation(fields: [clinicId], references: [id])
-  supplier         BusinessPartner     @relation(fields: [supplierId], references: [id])
-  createdBy        User                @relation("POCreatedBy", fields: [createdById], references: [id])
-  approvedBy       User?               @relation("POApprovedBy", fields: [approvedById], references: [id])
-  lines            PurchaseOrderLine[]
-  goodsReceipts    GoodsReceipt[]
-  purchaseInvoices PurchaseInvoice[]
+  // Financials
+  subtotalMinor      Int                 @default(0)
+  discountTotalMinor Int                 @default(0) // Overall discount (line + header)
+  taxTotalMinor      Int                 @default(0)
+  totalMinor         Int                 @default(0)
+
+  // Auditing
+  createdById        String
+  approvedById       String?
+  approvedAt         DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  deletedAt          DateTime?           // Soft delete support
+
+  // Relations
+  clinic             Clinic              @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  supplier           BusinessPartner     @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  createdBy          User                @relation("POCreatedBy", fields: [createdById], references: [id])
+  approvedBy         User?               @relation("POApprovedBy", fields: [approvedById], references: [id])
+  lines              PurchaseOrderLine[]
+  goodsReceipts      GoodsReceipt[]
+  purchaseInvoices   PurchaseInvoice[]
 
   @@unique([clinicId, code])
-  @@index([clinicId])
+  @@index([clinicId, status])
   @@index([supplierId])
   @@map("purchase_orders")
 }
@@ -941,21 +965,25 @@ model PurchaseOrderLine {
   id               String   @id @default(uuid())
   purchaseOrderId  String
   productId        String
-  uomId            String? // Alt UoM if ordered in alternate units
+  uomId            String?  // Alt UoM if ordered in alternate units
   quantityOrdered  Decimal  @db.Decimal(10, 3)
   quantityReceived Decimal  @default(0) @db.Decimal(10, 3)
   quantityInvoiced Decimal  @default(0) @db.Decimal(10, 3)
+
+  // Financials
   unitPriceMinor   Int
+  discountMinor    Int      @default(0) // Line-item discount in minor currency
   subtotalMinor    Int
   taxRateBps       Int      @default(0) // e.g. 700 = 7%
   taxTotalMinor    Int      @default(0)
   totalMinor       Int      @default(0)
+
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
   purchaseOrder PurchaseOrder         @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  product       Product               @relation(fields: [productId], references: [id])
-  uom           UnitOfMeasure?        @relation(fields: [uomId], references: [id])
+  product       Product               @relation(fields: [productId], references: [id], onDelete: Restrict)
+  uom           UnitOfMeasure?        @relation(fields: [uomId], references: [id], onDelete: SetNull)
   receiptLines  GoodsReceiptLine[]
   invoiceLines  PurchaseInvoiceLine[]
 
@@ -1021,6 +1049,7 @@ model PurchaseInvoice {
   invoiceNumber   String // Vendor's invoice number
   code            String // e.g., "PI-2026-0001"
   status          PurchaseInvoiceStatus @default(DRAFT)
+  matchStatus     InvoiceMatchStatus    @default(PENDING)
   invoiceDate     DateTime
   dueDate         DateTime
   subtotalMinor   Int                   @default(0)
@@ -1077,6 +1106,8 @@ model SupplierPayment {
   paymentMethod   String // e.g., "BANK_TRANSFER", "CASH"
   referenceNumber String?
   amountMinor     Int
+  whtAmountMinor  Int      @default(0)
+  whtRateBps      Int      @default(0) // e.g. 100 = 1%, 300 = 3%
   createdById     String
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -1172,4 +1203,23 @@ model DocumentSequence {
   @@unique([clinicId, branchId, documentType, period])
   @@index([clinicId])
   @@map("document_sequences")
+}
+
+// ─── Matching Tolerance Configuration ────────────────────────────────────────
+
+model MatchingToleranceConfig {
+  id               String   @id @default(uuid())
+  clinicId         String
+  categoryId       String?  // null = default for all categories
+  tolerancePercent Decimal  @default(2.0) @db.Decimal(5, 2)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  clinic   Clinic        @relation(fields: [clinicId], references: [id])
+  category ItemCategory? @relation(fields: [categoryId], references: [id])
+
+  @@unique([clinicId, categoryId])
+  @@index([clinicId])
+  @@map("matching_tolerance_configs")
 }
