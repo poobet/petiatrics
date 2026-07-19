@@ -34,7 +34,7 @@ interface PO {
   creditTermDays: number;
   notes?: string | null;
   totalMinor: number;
-  supplier: { name: string };
+  supplier: { id: string; name: string };
   createdBy?: { name: string };
   lines?: Array<{
     id: string;
@@ -130,10 +130,10 @@ export default function ProcurementClient() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // View states: 'list' or creation pages
-  const [viewMode, setViewMode] = useState<'list' | 'create-po' | 'create-gr' | 'create-invoice' | 'create-payment'>('list');
+  // View states: 'list' | creation pages | details pages
+  const [viewMode, setViewMode] = useState<'list' | 'create-po' | 'create-gr' | 'create-invoice' | 'create-payment' | 'view-po' | 'view-gr' | 'view-invoice' | 'view-payment'>('list');
 
-  // Detail modal states
+  // Detail display states
   const [selectedPoDetails, setSelectedPoDetails] = useState<PO | null>(null);
   const [selectedGrDetails, setSelectedGrDetails] = useState<GR | null>(null);
   const [selectedInvoiceDetails, setSelectedInvoiceDetails] = useState<PI | null>(null);
@@ -553,11 +553,12 @@ export default function ProcurementClient() {
     }
   };
 
-  // Fetch detailed document fields for viewing
+  // Fetch detailed document fields for viewing and change viewMode
   const showPoDetails = async (poId: string) => {
     try {
       const details = await apiClient.get<PO>(`/procurement/purchase-orders/${poId}`);
       setSelectedPoDetails(details);
+      setViewMode('view-po');
     } catch (err) {
       alert('Failed to load purchase order details');
     }
@@ -567,6 +568,7 @@ export default function ProcurementClient() {
     try {
       const details = await apiClient.get<GR>(`/procurement/goods-receipts/${grId}`);
       setSelectedGrDetails(details);
+      setViewMode('view-gr');
     } catch (err) {
       alert('Failed to load goods receipt details');
     }
@@ -576,6 +578,7 @@ export default function ProcurementClient() {
     try {
       const details = await apiClient.get<PI>(`/procurement/purchase-invoices/${invoiceId}`);
       setSelectedInvoiceDetails(details);
+      setViewMode('view-invoice');
     } catch (err) {
       alert('Failed to load purchase invoice details');
     }
@@ -585,6 +588,7 @@ export default function ProcurementClient() {
     try {
       const details = await apiClient.get<Payment>(`/procurement/supplier-payments/${paymentId}`);
       setSelectedPaymentDetails(details);
+      setViewMode('view-payment');
     } catch (err) {
       alert('Failed to load supplier payment details');
     }
@@ -1133,6 +1137,394 @@ export default function ProcurementClient() {
     );
   }
 
+  if (viewMode === 'view-po' && selectedPoDetails) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setViewMode('list')} className="p-2 border rounded-lg hover:bg-gray-50 transition-colors text-gray-500">
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              Purchase Order Details: {selectedPoDetails.code}
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                selectedPoDetails.status === 'APPROVED' ? 'bg-green-50 text-green-700 border border-green-200' :
+                selectedPoDetails.status === 'DRAFT' ? 'bg-gray-100 text-gray-700' :
+                selectedPoDetails.status === 'PENDING_APPROVAL' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                'bg-blue-50 text-blue-700 border border-blue-200'
+              }`}>
+                {selectedPoDetails.status}
+              </span>
+            </h1>
+            <p className="text-xs text-gray-500">Audit details of PO contract agreement.</p>
+          </div>
+        </div>
+
+        <div className="bg-white border rounded-xl p-6 shadow-sm space-y-6">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="col-span-2">
+              <label className="block text-xs font-semibold text-gray-400 mb-1">Supplier</label>
+              <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-gray-700">{selectedPoDetails.supplier.name}</div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1">Credit Terms (Days)</label>
+              <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-gray-700">{selectedPoDetails.creditTermDays}</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1">Order Date</label>
+              <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-gray-700">
+                {new Date(selectedPoDetails.orderDate).toLocaleDateString()}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1">Expected Delivery Date</label>
+              <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-gray-700">
+                {selectedPoDetails.expectedDeliveryDate ? new Date(selectedPoDetails.expectedDeliveryDate).toLocaleDateString() : 'N/A'}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-400 mb-1">Notes</label>
+            <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-gray-700 min-h-16 whitespace-pre-wrap">
+              {selectedPoDetails.notes || 'No notes added'}
+            </div>
+          </div>
+
+          {selectedPoDetails.lines && (
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-gray-900 border-b pb-2">Line Items</h3>
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-gray-100 font-semibold border-b text-gray-700">
+                    <tr>
+                      <th className="p-3">Product</th>
+                      <th className="p-3 text-center">Ordered Qty</th>
+                      <th className="p-3 text-center">Received Qty</th>
+                      <th className="p-3 text-center">Invoiced Qty</th>
+                      <th className="p-3 text-right">Unit Price</th>
+                      <th className="p-3 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedPoDetails.lines.map((line: any, idx: number) => (
+                      <tr key={idx} className="border-b hover:bg-gray-50">
+                        <td className="p-3 font-semibold text-gray-800">{line.product.name} ({line.product.code})</td>
+                        <td className="p-3 text-center font-mono">{line.quantityOrdered}</td>
+                        <td className="p-3 text-center font-mono">{line.quantityReceived}</td>
+                        <td className="p-3 text-center font-mono">{line.quantityInvoiced}</td>
+                        <td className="p-3 text-right font-mono">฿{(line.unitPriceMinor / 100).toFixed(2)}</td>
+                        <td className="p-3 text-right font-mono font-semibold">฿{((line.quantityOrdered * line.unitPriceMinor) / 100).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <div className="pt-4 border-t flex justify-end">
+            <Button type="button" variant="outline" onClick={() => setViewMode('list')}>
+              Return to Workspace
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (viewMode === 'view-gr' && selectedGrDetails) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setViewMode('list')} className="p-2 border rounded-lg hover:bg-gray-50 transition-colors text-gray-500">
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Goods Receipt Details: {selectedGrDetails.code}</h1>
+            <p className="text-xs text-gray-500">Audit details of inventory check-in log.</p>
+          </div>
+        </div>
+
+        <div className="bg-white border rounded-xl p-6 shadow-sm space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1">Linked PO Reference</label>
+              <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-gray-700">{selectedGrDetails.purchaseOrder?.code ?? 'N/A'}</div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1">Received By</label>
+              <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-gray-700">{selectedGrDetails.receivedBy.name}</div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-400 mb-1">Receipt Committed Date</label>
+            <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-gray-700">
+              {new Date(selectedGrDetails.receivedDate).toLocaleString()}
+            </div>
+          </div>
+
+          {selectedGrDetails.lines && (
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-gray-900 border-b pb-2">Inbound Check-in Items</h3>
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-gray-100 font-semibold border-b text-gray-700">
+                    <tr>
+                      <th className="p-3">Product</th>
+                      <th className="p-3 text-center">Received Qty</th>
+                      <th className="p-3">Lot Number</th>
+                      <th className="p-3">Expiry Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedGrDetails.lines.map((line: any, idx: number) => (
+                      <tr key={idx} className="border-b hover:bg-gray-50">
+                        <td className="p-3 font-semibold text-gray-800">{line.product.name} ({line.product.code})</td>
+                        <td className="p-3 text-center font-mono">{line.quantityReceived}</td>
+                        <td className="p-3 font-mono">{line.lotNumber || 'N/A'}</td>
+                        <td className="p-3">{line.expiryDate ? new Date(line.expiryDate).toLocaleDateString() : 'N/A'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <div className="pt-4 border-t flex justify-end">
+            <Button type="button" variant="outline" onClick={() => setViewMode('list')}>
+              Return to Workspace
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (viewMode === 'view-invoice' && selectedInvoiceDetails) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setViewMode('list')} className="p-2 border rounded-lg hover:bg-gray-50 transition-colors text-gray-500">
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              Purchase Invoice Details: {selectedInvoiceDetails.code}
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                selectedInvoiceDetails.matchStatus === 'MATCHED' ? 'bg-green-50 text-green-700 border border-green-200' :
+                selectedInvoiceDetails.matchStatus === 'TOLERANCE_APPROVED' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                selectedInvoiceDetails.matchStatus === 'EXCEPTION' ? 'bg-red-50 text-red-700 border border-red-200' :
+                'bg-gray-100 text-gray-700'
+              }`}>
+                Match: {selectedInvoiceDetails.matchStatus}
+              </span>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                selectedInvoiceDetails.status === 'POSTED' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' :
+                selectedInvoiceDetails.status === 'PAID' ? 'bg-green-50 text-green-700 border border-green-200' :
+                selectedInvoiceDetails.status === 'PARTIALLY_PAID' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                'bg-gray-100 text-gray-700'
+              }`}>
+                {selectedInvoiceDetails.status}
+              </span>
+            </h1>
+            <p className="text-xs text-gray-500">Auditing and tax allocation ledger details.</p>
+          </div>
+        </div>
+
+        <div className="bg-white border rounded-xl p-6 shadow-sm space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1">Supplier</label>
+              <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-gray-700">{selectedInvoiceDetails.supplier.name}</div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1">Link Purchase Order</label>
+              <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-gray-700">{selectedInvoiceDetails.purchaseOrder?.code ?? 'N/A'}</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1">Vendor Invoice #</label>
+              <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-gray-700 font-mono">{selectedInvoiceDetails.invoiceNumber}</div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1">Invoice Date</label>
+              <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-gray-700">
+                {new Date(selectedInvoiceDetails.invoiceDate).toLocaleDateString()}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1">Due Date</label>
+              <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-gray-700">
+                {new Date(selectedInvoiceDetails.dueDate).toLocaleDateString()}
+              </div>
+            </div>
+          </div>
+
+          {selectedInvoiceDetails.lines && (
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-gray-900 border-b pb-2">Invoice Line Items</h3>
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-gray-100 font-semibold border-b text-gray-700">
+                    <tr>
+                      <th className="p-3">Product</th>
+                      <th className="p-3 text-center">Invoice Qty</th>
+                      <th className="p-3 text-right">Unit Price</th>
+                      <th className="p-3 text-right">VAT Rate</th>
+                      <th className="p-3 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedInvoiceDetails.lines.map((line: any, idx: number) => (
+                      <tr key={idx} className="border-b hover:bg-gray-50">
+                        <td className="p-3 font-semibold text-gray-800">{line.product.name} ({line.product.code})</td>
+                        <td className="p-3 text-center font-mono">{line.quantity}</td>
+                        <td className="p-3 text-right font-mono">฿{(line.unitPriceMinor / 100).toFixed(2)}</td>
+                        <td className="p-3 text-right font-mono">{(line.taxRateBps / 100)}%</td>
+                        <td className="p-3 text-right font-mono font-semibold">฿{(line.totalMinor / 100).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              <div className="flex justify-end pt-3">
+                <div className="w-64 space-y-1.5 text-xs">
+                  <div className="flex justify-between text-gray-500">
+                    <span>Subtotal:</span>
+                    <span className="font-mono">฿{(selectedInvoiceDetails.subtotalMinor / 100).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-gray-500">
+                    <span>Tax (VAT):</span>
+                    <span className="font-mono">฿{(selectedInvoiceDetails.taxTotalMinor / 100).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-gray-900 border-t pt-1.5">
+                    <span>Invoice Total:</span>
+                    <span className="font-mono">฿{(selectedInvoiceDetails.totalMinor / 100).toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="pt-4 border-t flex justify-end gap-2">
+            {selectedInvoiceDetails.matchStatus !== 'PENDING' && (
+              <button
+                onClick={async () => {
+                  const r = await apiClient.post<any>(`/procurement/purchase-invoices/${selectedInvoiceDetails.id}/match`, {});
+                  setSelectedMatchResult(r);
+                }}
+                className="inline-flex items-center px-3 py-1.5 text-xs bg-indigo-50 text-indigo-700 rounded border border-indigo-100 hover:bg-indigo-100"
+              >
+                View Match Result Logs
+              </button>
+            )}
+            <Button type="button" variant="outline" onClick={() => setViewMode('list')}>
+              Return to Workspace
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (viewMode === 'view-payment' && selectedPaymentDetails) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setViewMode('list')} className="p-2 border rounded-lg hover:bg-gray-50 transition-colors text-gray-500">
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Supplier Payment Details: {selectedPaymentDetails.code}</h1>
+            <p className="text-xs text-gray-500">Audit trail of allocations and withholding tax deductions.</p>
+          </div>
+        </div>
+
+        <div className="bg-white border rounded-xl p-6 shadow-sm space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1">Supplier</label>
+              <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-gray-700">{selectedPaymentDetails.supplier.name}</div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1">Payment Date</label>
+              <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-gray-700">
+                {new Date(selectedPaymentDetails.paymentDate).toLocaleDateString()}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1">Payment Method</label>
+              <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-gray-700 font-semibold text-indigo-600">{selectedPaymentDetails.paymentMethod}</div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1">Reference Number</label>
+              <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-gray-700 font-mono">{selectedPaymentDetails.referenceNumber || 'N/A'}</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 border-t pt-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1">Payment Amount (฿)</label>
+              <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-gray-800 font-bold">฿{(selectedPaymentDetails.amountMinor / 100).toFixed(2)}</div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1">Withholding Tax (WHT %)</label>
+              <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-red-600 font-semibold">{(selectedPaymentDetails.whtRateBps / 100)}%</div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 mb-1">WHT Deducted Amount</label>
+              <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-red-600 font-bold">฿{(selectedPaymentDetails.whtAmountMinor / 100).toFixed(2)}</div>
+            </div>
+          </div>
+
+          {selectedPaymentDetails.allocations && (
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-gray-900 border-b pb-2">Allocated Invoices</h3>
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-gray-100 font-semibold border-b text-gray-700">
+                    <tr>
+                      <th className="p-3">Invoice Ref</th>
+                      <th className="p-3 text-right">Invoice Total</th>
+                      <th className="p-3 text-right">Amount Allocated</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedPaymentDetails.allocations.map((alloc: any, idx: number) => (
+                      <tr key={idx} className="border-b hover:bg-gray-50">
+                        <td className="p-3 font-semibold text-gray-800">{alloc.invoice.code}</td>
+                        <td className="p-3 text-right font-mono">฿{(alloc.invoice.totalMinor / 100).toFixed(2)}</td>
+                        <td className="p-3 text-right font-mono font-semibold text-green-600">฿{(alloc.amountAllocatedMinor / 100).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <div className="pt-4 border-t flex justify-end">
+            <Button type="button" variant="outline" onClick={() => setViewMode('list')}>
+              Return to Workspace
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Page Header */}
@@ -1477,242 +1869,6 @@ export default function ProcurementClient() {
               )}
             </tbody>
           </table>
-        </div>
-      )}
-
-      {/* PO View Modal */}
-      {selectedPoDetails && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white w-full max-w-3xl max-h-[85vh] rounded-xl flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95">
-            <div className="p-6 border-b flex items-center justify-between bg-gray-50">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-blue-600" />
-                  Purchase Order: {selectedPoDetails.code}
-                </h2>
-                <p className="text-xs text-gray-500 mt-1">Detailed view of contract line items and auditing history.</p>
-              </div>
-              <button onClick={() => setSelectedPoDetails(null)} className="text-gray-500 hover:text-gray-700">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              <div className="grid grid-cols-2 gap-4 text-xs">
-                <div><strong>Supplier:</strong> {selectedPoDetails.supplier.name}</div>
-                <div><strong>Order Date:</strong> {new Date(selectedPoDetails.orderDate).toLocaleString()}</div>
-                <div><strong>Credit Terms:</strong> {selectedPoDetails.creditTermDays} days</div>
-                <div><strong>Expected Delivery Date:</strong> {selectedPoDetails.expectedDeliveryDate ? new Date(selectedPoDetails.expectedDeliveryDate).toLocaleDateString() : 'N/A'}</div>
-                <div className="col-span-2"><strong>Notes:</strong> {selectedPoDetails.notes || 'No notes added'}</div>
-              </div>
-
-              {selectedPoDetails.lines && (
-                <div className="border rounded-lg overflow-hidden">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead className="bg-gray-100 font-semibold border-b text-gray-700">
-                      <tr>
-                        <th className="p-3">Product</th>
-                        <th className="p-3 text-center">Ordered</th>
-                        <th className="p-3 text-center">Received</th>
-                        <th className="p-3 text-center">Invoiced</th>
-                        <th className="p-3 text-right">Unit Price</th>
-                        <th className="p-3 text-right">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedPoDetails.lines.map((line: any, idx: number) => (
-                        <tr key={idx} className="border-b hover:bg-gray-50">
-                          <td className="p-3 font-semibold text-gray-800">{line.product.name} ({line.product.code})</td>
-                          <td className="p-3 text-center font-mono">{line.quantityOrdered}</td>
-                          <td className="p-3 text-center font-mono">{line.quantityReceived}</td>
-                          <td className="p-3 text-center font-mono">{line.quantityInvoiced}</td>
-                          <td className="p-3 text-right font-mono">฿{(line.unitPriceMinor / 100).toFixed(2)}</td>
-                          <td className="p-3 text-right font-mono font-semibold">฿{((line.quantityOrdered * line.unitPriceMinor) / 100).toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-            <div className="p-4 bg-gray-50 border-t flex justify-end">
-              <Button size="sm" onClick={() => setSelectedPoDetails(null)}>Close</Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* GR View Modal */}
-      {selectedGrDetails && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white w-full max-w-3xl max-h-[85vh] rounded-xl flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95">
-            <div className="p-6 border-b flex items-center justify-between bg-gray-50">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-green-600" />
-                  Goods Receipt: {selectedGrDetails.code}
-                </h2>
-                <p className="text-xs text-gray-500 mt-1">Detailed inventory check-in list.</p>
-              </div>
-              <button onClick={() => setSelectedGrDetails(null)} className="text-gray-500 hover:text-gray-700">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              <div className="grid grid-cols-2 gap-4 text-xs">
-                <div><strong>Linked PO:</strong> {selectedGrDetails.purchaseOrder?.code || 'N/A'}</div>
-                <div><strong>Received Date:</strong> {new Date(selectedGrDetails.receivedDate).toLocaleString()}</div>
-                <div><strong>Received By:</strong> {selectedGrDetails.receivedBy.name}</div>
-              </div>
-
-              {selectedGrDetails.lines && (
-                <div className="border rounded-lg overflow-hidden">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead className="bg-gray-100 font-semibold border-b text-gray-700">
-                      <tr>
-                        <th className="p-3">Product</th>
-                        <th className="p-3 text-center">Received Qty</th>
-                        <th className="p-3">Lot Number</th>
-                        <th className="p-3">Expiry Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedGrDetails.lines.map((line: any, idx: number) => (
-                        <tr key={idx} className="border-b hover:bg-gray-50">
-                          <td className="p-3 font-semibold text-gray-800">{line.product.name} ({line.product.code})</td>
-                          <td className="p-3 text-center font-mono">{line.quantityReceived}</td>
-                          <td className="p-3 font-mono">{line.lotNumber || 'N/A'}</td>
-                          <td className="p-3">{line.expiryDate ? new Date(line.expiryDate).toLocaleDateString() : 'N/A'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-            <div className="p-4 bg-gray-50 border-t flex justify-end">
-              <Button size="sm" onClick={() => setSelectedGrDetails(null)}>Close</Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Invoice View Modal */}
-      {selectedInvoiceDetails && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white w-full max-w-3xl max-h-[85vh] rounded-xl flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95">
-            <div className="p-6 border-b flex items-center justify-between bg-gray-50">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <Receipt className="w-5 h-5 text-indigo-600" />
-                  Supplier Invoice: {selectedInvoiceDetails.code}
-                </h2>
-                <p className="text-xs text-gray-500 mt-1">Vendor tax invoice billing details.</p>
-              </div>
-              <button onClick={() => setSelectedInvoiceDetails(null)} className="text-gray-500 hover:text-gray-700">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              <div className="grid grid-cols-2 gap-4 text-xs">
-                <div><strong>Supplier:</strong> {selectedInvoiceDetails.supplier.name}</div>
-                <div><strong>Linked PO:</strong> {selectedInvoiceDetails.purchaseOrder?.code || 'N/A'}</div>
-                <div><strong>Vendor Invoice #:</strong> {selectedInvoiceDetails.invoiceNumber}</div>
-                <div><strong>Invoice Date:</strong> {new Date(selectedInvoiceDetails.invoiceDate).toLocaleDateString()}</div>
-                <div><strong>Due Date:</strong> {new Date(selectedInvoiceDetails.dueDate).toLocaleDateString()}</div>
-                <div><strong>Status:</strong> {selectedInvoiceDetails.status}</div>
-                <div><strong>Match Verification:</strong> {selectedInvoiceDetails.matchStatus}</div>
-                <div><strong>Amount Paid:</strong> ฿{(selectedInvoiceDetails.amountPaidMinor / 100).toFixed(2)}</div>
-              </div>
-
-              {selectedInvoiceDetails.lines && (
-                <div className="border rounded-lg overflow-hidden">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead className="bg-gray-100 font-semibold border-b text-gray-700">
-                      <tr>
-                        <th className="p-3">Product</th>
-                        <th className="p-3 text-center">Qty</th>
-                        <th className="p-3 text-right">Unit Price</th>
-                        <th className="p-3 text-right">VAT Rate</th>
-                        <th className="p-3 text-right">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedInvoiceDetails.lines.map((line: any, idx: number) => (
-                        <tr key={idx} className="border-b hover:bg-gray-50">
-                          <td className="p-3 font-semibold text-gray-800">{line.product.name} ({line.product.code})</td>
-                          <td className="p-3 text-center font-mono">{line.quantity}</td>
-                          <td className="p-3 text-right font-mono">฿{(line.unitPriceMinor / 100).toFixed(2)}</td>
-                          <td className="p-3 text-right font-mono">{(line.taxRateBps / 100)}%</td>
-                          <td className="p-3 text-right font-mono font-semibold">฿{(line.totalMinor / 100).toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-            <div className="p-4 bg-gray-50 border-t flex justify-end">
-              <Button size="sm" onClick={() => setSelectedInvoiceDetails(null)}>Close</Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Payment View Modal */}
-      {selectedPaymentDetails && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white w-full max-w-3xl max-h-[85vh] rounded-xl flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95">
-            <div className="p-6 border-b flex items-center justify-between bg-gray-50">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-indigo-600" />
-                  Supplier Payment: {selectedPaymentDetails.code}
-                </h2>
-                <p className="text-xs text-gray-500 mt-1">Disbursement allocations and tax withholding audit trace.</p>
-              </div>
-              <button onClick={() => setSelectedPaymentDetails(null)} className="text-gray-500 hover:text-gray-700">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              <div className="grid grid-cols-2 gap-4 text-xs">
-                <div><strong>Supplier:</strong> {selectedPaymentDetails.supplier.name}</div>
-                <div><strong>Tax ID:</strong> {selectedPaymentDetails.supplier.taxId || 'N/A'}</div>
-                <div><strong>Payment Date:</strong> {new Date(selectedPaymentDetails.paymentDate).toLocaleDateString()}</div>
-                <div><strong>Method:</strong> {selectedPaymentDetails.paymentMethod}</div>
-                <div><strong>Reference #:</strong> {selectedPaymentDetails.referenceNumber || 'N/A'}</div>
-                <div><strong>WHT Deducted Rate:</strong> {selectedPaymentDetails.whtRateBps / 100}%</div>
-                <div><strong>WHT Amount:</strong> ฿{(selectedPaymentDetails.whtAmountMinor / 100).toFixed(2)}</div>
-                <div><strong>Grand Paid Amount:</strong> ฿{(selectedPaymentDetails.amountMinor / 100).toFixed(2)}</div>
-              </div>
-
-              {selectedPaymentDetails.allocations && (
-                <div className="border rounded-lg overflow-hidden">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead className="bg-gray-100 font-semibold border-b text-gray-700">
-                      <tr>
-                        <th className="p-3">Invoice Ref</th>
-                        <th className="p-3 text-right">Invoice Total</th>
-                        <th className="p-3 text-right">Amount Allocated</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedPaymentDetails.allocations.map((alloc: any, idx: number) => (
-                        <tr key={idx} className="border-b hover:bg-gray-50">
-                          <td className="p-3 font-semibold text-gray-800">{alloc.invoice.code}</td>
-                          <td className="p-3 text-right font-mono">฿{(alloc.invoice.totalMinor / 100).toFixed(2)}</td>
-                          <td className="p-3 text-right font-mono font-semibold text-green-600">฿{(alloc.amountAllocatedMinor / 100).toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-            <div className="p-4 bg-gray-50 border-t flex justify-end">
-              <Button size="sm" onClick={() => setSelectedPaymentDetails(null)}>Close</Button>
-            </div>
-          </div>
         </div>
       )}
 
