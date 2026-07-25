@@ -283,7 +283,7 @@ export function AppShell({ children, user }: AppShellProps) {
                   <button
                     onClick={() => toggleNav(item.key)}
                     className={cn(
-                      'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                      'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left',
                       itemActive
                         ? 'bg-blue-50 text-blue-700'
                         : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
@@ -295,17 +295,17 @@ export function AppShell({ children, user }: AppShellProps) {
                         itemActive ? 'text-blue-600' : 'text-gray-400',
                       )}
                     />
-                    {t(item.key)}
+                    <span className="flex-1 text-left leading-tight">{t(item.key)}</span>
                     <ChevronRight
                       className={cn(
-                        'w-4 h-4 ml-auto transition-transform',
+                        'w-4 h-4 shrink-0 ml-auto transition-transform',
                         isExpanded && 'rotate-90',
                       )}
                     />
                   </button>
                   {/* Sub-menu items */}
                   {isExpanded && (
-                    <div className="mt-1 space-y-0.5 pl-2">
+                    <div className="mt-1 space-y-0.5 ml-5 pl-2 border-l border-gray-200">
                       {visibleSubItems.map((subItem) => {
                         const SubIcon = subItem.icon;
                         const subActive = isActive(subItem.href);
@@ -315,9 +315,9 @@ export function AppShell({ children, user }: AppShellProps) {
                             href={subItem.href}
                             onClick={() => setSidebarOpen(false)}
                             className={cn(
-                              'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
+                              'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors',
                               subActive
-                                ? 'bg-blue-50 text-blue-700 font-medium'
+                                ? 'bg-blue-50 text-blue-700 font-semibold'
                                 : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
                             )}
                           >
@@ -327,7 +327,7 @@ export function AppShell({ children, user }: AppShellProps) {
                                 subActive ? 'text-blue-600' : 'text-gray-400',
                               )}
                             />
-                            {t(subItem.key)}
+                            <span className="truncate">{t(subItem.key)}</span>
                           </Link>
                         );
                       })}

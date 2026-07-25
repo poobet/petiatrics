@@ -113,11 +113,11 @@
     "purchaseInvoices": "ใบแจ้งหนี้ผู้ขาย",
     "supplierPayments": "การชำระเงินผู้ขาย",
     "commission": "ค่าธรรมเนียมแพทย์ & คอมมิชชั่น",
-    "commissionDashboard": "แดชบอร์ดคอมมิชชั่น",
+    "commissionDashboard": "แดชบอร์ด",
     "commissionRules": "กฎคอมมิชชั่น",
-    "commissionTransactions": "สมุดบัญชีค่าธรรมเนียมแพทย์",
+    "commissionTransactions": "สมุดบัญชีค่าธรรมเนียม",
     "commissionPaymentRuns": "รอบการชำระเงิน",
-    "commissionWht": "ภาษีหัก ณ ที่จ่าย (50 ทวิ & ภ.ง.ด.3)"
+    "commissionWht": "ภาษีหัก ณ ที่จ่าย (50 ทวิ)"
   },
   "dashboard": {
     "title": "แดชบอร์ด",
