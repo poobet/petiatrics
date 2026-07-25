@@ -51,3 +51,15 @@ export class InvoicePaidEvent {
     public readonly paidAt: Date,
   ) {}
 }
+
+/** Emitted when an invoice is voided */
+export class InvoiceVoidedEvent {
+  constructor(
+    public readonly clinicId: string,
+    public readonly invoiceId: string,
+    public readonly voidedAt: Date,
+    public readonly voidReason: string,
+    public readonly actorId: string,
+  ) {}
+}
+

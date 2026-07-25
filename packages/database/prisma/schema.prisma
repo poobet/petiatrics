@@ -380,10 +380,12 @@ model BpRoleActive {
 // ─── BpVet ────────────────────────────────────────────────────────────────────
 
 model BpVet {
-  bpId          String   @id
-  licenseNumber String   @unique
-  specialty     String?
-  defaultDfRate Decimal? @db.Decimal(5, 2)
+  bpId            String          @id
+  licenseNumber   String          @unique
+  specialty       String?
+  defaultDfRate   Decimal?        @db.Decimal(5, 2)
+  employmentType  EmploymentType  @default(FREELANCE)
+  dfDiscountBasis DfDiscountBasis @default(AFTER_DISCOUNT)
 
   bp BusinessPartner @relation(fields: [bpId], references: [id])
 
@@ -1222,4 +1224,167 @@ model MatchingToleranceConfig {
   @@unique([clinicId, categoryId])
   @@index([clinicId])
   @@map("matching_tolerance_configs")
+}
+
+// ─── Commission Engine Enums & Models ──────────────────────────────────────────
+
+enum CommissionType {
+  PERCENTAGE
+  FLAT_RATE
+}
+
+enum DfTransactionStatus {
+  ACCRUED
+  CONFIRMED
+  SETTLED
+  VOIDED
+}
+
+enum DfPaymentRunStatus {
+  DRAFT
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+enum EmploymentType {
+  FREELANCE
+  EMPLOYEE
+}
+
+enum DfDiscountBasis {
+  BEFORE_DISCOUNT
+  AFTER_DISCOUNT
+}
+
+model CommissionRule {
+  id                String         @id @default(uuid())
+  clinicId          String
+  businessPartnerId String
+  productId         String?
+  commissionType    CommissionType
+  rate              Decimal        @db.Decimal(7, 4)
+  isActive          Boolean        @default(true)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@unique([clinicId, businessPartnerId, productId])
+  @@index([clinicId, businessPartnerId])
+  @@map("commission_rules")
+}
+
+model DfTransaction {
+  id                  String              @id @default(uuid())
+  clinicId            String
+  branchId            String
+  businessPartnerId   String
+  visitId             String?
+  invoiceId           String?
+  invoiceLineItemId   String?
+  productId           String?
+
+  revenueAmountMinor  Int
+  commissionType      CommissionType
+  commissionRate      Decimal             @db.Decimal(7, 4)
+  dfAmountMinor       Int
+  whtRate             Decimal             @default(0) @db.Decimal(5, 4)
+  whtAmountMinor      Int                 @default(0)
+  netPayableMinor     Int
+
+  status              DfTransactionStatus @default(ACCRUED)
+  accruedAt           DateTime            @default(now())
+  confirmedAt         DateTime?
+  settledAt           DateTime?
+  voidedAt            DateTime?
+  voidReason          String?
+
+  paymentAllocationId String?
+  idempotencyKey      String?
+
+  createdAt           DateTime            @default(now())
+
+  @@unique([clinicId, idempotencyKey])
+  @@index([clinicId, businessPartnerId, status])
+  @@index([clinicId, branchId, status])
+  @@index([clinicId, invoiceId])
+  @@index([clinicId, status, accruedAt])
+  @@map("df_transactions")
+}
+
+model DfPaymentRun {
+  id                String             @id @default(uuid())
+  clinicId          String
+  code              String
+  businessPartnerId String
+  periodStart       DateTime
+  periodEnd         DateTime
+
+  totalDfMinor      Int
+  totalWhtMinor     Int
+  totalNetMinor     Int
+
+  paymentMethod     String?
+  referenceNumber   String?
+  status            DfPaymentRunStatus @default(DRAFT)
+
+  approvedById      String?
+  approvedAt        DateTime?
+  paidAt            DateTime?
+  createdById       String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  allocations       DfPaymentAllocation[]
+
+  @@unique([clinicId, code])
+  @@index([clinicId, businessPartnerId])
+  @@index([clinicId, status])
+  @@map("df_payment_runs")
+}
+
+model DfPaymentAllocation {
+  id              String   @id @default(uuid())
+  paymentRunId    String
+  dfTransactionId String
+  amountMinor     Int
+  createdAt       DateTime @default(now())
+
+  paymentRun DfPaymentRun @relation(fields: [paymentRunId], references: [id], onDelete: Cascade)
+
+  @@index([paymentRunId])
+  @@index([dfTransactionId])
+  @@map("df_payment_allocations")
+}
+
+model WHTCertificate {
+  id                String   @id @default(uuid())
+  clinicId          String
+  code              String
+  businessPartnerId String
+  paymentRunId      String?
+
+  payerTaxId        String
+  payerName         String
+  payerAddress      String
+
+  payeeTaxId        String
+  payeeName         String
+  payeeAddress      String
+
+  incomeType        String
+  incomeDescription String
+  totalIncomeMinor  Int
+  whtRateBps        Int
+  whtAmountMinor    Int
+
+  taxMonth          Int
+  taxYear           Int
+
+  issuedAt          DateTime           @default(now())
+  createdAt         DateTime           @default(now())
+
+  @@unique([clinicId, code])
+  @@index([clinicId, businessPartnerId])
+  @@index([clinicId, taxYear, taxMonth])
+  @@map("wht_certificates")
 }
