@@ -1,4 +1,5 @@
 import { Controller, Post, Get, Body, Param, Query } from '@nestjs/common';
+import { TenantId } from '../../../common/decorators/tenant.decorator';
 import { PaymentService, CreatePaymentDto } from '../services/payment.service';
 import { GLPostingService } from '../services/gl-posting.service';
 import { CustomerDepositService } from '../services/customer-deposit.service';
@@ -14,37 +15,47 @@ export class PaymentController {
   ) {}
 
   @Post('payments')
-  async processPayment(@Query('clinicId') clinicId: string, @Body() dto: CreatePaymentDto) {
-    return this.paymentService.processPayment(clinicId, dto);
+  async processPayment(
+    @TenantId() tenantId: string | undefined,
+    @Query('clinicId') queryClinicId: string | undefined,
+    @Body() dto: CreatePaymentDto,
+  ) {
+    return this.paymentService.processPayment(tenantId || queryClinicId, dto);
   }
 
   @Get('accounting/trial-balance')
-  async getTrialBalance(@Query('clinicId') clinicId: string) {
-    return this.glPostingService.getTrialBalance(clinicId);
+  async getTrialBalance(
+    @TenantId() tenantId: string | undefined,
+    @Query('clinicId') queryClinicId: string | undefined,
+  ) {
+    return this.glPostingService.getTrialBalance((tenantId || queryClinicId)!);
   }
 
   @Post('deposits/topup')
   async topUpDeposit(
-    @Query('clinicId') clinicId: string,
+    @TenantId() tenantId: string | undefined,
+    @Query('clinicId') queryClinicId: string | undefined,
     @Body() dto: { ownerUserId: string; amountMinor: number; note?: string },
   ) {
-    return this.depositService.topUp(clinicId, dto.ownerUserId, dto.amountMinor, dto.note);
+    return this.depositService.topUp((tenantId || queryClinicId)!, dto.ownerUserId, dto.amountMinor, dto.note);
   }
 
   @Post('cashier/session/open')
   async openSession(
-    @Query('clinicId') clinicId: string,
+    @TenantId() tenantId: string | undefined,
+    @Query('clinicId') queryClinicId: string | undefined,
     @Body() dto: { cashierUserId: string; openingCashMinor: number },
   ) {
-    return this.cashierSessionService.openSession(clinicId, dto.cashierUserId, dto.openingCashMinor);
+    return this.cashierSessionService.openSession((tenantId || queryClinicId)!, dto.cashierUserId, dto.openingCashMinor);
   }
 
   @Post('cashier/session/:id/close')
   async closeSession(
-    @Query('clinicId') clinicId: string,
+    @TenantId() tenantId: string | undefined,
+    @Query('clinicId') queryClinicId: string | undefined,
     @Param('id') sessionId: string,
     @Body() dto: { actualCashMinor: number; note?: string },
   ) {
-    return this.cashierSessionService.closeSession(clinicId, sessionId, dto.actualCashMinor, dto.note);
+    return this.cashierSessionService.closeSession((tenantId || queryClinicId)!, sessionId, dto.actualCashMinor, dto.note);
   }
 }

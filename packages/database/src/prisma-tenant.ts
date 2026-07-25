@@ -49,6 +49,15 @@ export function scopedPrisma(prisma: PrismaClient, clinicId: string) {
             'BpRoleActive',
             'BpVet',
             'BpSupplier',
+            'Payment',
+            'JournalEntry',
+            'CustomerDeposit',
+            'ArOpenItem',
+            'CashierSession',
+            'CommissionRule',
+            'DfTransaction',
+            'DfPaymentRun',
+            'WHTCertificate',
           ];
 
           if (!clinicScopedModels.includes(model)) {

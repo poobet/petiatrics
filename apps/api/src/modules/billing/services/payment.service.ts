@@ -33,17 +33,19 @@ export class PaymentService {
     }
   }
 
-  async processPayment(clinicId: string, dto: CreatePaymentDto) {
+  async processPayment(clinicId: string | undefined, dto: CreatePaymentDto) {
     this.validateTenders(dto.totalMinor, dto.tenders);
-    const db = scopedPrisma(this.prisma, clinicId);
 
-    const invoice = await db.invoice.findFirst({ where: { id: dto.invoiceId, clinicId } });
-    if (!invoice) throw new NotFoundException('Invoice not found');
-    if (invoice.status === 'PAID') throw new BadRequestException('Invoice is already paid');
+    const targetInvoice = await this.prisma.invoice.findUnique({ where: { id: dto.invoiceId } });
+    if (!targetInvoice) throw new NotFoundException('Invoice not found');
+    if (targetInvoice.status === 'PAID') throw new BadRequestException('Invoice is already paid');
+
+    const activeClinicId = clinicId || targetInvoice.clinicId;
+    const db = scopedPrisma(this.prisma, activeClinicId);
 
     const payment = await db.payment.create({
       data: {
-        clinicId,
+        clinicId: activeClinicId,
         invoiceId: dto.invoiceId,
         documentNo: `REC-${Date.now()}`,
         totalMinor: dto.totalMinor,
@@ -68,12 +70,12 @@ export class PaymentService {
     });
 
     this.events.emit('payment.received', {
-      clinicId,
+      clinicId: activeClinicId,
       paymentId: payment.id,
       invoiceId: dto.invoiceId,
       totalMinor: dto.totalMinor,
       tenders: dto.tenders,
-      ownerUserId: invoice.ownerUserId,
+      ownerUserId: targetInvoice.ownerUserId,
     });
 
     return payment;
