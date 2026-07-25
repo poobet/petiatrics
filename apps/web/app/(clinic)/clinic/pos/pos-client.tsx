@@ -166,6 +166,7 @@ function PinOverrideModal({ productName, onSuccess, onCancel }: PinModalProps) {
 
 export function PosWorkspaceClient() {
   const activeBranch = useSessionStore((s) => s.activeBranch);
+  const user = useSessionStore((s) => s.user);
 
   const [context, setContext] = useState<SalesContext>('OTC');
   const [visitId, setVisitId] = useState('');
@@ -174,6 +175,7 @@ export function PosWorkspaceClient() {
   const [searching, setSearching] = useState(false);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [pinTarget, setPinTarget] = useState<ProductResult | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<string>('CASH');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -264,7 +266,7 @@ export function PosWorkspaceClient() {
   );
 
   // ── Checkout ────────────────────────────────────────────────────────────
-  async function handleCheckout() {
+  async function handleCheckout(method: string = 'CASH', referenceNo?: string) {
     if (cart.length === 0) return;
     setSubmitting(true);
     setError('');
@@ -280,8 +282,23 @@ export function PosWorkspaceClient() {
           sourceReferenceId: l.productId,
         })),
       };
-      await apiClient.post('/billing/invoices', payload);
-      setSuccess('Invoice created successfully! Cart cleared.');
+      const invoice: any = await apiClient.post('/billing/invoices', payload);
+
+      // Issue payment & trigger double-entry GL posting
+      await apiClient.post('/billing/payments', {
+        invoiceId: invoice.id,
+        cashierUserId: user?.id || 'cashier-system',
+        totalMinor: invoice.totalMinor,
+        tenders: [
+          {
+            method,
+            amountMinor: invoice.totalMinor,
+            referenceNo: referenceNo || undefined,
+          },
+        ],
+      });
+
+      setSuccess(`Invoice #${invoice.id.slice(0, 8)} paid successfully via ${method}! GL journal posted.`);
       setCart([]);
       setVisitId('');
     } catch (err) {
@@ -492,6 +509,37 @@ export function PosWorkspaceClient() {
               </div>
             </div>
 
+            {/* Payment Method Selector */}
+            <div className="mt-4 pt-3 border-t border-gray-100">
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                Payment Method
+              </label>
+              <div className="grid grid-cols-3 gap-1.5 text-xs">
+                {[
+                  { id: 'CASH', label: '💵 Cash' },
+                  { id: 'QR_PROMPTPAY', label: '📱 PromptPay' },
+                  { id: 'CREDIT_CARD', label: '💳 Credit' },
+                  { id: 'BANK_TRANSFER', label: '🏛️ Transfer' },
+                  { id: 'AR_CREDIT', label: '📝 Credit Term' },
+                  { id: 'WALLET_DEPOSIT', label: '👛 Deposit' },
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setPaymentMethod(m.id)}
+                    className={cn(
+                      'py-2 px-1.5 rounded-lg border text-center font-medium transition-all',
+                      paymentMethod === m.id
+                        ? 'border-blue-600 bg-blue-50 text-blue-700 font-bold shadow-sm'
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50',
+                    )}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {error && (
               <div className="mt-4 flex items-start gap-2 text-sm text-red-700 bg-red-50 rounded-xl px-3 py-2.5">
                 <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
@@ -507,14 +555,14 @@ export function PosWorkspaceClient() {
 
             <button
               id="pos-checkout-btn"
-              onClick={() => void handleCheckout()}
+              onClick={() => void handleCheckout(paymentMethod)}
               disabled={cart.length === 0 || submitting}
               className="mt-5 w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold text-sm hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all shadow-md shadow-blue-200"
             >
               {submitting
                 ? <Loader2 className="w-4 h-4 animate-spin" />
                 : <CreditCard className="w-4 h-4" />}
-              {submitting ? 'Processing…' : 'Issue Invoice'}
+              {submitting ? 'Processing…' : `Pay & Issue (${paymentMethod.replace('_', ' ')})`}
             </button>
 
             <button

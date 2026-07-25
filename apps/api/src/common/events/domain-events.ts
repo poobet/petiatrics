@@ -40,6 +40,7 @@ export class InvoiceCreatedEvent {
     public readonly invoiceId: string,
     public readonly clientUserId: string,
     public readonly totalMinorUnits: number,
+    public readonly visitId?: string,
   ) {}
 }
 
