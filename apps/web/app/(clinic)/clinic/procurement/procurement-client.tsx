@@ -119,11 +119,20 @@ interface Supplier {
   isActive: boolean;
 }
 
-export default function ProcurementClient() {
+interface ProcurementClientProps {
+  initialTab?: 'pos' | 'grs' | 'invoices' | 'payments';
+}
+
+export default function ProcurementClient({ initialTab = 'pos' }: ProcurementClientProps) {
   const user = useSessionStore((s) => s.user);
   const activeBranch = useSessionStore((s) => s.activeBranch);
 
-  const [activeTab, setActiveTab] = useState<'pos' | 'grs' | 'invoices' | 'payments'>('pos');
+  const [activeTab, setActiveTab] = useState<'pos' | 'grs' | 'invoices' | 'payments'>(initialTab);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
   const [pos, setPos] = useState<PO[]>([]);
   const [grs, setGrs] = useState<GR[]>([]);
   const [invoices, setInvoices] = useState<PI[]>([]);
@@ -1532,7 +1541,10 @@ export default function ProcurementClient() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Receipt className="w-7 h-7 text-blue-600" />
-            Procurement Management
+            {activeTab === 'pos' && 'ใบสั่งซื้อ (Purchase Orders)'}
+            {activeTab === 'grs' && 'ใบรับสินค้า (Goods Receipts)'}
+            {activeTab === 'invoices' && 'ใบแจ้งหนี้ผู้ขาย (Purchase Invoices)'}
+            {activeTab === 'payments' && 'การชำระเงินผู้ขาย (Supplier Payments)'}
           </h1>
           <p className="text-sm text-gray-500 mt-1">Manage purchase orders, goods receipts, supplier invoices, and digital payments.</p>
         </div>
@@ -1569,50 +1581,6 @@ export default function ProcurementClient() {
             </Button>
           )}
         </div>
-      </div>
-
-      {/* Tabs Menu */}
-      <div className="border-b flex gap-6">
-        <button
-          className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${
-            activeTab === 'pos'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-          onClick={() => setActiveTab('pos')}
-        >
-          Purchase Orders
-        </button>
-        <button
-          className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${
-            activeTab === 'grs'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-          onClick={() => setActiveTab('grs')}
-        >
-          Goods Receipts
-        </button>
-        <button
-          className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${
-            activeTab === 'invoices'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-          onClick={() => setActiveTab('invoices')}
-        >
-          Purchase Invoices
-        </button>
-        <button
-          className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${
-            activeTab === 'payments'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-          onClick={() => setActiveTab('payments')}
-        >
-          Supplier Payments
-        </button>
       </div>
 
       {/* Main Table Views */}

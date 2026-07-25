@@ -108,7 +108,10 @@
     "pos": "POS",
     "mobileApp": "Mobile App",
     "mobileAppSubtitle": "Owner mobile view",
-    "procurement": "Procurement"
+    "procurement": "Procurement",
+    "purchaseOrders": "Purchase Orders",
+    "purchaseInvoices": "Purchase Invoices",
+    "supplierPayments": "Supplier Payments"
   },
   "dashboard": {
     "title": "Dashboard",

@@ -1,5 +1,5 @@
-import ProcurementClient from './procurement-client';
+import { redirect } from 'next/navigation';
 
 export default function ProcurementPage() {
-  return <ProcurementClient />;
+  redirect('/clinic/procurement/orders');
 }
