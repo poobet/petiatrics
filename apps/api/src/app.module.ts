@@ -18,6 +18,7 @@ import { BillingModule } from './modules/billing/billing.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { ProcurementModule } from './modules/procurement/procurement.module';
 import { ClinicRoleModule } from './modules/clinic-role/clinic-role.module';
+import { CommissionModule } from './modules/commission/commission.module';
 
 // Bounded-context modules are imported in their respective phases
 
@@ -63,6 +64,7 @@ import { ClinicRoleModule } from './modules/clinic-role/clinic-role.module';
     AuditModule,
     ProcurementModule,
     ClinicRoleModule,
+    CommissionModule,
   ],
   providers: [
     // Rate limiting guard applied globally
