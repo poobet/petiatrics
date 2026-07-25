@@ -30,6 +30,7 @@ import {
   Shield,
   Receipt,
   Coins,
+  BookOpen,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@petiatrics/ui';
 import { Button } from '@petiatrics/ui';
@@ -46,7 +47,7 @@ import type { AuthProfile } from '@petiatrics/types';
 import { BranchSelector } from './branch-selector';
 import { useSessionStore } from '../../lib/session-store';
 
-type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'products' | 'stockLedger' | 'goodsReceipt' | 'goodsIssue' | 'adjustments' | 'billing' | 'pos' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings' | 'settingsGeneral' | 'rolePermissions' | 'documentSequence' | 'procurement' | 'purchaseOrders' | 'purchaseInvoices' | 'supplierPayments' | 'commission' | 'commissionDashboard' | 'commissionRules' | 'commissionTransactions' | 'commissionPaymentRuns' | 'commissionWht';
+type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'products' | 'stockLedger' | 'goodsReceipt' | 'goodsIssue' | 'adjustments' | 'billing' | 'pos' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings' | 'settingsGeneral' | 'rolePermissions' | 'documentSequence' | 'procurement' | 'purchaseOrders' | 'purchaseInvoices' | 'supplierPayments' | 'commission' | 'commissionDashboard' | 'commissionRules' | 'commissionTransactions' | 'commissionPaymentRuns' | 'commissionWht' | 'accounting' | 'accountingJournal';
 
 interface SubNavItem {
   key: NavKey;
@@ -101,6 +102,13 @@ const NAV_ITEMS: NavItem[] = [
       { key: 'commissionTransactions', href: '/clinic/commission/transactions', icon: FileText, requiredPermission: 'COMMISSION:VIEW' },
       { key: 'commissionPaymentRuns', href: '/clinic/commission/payment-runs', icon: CreditCard, requiredPermission: 'COMMISSION:VIEW' },
       { key: 'commissionWht', href: '/clinic/commission/wht', icon: Receipt, requiredPermission: 'COMMISSION:VIEW' },
+    ],
+  },
+  {
+    key: 'accounting',
+    icon: BookOpen,
+    subItems: [
+      { key: 'accountingJournal', href: '/clinic/accounting/journal', icon: BookOpen, requiredPermission: 'BILLING:VIEW' },
     ],
   },
   { key: 'pos', href: '/clinic/pos', icon: ShoppingCart, requiredPermission: 'BILLING:ADD' },

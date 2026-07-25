@@ -117,7 +117,9 @@
     "commissionRules": "กฎคอมมิชชั่น",
     "commissionTransactions": "สมุดบัญชีค่าธรรมเนียม",
     "commissionPaymentRuns": "รอบการชำระเงิน",
-    "commissionWht": "ภาษีหัก ณ ที่จ่าย (50 ทวิ)"
+    "commissionWht": "ภาษีหัก ณ ที่จ่าย (50 ทวิ)",
+    "accounting": "ระบบบัญชี (GL)",
+    "accountingJournal": "สมุดรายวัน & งบทดลอง"
   },
   "dashboard": {
     "title": "แดชบอร์ด",

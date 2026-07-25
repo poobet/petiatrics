@@ -117,7 +117,9 @@
     "commissionRules": "Commission Rules",
     "commissionTransactions": "Doctor Fee Ledger",
     "commissionPaymentRuns": "Payment Runs",
-    "commissionWht": "WHT & Tax Reports"
+    "commissionWht": "WHT & Tax Reports",
+    "accounting": "General Ledger (GL)",
+    "accountingJournal": "Journal & Trial Balance"
   },
   "dashboard": {
     "title": "Dashboard",
