@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Search, Trash2, ShoppingCart, AlertTriangle, Lock, CheckCircle, X, Loader2, CreditCard } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { useSessionStore } from '@/lib/session-store';
+import { cn } from '@petiatrics/ui';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
