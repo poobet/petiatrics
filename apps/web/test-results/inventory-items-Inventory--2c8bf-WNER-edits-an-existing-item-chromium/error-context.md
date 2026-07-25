@@ -1,0 +1,240 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e5]:
+        - img [ref=e7]
+        - generic [ref=e12]:
+          - paragraph [ref=e13]: Petiatrics
+          - paragraph [ref=e14]: Vet Management
+      - navigation [ref=e15]:
+        - link "Dashboard" [ref=e16] [cursor=pointer]:
+          - /url: /clinic/dashboard
+          - img [ref=e17]
+          - text: Dashboard
+        - link "Appointments" [ref=e22] [cursor=pointer]:
+          - /url: /clinic/appointments
+          - img [ref=e23]
+          - text: Appointments
+        - link "Patients" [ref=e25] [cursor=pointer]:
+          - /url: /clinic/patients
+          - img [ref=e26]
+          - text: Patients
+        - link "Clients" [ref=e31] [cursor=pointer]:
+          - /url: /clinic/clients
+          - img [ref=e32]
+          - text: Clients
+        - link "Medical Records" [ref=e37] [cursor=pointer]:
+          - /url: /medical-records
+          - img [ref=e38]
+          - text: Medical Records
+        - button "Inventory" [ref=e42]:
+          - img [ref=e43]
+          - text: Inventory
+          - img [ref=e47]
+        - link "Procurement" [ref=e49] [cursor=pointer]:
+          - /url: /clinic/procurement
+          - img [ref=e50]
+          - text: Procurement
+        - link "Billing" [ref=e53] [cursor=pointer]:
+          - /url: /clinic/billing
+          - img [ref=e54]
+          - text: Billing
+        - link "POS" [ref=e56] [cursor=pointer]:
+          - /url: /clinic/pos
+          - img [ref=e57]
+          - text: POS
+        - link "Staff" [ref=e61] [cursor=pointer]:
+          - /url: /clinic/staff
+          - img [ref=e62]
+          - text: Staff
+        - link "Business Partners" [ref=e74] [cursor=pointer]:
+          - /url: /clinic/business-partners
+          - img [ref=e75]
+          - text: Business Partners
+        - link "Audit Log" [ref=e78] [cursor=pointer]:
+          - /url: /clinic/audit
+          - img [ref=e79]
+          - text: Audit Log
+        - button "Settings" [ref=e83]:
+          - img [ref=e84]
+          - text: Settings
+          - img [ref=e87]
+      - link "Mobile App Owner mobile view" [ref=e90] [cursor=pointer]:
+        - /url: /mobile-app
+        - img [ref=e92]
+        - generic [ref=e94]:
+          - paragraph [ref=e95]: Mobile App
+          - paragraph [ref=e96]: Owner mobile view
+    - generic [ref=e97]:
+      - banner [ref=e98]:
+        - generic [ref=e100]:
+          - img [ref=e101]
+          - textbox "Search patients, clients, appointments..." [ref=e104]
+        - generic [ref=e105]:
+          - button "Main Branch" [ref=e106]:
+            - img [ref=e107]
+            - generic [ref=e110]: Main Branch
+            - img [ref=e111]
+          - button "TH" [ref=e113]:
+            - text: TH
+            - img
+          - button [ref=e114]:
+            - img [ref=e115]
+          - button "OW owner clinic owner" [ref=e119]:
+            - generic [ref=e121]: OW
+            - generic [ref=e122]:
+              - paragraph [ref=e123]: owner
+              - paragraph [ref=e124]: clinic owner
+            - img [ref=e125]
+      - main [ref=e127]:
+        - generic [ref=e128]:
+          - generic [ref=e129]:
+            - generic [ref=e130]:
+              - heading "Inventory" [level=1] [ref=e131]
+              - paragraph [ref=e132]: "Branch: Main Branch"
+            - generic [ref=e133]:
+              - link "Replenish Stock" [ref=e134] [cursor=pointer]:
+                - /url: /clinic/inventory/replenish
+              - button "Import CSV / XLSX" [ref=e135]
+              - link "+ Add Item" [ref=e136] [cursor=pointer]:
+                - /url: /clinic/inventory/products/new
+          - generic [ref=e137]:
+            - button "Items" [ref=e138]
+            - button "Stock Movements" [ref=e139]
+          - generic [ref=e140]:
+            - searchbox "Search code or name…" [ref=e142]
+            - combobox [ref=e143]:
+              - option "All types" [selected]
+              - option "Stocked Good"
+              - option "Service"
+            - combobox [ref=e144]:
+              - option "All categories" [selected]
+              - option "Consultation"
+              - option "Laboratory"
+              - option "Medicine"
+              - option "Procedure"
+              - option "Retail"
+              - option "Service"
+            - generic [ref=e145] [cursor=pointer]:
+              - checkbox "Show inactive" [ref=e146]
+              - text: Show inactive
+            - generic [ref=e147] [cursor=pointer]:
+              - checkbox "Controlled only" [ref=e148]
+              - text: Controlled only
+          - table [ref=e150]:
+            - rowgroup [ref=e151]:
+              - row "Code Name Type Category Base Unit Sell Price Qty Status Actions" [ref=e152]:
+                - columnheader "Code" [ref=e153]
+                - columnheader "Name" [ref=e154]
+                - columnheader "Type" [ref=e155]
+                - columnheader "Category" [ref=e156]
+                - columnheader "Base Unit" [ref=e157]
+                - columnheader "Sell Price" [ref=e158]
+                - columnheader "Qty" [ref=e159]
+                - columnheader "Status" [ref=e160]
+                - columnheader "Actions" [ref=e161]
+            - rowgroup [ref=e162]:
+              - row "MED-002 Amoxicillin 250mg (30 caps) Stocked Medicine Box 150.00 0 Active Edit Deactivate" [ref=e163]:
+                - cell "MED-002" [ref=e164]
+                - cell "Amoxicillin 250mg (30 caps)" [ref=e165]
+                - cell "Stocked" [ref=e166]:
+                  - generic [ref=e167]: Stocked
+                - cell "Medicine" [ref=e168]
+                - cell "Box" [ref=e169]
+                - cell "150.00" [ref=e170]
+                - cell "0" [ref=e171]
+                - cell "Active" [ref=e172]:
+                  - generic [ref=e173]: Active
+                - cell "Edit Deactivate" [ref=e174]:
+                  - generic [ref=e175]:
+                    - link "Edit" [ref=e176] [cursor=pointer]:
+                      - /url: /clinic/inventory/products/c9a51b83-2d59-473c-8ceb-ae468dd9e60e/edit
+                    - button "Deactivate" [ref=e177]
+              - row "VAX-002 DHPPiL Combo Vaccine Stocked Medicine Vial 320.00 0 Active Edit Deactivate" [ref=e178]:
+                - cell "VAX-002" [ref=e179]
+                - cell "DHPPiL Combo Vaccine" [ref=e180]
+                - cell "Stocked" [ref=e181]:
+                  - generic [ref=e182]: Stocked
+                - cell "Medicine" [ref=e183]
+                - cell "Vial" [ref=e184]
+                - cell "320.00" [ref=e185]
+                - cell "0" [ref=e186]
+                - cell "Active" [ref=e187]:
+                  - generic [ref=e188]: Active
+                - cell "Edit Deactivate" [ref=e189]:
+                  - generic [ref=e190]:
+                    - link "Edit" [ref=e191] [cursor=pointer]:
+                      - /url: /clinic/inventory/products/cd6de1cd-458c-4e07-8371-b329b49252b1/edit
+                    - button "Deactivate" [ref=e192]
+              - row "MED-001 Metronidazole 125mg (50 tabs) Stocked Medicine Box 180.00 0 Active Edit Deactivate" [ref=e193]:
+                - cell "MED-001" [ref=e194]
+                - cell "Metronidazole 125mg (50 tabs)" [ref=e195]
+                - cell "Stocked" [ref=e196]:
+                  - generic [ref=e197]: Stocked
+                - cell "Medicine" [ref=e198]
+                - cell "Box" [ref=e199]
+                - cell "180.00" [ref=e200]
+                - cell "0" [ref=e201]
+                - cell "Active" [ref=e202]:
+                  - generic [ref=e203]: Active
+                - cell "Edit Deactivate" [ref=e204]:
+                  - generic [ref=e205]:
+                    - link "Edit" [ref=e206] [cursor=pointer]:
+                      - /url: /clinic/inventory/products/b34959ae-2afe-49dd-b17b-7881998fa8ac/edit
+                    - button "Deactivate" [ref=e207]
+              - row "VAX-001 Rabies Vaccine Stocked Medicine Vial 350.00 0 Active Edit Deactivate" [ref=e208]:
+                - cell "VAX-001" [ref=e209]
+                - cell "Rabies Vaccine" [ref=e210]
+                - cell "Stocked" [ref=e211]:
+                  - generic [ref=e212]: Stocked
+                - cell "Medicine" [ref=e213]
+                - cell "Vial" [ref=e214]
+                - cell "350.00" [ref=e215]
+                - cell "0" [ref=e216]
+                - cell "Active" [ref=e217]:
+                  - generic [ref=e218]: Active
+                - cell "Edit Deactivate" [ref=e219]:
+                  - generic [ref=e220]:
+                    - link "Edit" [active] [ref=e221] [cursor=pointer]:
+                      - /url: /clinic/inventory/products/84810930-a4bf-49c4-a598-992a147ad953/edit
+                    - button "Deactivate" [ref=e222]
+              - row "SVC-001 Standard Consultation Service Consultation Visit 500.00 — Active Edit Deactivate" [ref=e223]:
+                - cell "SVC-001" [ref=e224]
+                - cell "Standard Consultation" [ref=e225]
+                - cell "Service" [ref=e226]:
+                  - generic [ref=e227]: Service
+                - cell "Consultation" [ref=e228]
+                - cell "Visit" [ref=e229]
+                - cell "500.00" [ref=e230]
+                - cell "—" [ref=e231]
+                - cell "Active" [ref=e232]:
+                  - generic [ref=e233]: Active
+                - cell "Edit Deactivate" [ref=e234]:
+                  - generic [ref=e235]:
+                    - link "Edit" [ref=e236] [cursor=pointer]:
+                      - /url: /clinic/inventory/products/0a5a2f02-9462-474d-a74b-9a4d5295ff82/edit
+                    - button "Deactivate" [ref=e237]
+              - row "SUP-001 Surgical Gloves (100 pcs) Stocked Retail Box 120.00 0 Active Edit Deactivate" [ref=e238]:
+                - cell "SUP-001" [ref=e239]
+                - cell "Surgical Gloves (100 pcs)" [ref=e240]
+                - cell "Stocked" [ref=e241]:
+                  - generic [ref=e242]: Stocked
+                - cell "Retail" [ref=e243]
+                - cell "Box" [ref=e244]
+                - cell "120.00" [ref=e245]
+                - cell "0" [ref=e246]
+                - cell "Active" [ref=e247]:
+                  - generic [ref=e248]: Active
+                - cell "Edit Deactivate" [ref=e249]:
+                  - generic [ref=e250]:
+                    - link "Edit" [ref=e251] [cursor=pointer]:
+                      - /url: /clinic/inventory/products/a3dff71d-b6f6-46ad-8fbd-fa240eeeda0e/edit
+                    - button "Deactivate" [ref=e252]
+          - paragraph [ref=e253]: 6 items shown
+  - button "Open Next.js Dev Tools" [ref=e259] [cursor=pointer]:
+    - img [ref=e260]
+  - alert [ref=e263]
+```

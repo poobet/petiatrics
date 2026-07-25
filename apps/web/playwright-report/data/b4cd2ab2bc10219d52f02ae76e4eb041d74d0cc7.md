@@ -1,0 +1,192 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e5]:
+        - img [ref=e7]
+        - generic [ref=e12]:
+          - paragraph [ref=e13]: Petiatrics
+          - paragraph [ref=e14]: Vet Management
+      - navigation [ref=e15]:
+        - link "Dashboard" [ref=e16] [cursor=pointer]:
+          - /url: /clinic/dashboard
+          - img [ref=e17]
+          - text: Dashboard
+        - link "Appointments" [ref=e22] [cursor=pointer]:
+          - /url: /clinic/appointments
+          - img [ref=e23]
+          - text: Appointments
+        - link "Patients" [ref=e25] [cursor=pointer]:
+          - /url: /clinic/patients
+          - img [ref=e26]
+          - text: Patients
+        - link "Clients" [ref=e31] [cursor=pointer]:
+          - /url: /clinic/clients
+          - img [ref=e32]
+          - text: Clients
+        - link "Medical Records" [ref=e37] [cursor=pointer]:
+          - /url: /medical-records
+          - img [ref=e38]
+          - text: Medical Records
+        - button "Inventory" [ref=e42]:
+          - img [ref=e43]
+          - text: Inventory
+          - img [ref=e47]
+        - link "Procurement" [ref=e49] [cursor=pointer]:
+          - /url: /clinic/procurement
+          - img [ref=e50]
+          - text: Procurement
+        - link "Billing" [ref=e53] [cursor=pointer]:
+          - /url: /clinic/billing
+          - img [ref=e54]
+          - text: Billing
+        - link "POS" [ref=e56] [cursor=pointer]:
+          - /url: /clinic/pos
+          - img [ref=e57]
+          - text: POS
+        - link "Staff" [ref=e61] [cursor=pointer]:
+          - /url: /clinic/staff
+          - img [ref=e62]
+          - text: Staff
+        - link "Business Partners" [ref=e74] [cursor=pointer]:
+          - /url: /clinic/business-partners
+          - img [ref=e75]
+          - text: Business Partners
+        - link "Audit Log" [ref=e78] [cursor=pointer]:
+          - /url: /clinic/audit
+          - img [ref=e79]
+          - text: Audit Log
+        - button "Settings" [ref=e83]:
+          - img [ref=e84]
+          - text: Settings
+          - img [ref=e87]
+      - link "Mobile App Owner mobile view" [ref=e90] [cursor=pointer]:
+        - /url: /mobile-app
+        - img [ref=e92]
+        - generic [ref=e94]:
+          - paragraph [ref=e95]: Mobile App
+          - paragraph [ref=e96]: Owner mobile view
+    - generic [ref=e97]:
+      - banner [ref=e98]:
+        - generic [ref=e100]:
+          - img [ref=e101]
+          - textbox "Search patients, clients, appointments..." [ref=e104]
+        - generic [ref=e105]:
+          - button "Main Branch" [ref=e106]:
+            - img [ref=e107]
+            - generic [ref=e110]: Main Branch
+            - img [ref=e111]
+          - button "TH" [ref=e113]:
+            - text: TH
+            - img
+          - button [ref=e114]:
+            - img [ref=e115]
+          - button "OW owner clinic owner" [ref=e119]:
+            - generic [ref=e121]: OW
+            - generic [ref=e122]:
+              - paragraph [ref=e123]: owner
+              - paragraph [ref=e124]: clinic owner
+            - img [ref=e125]
+      - main [ref=e127]:
+        - generic [ref=e128]:
+          - generic [ref=e129]:
+            - link "← Back to Inventory" [ref=e130] [cursor=pointer]:
+              - /url: /clinic/inventory
+            - heading "Add Item" [level=1] [ref=e132]
+          - generic [ref=e134]:
+            - generic [ref=e135]:
+              - button "General Info" [ref=e136]:
+                - img [ref=e137]
+                - text: General Info
+              - button "UoM & Units" [ref=e139]:
+                - img [ref=e140]
+                - text: UoM & Units
+              - button "Financials/GL" [ref=e144]:
+                - img [ref=e145]
+                - text: Financials/GL
+              - button "Compliance/Tax" [ref=e147]:
+                - img [ref=e148]
+                - text: Compliance/Tax
+              - button "Clinic Details" [ref=e151]:
+                - img [ref=e152]
+                - text: Clinic Details
+            - generic [ref=e155]:
+              - generic [ref=e156]:
+                - heading "General Info" [level=3] [ref=e157]
+                - paragraph [ref=e158]: Manage specific details related to the item's general profile.
+              - generic [ref=e159]:
+                - generic [ref=e160]:
+                  - generic [ref=e161]: Item Type *
+                  - generic [ref=e162]:
+                    - generic [ref=e163] [cursor=pointer]:
+                      - img [ref=e165]
+                      - generic [ref=e175]:
+                        - paragraph [ref=e176]: Stocked Good
+                        - paragraph [ref=e177]: Physical items with quantity tracking
+                      - img [ref=e179]
+                    - generic [ref=e181] [cursor=pointer]:
+                      - img [ref=e183]
+                      - generic [ref=e187]:
+                        - paragraph [ref=e188]: Service
+                        - paragraph [ref=e189]: Consultations, fees & veterinary procedures
+                    - generic [ref=e190] [cursor=pointer]:
+                      - img [ref=e192]
+                      - generic [ref=e195]:
+                        - paragraph [ref=e196]: Consumable
+                        - paragraph [ref=e197]: Internal clinic supplies, not for resale
+                - generic [ref=e198]:
+                  - generic [ref=e199]:
+                    - generic [ref=e200]: Item Code *
+                    - textbox "Item Code *" [ref=e201]:
+                      - /placeholder: e.g. MED-001
+                      - text: E2E-SVC-715108
+                  - generic [ref=e202]:
+                    - generic [ref=e203]: Category *
+                    - combobox "Category *" [ref=e204]:
+                      - option "Select category…" [selected]
+                      - option "Consultation"
+                      - option "Laboratory"
+                      - option "Medicine"
+                      - option "Procedure"
+                      - option "Retail"
+                      - option "Service"
+                  - generic [ref=e205]:
+                    - generic [ref=e206]: Item Name *
+                    - textbox "Item Name *" [active] [ref=e207]:
+                      - /placeholder: e.g. Amoxicillin 250mg
+                      - text: E2E Consultation 715108
+                  - generic [ref=e208]:
+                    - generic [ref=e209]: Generic Name
+                    - textbox "Generic Name" [ref=e210]:
+                      - /placeholder: e.g. Amoxicillin
+                - generic [ref=e211]:
+                  - generic [ref=e212] [cursor=pointer]:
+                    - checkbox "Controlled Substance Strictly regulated pharmaceutical requiring audit records" [ref=e213]
+                    - generic [ref=e214]:
+                      - text: Controlled Substance
+                      - generic [ref=e215]: Strictly regulated pharmaceutical requiring audit records
+                  - generic [ref=e216] [cursor=pointer]:
+                    - checkbox "Requires Batch & Expiry Date Tracking Enforces FEFO (First-Expiry-First-Out) dispensing compliance" [ref=e217]
+                    - generic [ref=e218]:
+                      - text: Requires Batch & Expiry Date Tracking
+                      - generic [ref=e219]: Enforces FEFO (First-Expiry-First-Out) dispensing compliance
+                - generic [ref=e220]:
+                  - paragraph [ref=e221]: Identifiers
+                  - generic [ref=e222]:
+                    - generic [ref=e223]:
+                      - generic [ref=e224]: SKU
+                      - textbox "SKU" [ref=e225]:
+                        - /placeholder: Auto-assigned on save
+                    - generic [ref=e226]:
+                      - generic [ref=e227]: Barcode
+                      - textbox "Barcode" [ref=e228]:
+                        - /placeholder: Scan or enter barcode
+            - generic [ref=e229]:
+              - button "Cancel" [ref=e230]
+              - button "Create Item" [ref=e231]
+  - button "Open Next.js Dev Tools" [ref=e237] [cursor=pointer]:
+    - img [ref=e238]
+  - alert [ref=e241]
+```

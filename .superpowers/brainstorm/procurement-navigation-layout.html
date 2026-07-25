@@ -1,0 +1,43 @@
+<h2>ปรับเปลี่ยนโครงสร้างเมนู "การจัดซื้อ" (Procurement Sub-Menu Layout)</h2>
+<p class="subtitle">ย้ายแถบย่อย (Tabs) จากด้านบนหน้าเพจ ไปเป็นเมนูลูกในแถบเมนูด้านซ้าย (Sidebar Navigation)</p>
+
+<div class="options">
+  <div class="option" data-choice="option-a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>แนวทาง A: เมนูลูก 4 รายการ (ตรงกับ 4 Tabs เดิม) [แนะนำ]</h3>
+      <p>เมื่อกดคลิกเมนูหลัก "การจัดซื้อ" แถบเมนูด้านซ้ายจะขยายแสดงเมนูลูก 4 รายการทันที:</p>
+      <div class="mockup" style="margin-top: 10px; background: #fafafa;">
+        <div class="mockup-body" style="padding: 12px;">
+          <div style="font-weight: 600; color: #1e293b; margin-bottom: 8px;">📋 การจัดซื้อ (Procurement)</div>
+          <div style="padding-left: 20px; border-left: 2px solid #3b82f6; display: flex; flex-direction: column; gap: 6px;">
+            <div style="padding: 6px 10px; background: #eff6ff; color: #1d4ed8; font-weight: 600; rounded-radius: 6px;">• ใบสั่งซื้อ (Purchase Orders)</div>
+            <div style="padding: 6px 10px; color: #475569;">• ใบรับสินค้า (Goods Receipts)</div>
+            <div style="padding: 6px 10px; color: #475569;">• ใบแจ้งหนี้ผู้ขาย (Purchase Invoices)</div>
+            <div style="padding: 6px 10px; color: #475569;">• การชำระเงินผู้ขาย (Supplier Payments)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="option-b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>แนวทาง B: มีหน้าหลัก "ภาพรวม" + 4 เมนูลูก</h3>
+      <p>เพิ่มเมนู "ภาพรวมการจัดซื้อ" เป็นหน้าแดชบอร์ดหลักของ Procurement เพิ่มเติมจาก 4 เมนูลูก:</p>
+      <div class="mockup" style="margin-top: 10px; background: #fafafa;">
+        <div class="mockup-body" style="padding: 12px;">
+          <div style="font-weight: 600; color: #1e293b; margin-bottom: 8px;">📋 การจัดซื้อ (Procurement)</div>
+          <div style="padding-left: 20px; border-left: 2px solid #cbd5e1; display: flex; flex-direction: column; gap: 6px;">
+            <div style="padding: 6px 10px; color: #475569;">• ภาพรวมการจัดซื้อ (Overview Hub)</div>
+            <div style="padding: 6px 10px; color: #475569;">• ใบสั่งซื้อ (Purchase Orders)</div>
+            <div style="padding: 6px 10px; color: #475569;">• ใบรับสินค้า (Goods Receipts)</div>
+            <div style="padding: 6px 10px; color: #475569;">• ใบแจ้งหนี้ผู้ขาย (Purchase Invoices)</div>
+            <div style="padding: 6px 10px; color: #475569;">• การชำระเงินผู้ขาย (Supplier Payments)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
