@@ -146,6 +146,52 @@ enum InvoiceLineItemType {
   PRODUCT
 }
 
+enum PaymentMethodType {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  QR_PROMPTPAY
+  BANK_TRANSFER
+  AR_CREDIT
+  WALLET_DEPOSIT
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  VOIDED
+  REFUNDED
+}
+
+enum JournalType {
+  SALES
+  CASH_RECEIPT
+  GENERAL
+}
+
+enum JournalStatus {
+  POSTED
+  VOIDED
+}
+
+enum DepositTxType {
+  TOPUP
+  CONSUMPTION
+  REFUND
+}
+
+enum ArStatus {
+  OPEN
+  PARTIAL
+  CLOSED
+  OVERDUE
+}
+
+enum SessionStatus {
+  OPEN
+  CLOSED
+}
+
 // ─── Clinic (Tenant Root) ────────────────────────────────────────────────────
 
 model Clinic {
@@ -183,6 +229,11 @@ model Clinic {
   documentSequenceConfigs DocumentSequenceConfig[]
   documentTypeDefinitions DocumentTypeDefinition[]
   matchingToleranceConfigs MatchingToleranceConfig[]
+  payments                Payment[]
+  journalEntries          JournalEntry[]
+  customerDeposits        CustomerDeposit[]
+  arOpenItems             ArOpenItem[]
+  cashierSessions         CashierSession[]
 
   @@map("clinics")
 }
@@ -255,6 +306,10 @@ model User {
   goodsReceipts          GoodsReceipt[]
   purchaseInvoices       PurchaseInvoice[]
   supplierPayments       SupplierPayment[]
+  payments               Payment[]
+  customerDeposits       CustomerDeposit[]
+  arOpenItems            ArOpenItem[]
+  cashierSessions        CashierSession[]
 
   @@index([clinicId])
   @@index([email])
@@ -490,6 +545,7 @@ model GLAccount {
   revenueProducts        Product[]      @relation("ProductRevenueAccount")
   cogsProducts           Product[]      @relation("ProductCogsAccount")
   inventoryAssetProducts Product[]      @relation("ProductInventoryAssetAccount")
+  journalLines           JournalLine[]
 
   @@map("gl_accounts")
 }
@@ -743,8 +799,10 @@ model Invoice {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  clinic    Clinic            @relation(fields: [clinicId], references: [id])
-  lineItems InvoiceLineItem[]
+  clinic     Clinic            @relation(fields: [clinicId], references: [id])
+  lineItems  InvoiceLineItem[]
+  payments   Payment[]
+  arOpenItem ArOpenItem?
 
   @@index([clinicId])
   @@index([clinicId, ownerUserId])
@@ -1387,4 +1445,160 @@ model WHTCertificate {
   @@index([clinicId, businessPartnerId])
   @@index([clinicId, taxYear, taxMonth])
   @@map("wht_certificates")
+}
+
+// ─── Payment & Split Tender ──────────────────────────────────────────────────
+
+model Payment {
+  id            String        @id @default(uuid())
+  clinicId      String
+  invoiceId     String
+  documentNo    String
+  totalMinor    Int
+  status        PaymentStatus @default(COMPLETED)
+  receivedAt    DateTime      @default(now())
+  cashierUserId String
+  note          String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  clinic  Clinic          @relation(fields: [clinicId], references: [id])
+  invoice Invoice         @relation(fields: [invoiceId], references: [id])
+  cashier User            @relation(fields: [cashierUserId], references: [id])
+  tenders PaymentTender[]
+
+  @@index([clinicId, status])
+  @@index([invoiceId])
+  @@map("payments")
+}
+
+model PaymentTender {
+  id          String            @id @default(uuid())
+  paymentId   String
+  method      PaymentMethodType
+  amountMinor Int
+  referenceNo String?
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@map("payment_tenders")
+}
+
+// ─── General Ledger & Double-Entry Accounting ────────────────────────────────
+
+model JournalEntry {
+  id            String        @id @default(uuid())
+  clinicId      String
+  entryNo       String
+  type          JournalType   @default(GENERAL)
+  description   String
+  sourceRefType String?
+  sourceRefId   String?
+  postedAt      DateTime      @default(now())
+  status        JournalStatus @default(POSTED)
+  createdAt     DateTime      @default(now())
+
+  clinic Clinic        @relation(fields: [clinicId], references: [id])
+  lines  JournalLine[]
+
+  @@index([clinicId, postedAt])
+  @@map("journal_entries")
+}
+
+model JournalLine {
+  id             String @id @default(uuid())
+  journalEntryId String
+  glAccountId    String
+  debitMinor     Int    @default(0)
+  creditMinor    Int    @default(0)
+
+  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  glAccount    GLAccount    @relation(fields: [glAccountId], references: [id])
+
+  @@index([journalEntryId])
+  @@index([glAccountId])
+  @@map("journal_lines")
+}
+
+// ─── Customer Deposits & Wallet ──────────────────────────────────────────────
+
+model CustomerDeposit {
+  id           String   @id @default(uuid())
+  clinicId     String
+  ownerUserId  String
+  amountMinor  Int
+  balanceMinor Int
+  note         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  clinic       Clinic               @relation(fields: [clinicId], references: [id])
+  owner        User                 @relation(fields: [ownerUserId], references: [id])
+  transactions DepositTransaction[]
+
+  @@index([clinicId, ownerUserId])
+  @@map("customer_deposits")
+}
+
+model DepositTransaction {
+  id                String        @id @default(uuid())
+  depositId         String
+  type              DepositTxType
+  amountMinor       Int
+  balanceAfterMinor Int
+  referenceId       String?
+  createdAt         DateTime      @default(now())
+
+  deposit CustomerDeposit @relation(fields: [depositId], references: [id], onDelete: Cascade)
+
+  @@index([depositId])
+  @@map("deposit_transactions")
+}
+
+// ─── Accounts Receivable (AR) ────────────────────────────────────────────────
+
+model ArOpenItem {
+  id              String   @id @default(uuid())
+  clinicId        String
+  ownerUserId     String
+  invoiceId       String   @unique
+  dueDate         DateTime
+  amountMinor     Int
+  paidAmountMinor Int      @default(0)
+  status          ArStatus @default(OPEN)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  clinic  Clinic  @relation(fields: [clinicId], references: [id])
+  owner   User    @relation(fields: [ownerUserId], references: [id])
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@index([clinicId, ownerUserId])
+  @@index([clinicId, status])
+  @@map("ar_open_items")
+}
+
+// ─── Cashier Session & Close-of-Day ───────────────────────────────────────────
+
+model CashierSession {
+  id               String        @id @default(uuid())
+  clinicId         String
+  cashierUserId    String
+  openedAt         DateTime      @default(now())
+  closedAt         DateTime?
+  openingCashMinor Int
+  systemCashMinor  Int           @default(0)
+  actualCashMinor  Int?
+  differenceMinor  Int?
+  status           SessionStatus @default(OPEN)
+  note             String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  clinic  Clinic @relation(fields: [clinicId], references: [id])
+  cashier User   @relation(fields: [cashierUserId], references: [id])
+
+  @@index([clinicId, cashierUserId, status])
+  @@map("cashier_sessions")
 }
