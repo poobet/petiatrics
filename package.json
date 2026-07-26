@@ -20,14 +20,17 @@
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\" --ignore-path .gitignore"
   },
   "devDependencies": {
-    "turbo": "^2.3.3",
-    "typescript": "^5.8.2",
     "@types/node": "^20.17.14",
+    "eslint": "^9.21.0",
     "prettier": "^3.4.2",
-    "eslint": "^9.21.0"
+    "turbo": "^2.3.3",
+    "typescript": "^5.8.2"
   },
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=10.0.0"
+  },
+  "dependencies": {
+    "cytoscape": "^3.34.0"
   }
 }
