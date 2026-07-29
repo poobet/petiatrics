@@ -47,7 +47,7 @@ import type { AuthProfile } from '@petiatrics/types';
 import { BranchSelector } from './branch-selector';
 import { useSessionStore } from '../../lib/session-store';
 
-type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'products' | 'stockLedger' | 'goodsReceipt' | 'goodsIssue' | 'adjustments' | 'billing' | 'pos' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings' | 'settingsGeneral' | 'rolePermissions' | 'documentSequence' | 'procurement' | 'purchaseOrders' | 'purchaseInvoices' | 'supplierPayments' | 'commission' | 'commissionDashboard' | 'commissionRules' | 'commissionTransactions' | 'commissionPaymentRuns' | 'commissionWht' | 'accounting' | 'accountingJournal';
+type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'products' | 'stockLedger' | 'goodsReceipt' | 'goodsIssue' | 'adjustments' | 'billing' | 'billingSettings' | 'pos' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings' | 'settingsGeneral' | 'rolePermissions' | 'documentSequence' | 'procurement' | 'purchaseOrders' | 'purchaseInvoices' | 'supplierPayments' | 'procurementSettings' | 'appointmentSettings' | 'commission' | 'commissionDashboard' | 'commissionRules' | 'commissionTransactions' | 'commissionPaymentRuns' | 'commissionWht' | 'accounting' | 'accountingJournal';
 
 interface SubNavItem {
   key: NavKey;
@@ -90,9 +90,17 @@ const NAV_ITEMS: NavItem[] = [
       { key: 'goodsReceipt', href: '/clinic/procurement/receipts', icon: Boxes, requiredPermission: 'INVENTORY:ADD' },
       { key: 'purchaseInvoices', href: '/clinic/procurement/invoices', icon: Receipt, requiredPermission: 'INVENTORY:VIEW' },
       { key: 'supplierPayments', href: '/clinic/procurement/payments', icon: CreditCard, requiredPermission: 'INVENTORY:VIEW' },
+      { key: 'procurementSettings', href: '/clinic/procurement/settings', icon: Settings, requiredPermission: 'SETTINGS:MANAGE' },
     ],
   },
-  { key: 'billing', href: '/clinic/billing', icon: CreditCard, requiredPermission: 'BILLING:VIEW' },
+  {
+    key: 'billing',
+    icon: CreditCard,
+    subItems: [
+      { key: 'billing', href: '/clinic/billing', icon: CreditCard, requiredPermission: 'BILLING:VIEW' },
+      { key: 'billingSettings', href: '/clinic/billing/settings', icon: Settings, requiredPermission: 'SETTINGS:MANAGE' },
+    ],
+  },
   {
     key: 'commission',
     icon: Coins,

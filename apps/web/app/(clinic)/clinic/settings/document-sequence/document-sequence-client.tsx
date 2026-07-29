@@ -54,6 +54,7 @@ interface DocumentTypeDefinition {
   clinicId: string | null;
   code: string;
   label: string;
+  module: 'PROCUREMENT' | 'BILLING' | 'APPOINTMENT' | 'INVENTORY' | 'CLINICAL' | 'GENERAL';
   defaultTemplate: string;
   defaultResetInterval: 'YEARLY' | 'MONTHLY' | 'DAILY' | 'NEVER';
   scope: 'CLINIC' | 'BRANCH';
@@ -74,12 +75,28 @@ interface DocumentSequenceConfig {
   updatedAt: string;
 }
 
+interface SequenceInfo {
+  documentType: string;
+  label: string;
+  module: string;
+  template: string;
+  resetInterval: 'YEARLY' | 'MONTHLY' | 'DAILY' | 'NEVER';
+  scope: 'CLINIC' | 'BRANCH';
+  period: string;
+  lastNumber: number;
+  nextNumber: number;
+  nextPreview: string;
+  isOverride: boolean;
+}
+
 export default function DocumentSequenceClient() {
   const [types, setTypes] = useState<DocumentTypeDefinition[]>([]);
   const [configs, setConfigs] = useState<DocumentSequenceConfig[]>([]);
+  const [sequences, setSequences] = useState<SequenceInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [activeModule, setActiveModule] = useState<'ALL' | 'PROCUREMENT' | 'BILLING' | 'APPOINTMENT' | 'INVENTORY' | 'CLINICAL' | 'CUSTOM'>('ALL');
 
   // Slide-over state for Document Type
   const [isTypeOpen, setIsTypeOpen] = useState(false);
@@ -90,6 +107,7 @@ export default function DocumentSequenceClient() {
     defaultTemplate: '',
     defaultResetInterval: 'YEARLY' as 'YEARLY' | 'MONTHLY' | 'DAILY' | 'NEVER',
     scope: 'CLINIC' as 'CLINIC' | 'BRANCH',
+    module: 'GENERAL' as 'PROCUREMENT' | 'BILLING' | 'APPOINTMENT' | 'INVENTORY' | 'CLINICAL' | 'GENERAL',
   });
 
   // Modal state for Config overrides
@@ -115,12 +133,14 @@ export default function DocumentSequenceClient() {
     setLoading(true);
     setError('');
     try {
-      const [fetchedTypes, fetchedConfigs] = await Promise.all([
+      const [fetchedTypes, fetchedConfigs, fetchedSequences] = await Promise.all([
         apiClient.get<DocumentTypeDefinition[]>('/document-sequence/types'),
         apiClient.get<DocumentSequenceConfig[]>('/document-sequence/configs'),
+        apiClient.get<SequenceInfo[]>('/document-sequence/sequences'),
       ]);
       setTypes(fetchedTypes || []);
       setConfigs(fetchedConfigs || []);
+      setSequences(fetchedSequences || []);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to load document sequencing settings.');
     } finally {
@@ -231,6 +251,7 @@ export default function DocumentSequenceClient() {
         defaultTemplate: type.defaultTemplate,
         defaultResetInterval: type.defaultResetInterval,
         scope: type.scope,
+        module: type.module ?? 'GENERAL',
       });
     } else {
       setSelectedType(null);
@@ -240,6 +261,7 @@ export default function DocumentSequenceClient() {
         defaultTemplate: 'DOC-{yyyy}{mm}-{number:4}',
         defaultResetInterval: 'YEARLY',
         scope: 'CLINIC',
+        module: 'GENERAL',
       });
     }
     setIsTypeOpen(true);
@@ -319,6 +341,36 @@ export default function DocumentSequenceClient() {
         </div>
       </div>
 
+      {/* Module Filter Tabs */}
+      {(() => {
+        const MODULE_TABS = [
+          { key: 'ALL', label: 'ทั้งหมด' },
+          { key: 'PROCUREMENT', label: '📦 จัดซื้อ' },
+          { key: 'BILLING', label: '💳 การเงิน' },
+          { key: 'APPOINTMENT', label: '📅 นัดหมาย' },
+          { key: 'INVENTORY', label: '🏪 คลังสินค้า' },
+          { key: 'CLINICAL', label: '🩺 เวชระเบียน' },
+          { key: 'CUSTOM', label: '✨ กำหนดเอง' },
+        ] as const;
+        return (
+          <div className="flex flex-wrap gap-2">
+            {MODULE_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveModule(tab.key)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all duration-150 ${
+                  activeModule === tab.key
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        );
+      })()}
+
       <Tabs defaultValue="configs" className="w-full">
         <TabsList className="bg-gray-100 p-1 rounded-lg border flex gap-2 w-fit mb-6">
           <TabsTrigger value="configs" className="px-5 py-2 rounded-md text-sm font-semibold transition-all data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
@@ -336,6 +388,7 @@ export default function DocumentSequenceClient() {
                 <TableRow>
                   <TableHead className="font-bold text-gray-700">Document Type</TableHead>
                   <TableHead className="font-bold text-gray-700">Sequence Format / Template</TableHead>
+                  <TableHead className="font-bold text-gray-700">Running / Next Code</TableHead>
                   <TableHead className="font-bold text-gray-700">Reset Interval</TableHead>
                   <TableHead className="font-bold text-gray-700">Scope</TableHead>
                   <TableHead className="font-bold text-gray-700">Source</TableHead>
@@ -343,25 +396,56 @@ export default function DocumentSequenceClient() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {types.map((type) => {
+                {types
+                  .filter((type) => {
+                    if (activeModule === 'ALL') return true;
+                    if (activeModule === 'CUSTOM') return !type.isSystem;
+                    return type.module === activeModule;
+                  })
+                  .map((type) => {
                   const config = configs.find((c) => c.documentType === type.code);
                   const isOverride = !!config;
                   const currentTemplate = config ? config.template : type.defaultTemplate;
                   const currentInterval = config ? config.resetInterval : type.defaultResetInterval;
                   const currentScope = config ? config.scope : type.scope;
+                  const seqInfo = sequences.find((s) => s.documentType === type.code);
+
+                  const MODULE_COLORS: Record<string, string> = {
+                    PROCUREMENT: 'bg-orange-100 text-orange-800 border-orange-200',
+                    BILLING: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                    APPOINTMENT: 'bg-violet-100 text-violet-800 border-violet-200',
+                    INVENTORY: 'bg-sky-100 text-sky-800 border-sky-200',
+                    CLINICAL: 'bg-pink-100 text-pink-800 border-pink-200',
+                    GENERAL: 'bg-gray-100 text-gray-600 border-gray-200',
+                  };
 
                   return (
                     <TableRow key={type.code} className="hover:bg-gray-50/50 transition-colors">
                       <TableCell className="font-medium">
                         <div>
                           <div className="text-gray-900 font-semibold">{type.label}</div>
-                          <div className="text-xs text-gray-400 font-mono mt-0.5">{type.code}</div>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-xs text-gray-400 font-mono">{type.code}</span>
+                            <Badge className={`text-[10px] px-1.5 py-0 border ${MODULE_COLORS[type.module ?? 'GENERAL'] ?? MODULE_COLORS.GENERAL}`}>
+                              {type.module ?? 'GENERAL'}
+                            </Badge>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <span className="font-mono bg-slate-100 text-slate-800 px-2.5 py-1 rounded text-xs border border-slate-200">
                           {currentTemplate}
                         </span>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-mono text-xs font-bold text-blue-600">
+                            {seqInfo?.nextPreview || '-'}
+                          </div>
+                          <div className="text-[11px] text-gray-400">
+                            ล่าสุด: <span className="font-semibold text-gray-700">{seqInfo?.lastNumber ?? 0}</span>
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="capitalize text-xs px-2.5 py-0.5">
@@ -411,7 +495,7 @@ export default function DocumentSequenceClient() {
                 })}
                 {types.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-10 text-gray-400">
+                    <TableCell colSpan={7} className="text-center py-10 text-gray-400">
                       No document types defined.
                     </TableCell>
                   </TableRow>
@@ -428,6 +512,7 @@ export default function DocumentSequenceClient() {
                 <TableRow>
                   <TableHead className="font-bold text-gray-700">Code</TableHead>
                   <TableHead className="font-bold text-gray-700">Label</TableHead>
+                  <TableHead className="font-bold text-gray-700">Module</TableHead>
                   <TableHead className="font-bold text-gray-700">Default Template</TableHead>
                   <TableHead className="font-bold text-gray-700">Default Reset</TableHead>
                   <TableHead className="font-bold text-gray-700">Default Scope</TableHead>
@@ -436,50 +521,70 @@ export default function DocumentSequenceClient() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {types.map((type) => (
-                  <TableRow key={type.id} className="hover:bg-gray-50/50 transition-colors">
-                    <TableCell className="font-mono text-xs font-bold text-gray-800">{type.code}</TableCell>
-                    <TableCell className="font-semibold text-gray-900">{type.label}</TableCell>
-                    <TableCell className="font-mono text-xs text-gray-600">{type.defaultTemplate}</TableCell>
-                    <TableCell className="capitalize text-xs text-gray-600">{type.defaultResetInterval.toLowerCase()}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="capitalize text-xs px-2.5 py-0.5">
-                        {type.scope === 'BRANCH' ? 'Branch-Scoped' : 'Clinic-Wide'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {type.isSystem ? (
-                        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-xs">System Built-In</Badge>
-                      ) : (
-                        <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 text-xs">Custom Definition</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {!type.isSystem ? (
-                        <div className="flex justify-end gap-2">
-                          <Button 
-                            onClick={() => openTypeForm(type)}
-                            variant="outline" 
-                            size="sm" 
-                            className="h-8 flex items-center gap-1 border-blue-200 hover:bg-blue-50 text-blue-600 text-xs font-semibold"
-                          >
-                            <Edit2 className="h-3 w-3" /> Edit
-                          </Button>
-                          <Button 
-                            onClick={() => setDeleteConfirmTypeId(type.id)}
-                            variant="outline" 
-                            size="sm" 
-                            className="h-8 flex items-center gap-1 border-red-200 hover:bg-red-50 text-red-600 text-xs font-semibold"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" /> Delete
-                          </Button>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-400 font-medium pr-3 italic">System Read-Only</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {types
+                  .filter((type) => {
+                    if (activeModule === 'ALL') return true;
+                    if (activeModule === 'CUSTOM') return !type.isSystem;
+                    return type.module === activeModule;
+                  })
+                  .map((type) => {
+                    const MODULE_COLORS: Record<string, string> = {
+                      PROCUREMENT: 'bg-orange-100 text-orange-800',
+                      BILLING: 'bg-emerald-100 text-emerald-800',
+                      APPOINTMENT: 'bg-violet-100 text-violet-800',
+                      INVENTORY: 'bg-sky-100 text-sky-800',
+                      CLINICAL: 'bg-pink-100 text-pink-800',
+                      GENERAL: 'bg-gray-100 text-gray-600',
+                    };
+                    return (
+                    <TableRow key={type.id} className="hover:bg-gray-50/50 transition-colors">
+                      <TableCell className="font-mono text-xs font-bold text-gray-800">{type.code}</TableCell>
+                      <TableCell className="font-semibold text-gray-900">{type.label}</TableCell>
+                      <TableCell>
+                        <Badge className={`text-[10px] hover:opacity-80 ${MODULE_COLORS[type.module ?? 'GENERAL'] ?? MODULE_COLORS.GENERAL}`}>
+                          {type.module ?? 'GENERAL'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-gray-600">{type.defaultTemplate}</TableCell>
+                      <TableCell className="capitalize text-xs text-gray-600">{type.defaultResetInterval.toLowerCase()}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="capitalize text-xs px-2.5 py-0.5">
+                          {type.scope === 'BRANCH' ? 'Branch-Scoped' : 'Clinic-Wide'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {type.isSystem ? (
+                          <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-xs">System Built-In</Badge>
+                        ) : (
+                          <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 text-xs">Custom Definition</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {!type.isSystem ? (
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              onClick={() => openTypeForm(type)}
+                              variant="outline" 
+                              size="sm" 
+                              className="h-8 flex items-center gap-1 border-blue-200 hover:bg-blue-50 text-blue-600 text-xs font-semibold"
+                            >
+                              <Edit2 className="h-3 w-3" /> Edit
+                            </Button>
+                            <Button 
+                              onClick={() => setDeleteConfirmTypeId(type.id)}
+                              variant="outline" 
+                              size="sm" 
+                              className="h-8 flex items-center gap-1 border-red-200 hover:bg-red-50 text-red-600 text-xs font-semibold"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" /> Delete
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400 font-medium pr-3 italic">System Read-Only</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );})}
               </TableBody>
             </Table>
           </div>
@@ -571,6 +676,26 @@ export default function DocumentSequenceClient() {
                 <SelectContent className="bg-white border shadow-md">
                   <SelectItem value="CLINIC">Clinic-Wide (รวมทุกสาขา)</SelectItem>
                   <SelectItem value="BRANCH">Per-Branch (แยกตามสาขา)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="typeModule" className="text-sm font-semibold text-gray-700">Module (ระบบ)</Label>
+              <Select
+                value={typeForm.module}
+                onValueChange={(val: any) => setTypeForm({ ...typeForm, module: val })}
+              >
+                <SelectTrigger id="typeModule" className="border-gray-300">
+                  <SelectValue placeholder="Select module" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border shadow-md">
+                  <SelectItem value="GENERAL">ทั่วไป (General)</SelectItem>
+                  <SelectItem value="PROCUREMENT">จัดซื้อ (Procurement)</SelectItem>
+                  <SelectItem value="BILLING">การเงิน (Billing)</SelectItem>
+                  <SelectItem value="APPOINTMENT">นัดหมาย (Appointment)</SelectItem>
+                  <SelectItem value="INVENTORY">คลังสินค้า (Inventory)</SelectItem>
+                  <SelectItem value="CLINICAL">เวชระเบียน (Clinical)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

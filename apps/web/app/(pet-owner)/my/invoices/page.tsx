@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { formatMinor } from '@/lib/currency';
 
 interface Invoice {
   id: string;
@@ -35,10 +36,6 @@ async function getInvoices(): Promise<Invoice[]> {
   } catch {
     return [];
   }
-}
-
-function formatMinor(minor: number): string {
-  return `฿${(minor / 100).toFixed(2)}`;
 }
 
 const STATUS_BG: Record<string, string> = {

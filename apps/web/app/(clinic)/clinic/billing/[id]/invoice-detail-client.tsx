@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { formatMinor } from '@/lib/currency';
 
 interface LineItem {
   id: string;
@@ -14,6 +15,7 @@ interface LineItem {
 
 interface Invoice {
   id: string;
+  code?: string | null;
   visitId: string | null;
   patientId: string | null;
   ownerUserId: string | null;
@@ -28,10 +30,6 @@ interface Invoice {
   voidReason?: string;
   createdAt: string;
   lineItems: LineItem[];
-}
-
-function formatMinor(minor: number): string {
-  return `฿${(minor / 100).toFixed(2)}`;
 }
 
 export default function InvoiceDetailClient({ invoice: initialInvoice }: { invoice: Invoice }) {
@@ -98,8 +96,10 @@ export default function InvoiceDetailClient({ invoice: initialInvoice }: { invoi
 
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Invoice</h1>
-          <p className="text-xs text-gray-500 font-mono mt-1">{invoice.id}</p>
+          <h1 className="text-2xl font-bold">
+            Invoice {invoice.code ? <span className="font-mono text-blue-600">#{invoice.code}</span> : ''}
+          </h1>
+          <p className="text-xs text-gray-500 font-mono mt-1">ID: {invoice.id}</p>
         </div>
         <span className={`px-3 py-1 rounded-full text-sm font-medium ${STATUS_BG[invoice.status] ?? 'bg-gray-100'}`}>
           {invoice.status}

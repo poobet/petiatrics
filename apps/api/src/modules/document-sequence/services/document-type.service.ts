@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
-import { PrismaClient, ResetInterval, SequenceScope } from '@prisma/client';
+import { PrismaClient, ResetInterval, SequenceScope, DocumentModule } from '@prisma/client';
 
 import { IsString, IsNotEmpty, IsOptional, IsEnum, IsBoolean } from 'class-validator';
 
@@ -23,6 +23,10 @@ export class CreateDocumentTypeDto {
   @IsEnum(SequenceScope)
   @IsOptional()
   scope?: SequenceScope;
+
+  @IsEnum(DocumentModule)
+  @IsOptional()
+  module?: DocumentModule;
 }
 
 export class UpdateDocumentTypeDto {
@@ -42,6 +46,10 @@ export class UpdateDocumentTypeDto {
   @IsOptional()
   scope?: SequenceScope;
 
+  @IsEnum(DocumentModule)
+  @IsOptional()
+  module?: DocumentModule;
+
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
@@ -51,12 +59,13 @@ export class UpdateDocumentTypeDto {
 export class DocumentTypeService {
   constructor(private readonly prisma: PrismaClient) {}
 
-  /** List all types visible to a clinic: system-wide + clinic-specific */
-  async findAll(clinicId: string) {
+  /** List all types visible to a clinic: system-wide + clinic-specific, optionally filtered by module */
+  async findAll(clinicId: string, module?: DocumentModule) {
     return this.prisma.documentTypeDefinition.findMany({
       where: {
         OR: [{ clinicId: null }, { clinicId }],
         isActive: true,
+        ...(module ? { module } : {}),
       },
       orderBy: [{ isSystem: 'desc' }, { code: 'asc' }],
     });
@@ -87,6 +96,7 @@ export class DocumentTypeService {
         defaultTemplate: dto.defaultTemplate,
         defaultResetInterval: dto.defaultResetInterval ?? ResetInterval.YEARLY,
         scope: dto.scope ?? SequenceScope.CLINIC,
+        module: dto.module ?? DocumentModule.GENERAL,
         isSystem: false,
       },
     });

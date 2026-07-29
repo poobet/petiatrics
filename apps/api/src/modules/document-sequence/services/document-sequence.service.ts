@@ -128,4 +128,87 @@ export class DocumentSequenceService {
 
     return code;
   }
+
+  /**
+   * Get current running numbers for all document types in a clinic.
+   * Returns the lastNumber and next number preview for each active document type.
+   */
+  async getCurrentSequences(clinicId: string, module?: string) {
+    const now = new Date();
+    const yyyy = now.getFullYear().toString();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+
+    // Fetch all active document type definitions visible to this clinic
+    const typeFilter: any = {
+      OR: [{ clinicId: null }, { clinicId }],
+      isActive: true,
+    };
+    if (module) {
+      typeFilter.module = module;
+    }
+
+    const types = await this.prisma.documentTypeDefinition.findMany({
+      where: typeFilter,
+      orderBy: [{ isSystem: 'desc' }, { code: 'asc' }],
+    });
+
+    // Fetch clinic-level config overrides
+    const configs = await this.prisma.documentSequenceConfig.findMany({
+      where: { clinicId },
+    });
+    const configMap = new Map(configs.map(c => [c.documentType, c]));
+
+    // Fetch all sequence records for this clinic
+    const sequences = await this.prisma.documentSequence.findMany({
+      where: { clinicId },
+    });
+
+    // Build result per document type
+    return types.map(type => {
+      const config = configMap.get(type.code);
+      const template = config?.template ?? type.defaultTemplate;
+      const resetInterval = config?.resetInterval ?? type.defaultResetInterval;
+      const scope = config?.scope ?? type.scope;
+
+      // Compute period based on reset interval
+      let period = 'GLOBAL';
+      if (resetInterval === ResetInterval.YEARLY) period = yyyy;
+      else if (resetInterval === ResetInterval.MONTHLY) period = `${yyyy}-${mm}`;
+      else if (resetInterval === ResetInterval.DAILY) period = `${yyyy}-${mm}-${dd}`;
+
+      // Find matching sequence record
+      const seq = sequences.find(
+        s => s.documentType === type.code && s.period === period && s.branchId === 'CLINIC'
+      );
+      const lastNumber = seq?.lastNumber ?? 0;
+      const nextNumber = lastNumber + 1;
+
+      // Generate preview of next code
+      let preview = template;
+      preview = preview.replace(/{yyyy}/g, yyyy);
+      preview = preview.replace(/{yy}/g, yyyy.slice(-2));
+      preview = preview.replace(/{mm}/g, mm);
+      preview = preview.replace(/{dd}/g, dd);
+      preview = preview.replace(/{branchCode}/g, '');
+      preview = preview.replace(/{number(?::(\d+))?}/g, (_: string, p1: string) => {
+        const padding = p1 ? parseInt(p1, 10) : 4;
+        return String(nextNumber).padStart(padding, '0');
+      });
+
+      return {
+        documentType: type.code,
+        label: type.label,
+        module: type.module,
+        template,
+        resetInterval,
+        scope,
+        period,
+        lastNumber,
+        nextNumber,
+        nextPreview: preview,
+        isOverride: !!config,
+      };
+    });
+  }
 }

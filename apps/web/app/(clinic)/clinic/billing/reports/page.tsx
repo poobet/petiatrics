@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { formatMinor } from '@/lib/currency';
 
 interface Invoice {
   id: string;
@@ -16,10 +17,6 @@ interface ReportData {
   outstandingMinor: number;
   periodFrom: string;
   periodTo: string;
-}
-
-function formatMinor(minor: number): string {
-  return `฿${(minor / 100).toFixed(2)}`;
 }
 
 function getDefaultDates() {

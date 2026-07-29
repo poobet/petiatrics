@@ -8,6 +8,7 @@ import { Button } from '@petiatrics/ui/button';
 
 interface Appointment {
   id: string;
+  code?: string | null;
   patientId: string;
   ownerUserId: string;
   vetUserId?: string;
@@ -145,8 +146,15 @@ export default function AppointmentsClient() {
                   {formatTime(appt.scheduledAt)}
                 </div>
                 <div>
-                  <p className="font-medium text-sm">{appt.reason}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    {appt.code && (
+                      <Badge variant="outline" className="font-mono text-xs text-blue-600 bg-blue-50 border-blue-200">
+                        {appt.code}
+                      </Badge>
+                    )}
+                    <p className="font-medium text-sm">{appt.reason}</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     {appt.durationMinutes} min
                     {appt.vetUserId ? ` · Vet: ${appt.vetUserId.slice(0, 8)}…` : ''}
                   </p>

@@ -1,9 +1,11 @@
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { Badge } from '@petiatrics/ui/badge';
+import { formatMinor } from '@/lib/currency';
 
 interface Invoice {
   id: string;
+  code?: string | null;
   visitId: string | null;
   patientId: string | null;
   totalMinor: number;
@@ -37,10 +39,6 @@ const STATUS_COLORS: Record<string, 'default' | 'secondary' | 'destructive' | 'o
   PAID: 'outline',
   VOIDED: 'destructive',
 };
-
-function formatMinor(minor: number): string {
-  return `฿${(minor / 100).toFixed(2)}`;
-}
 
 export default async function BillingPage() {
   const invoices = await getInvoices();
@@ -104,7 +102,9 @@ export default async function BillingPage() {
             )}
             {invoices.map((inv) => (
               <tr key={inv.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-mono text-xs text-gray-500">{inv.id.slice(0, 8)}…</td>
+                <td className="px-4 py-3 font-mono text-xs font-semibold text-blue-600">
+                  {inv.code ?? `${inv.id.slice(0, 8)}…`}
+                </td>
                 <td className="px-4 py-3 font-mono text-xs text-gray-500">
                   {inv.patientId ? `${inv.patientId.slice(0, 8)}…` : '—'}
                 </td>

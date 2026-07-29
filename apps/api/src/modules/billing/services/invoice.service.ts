@@ -9,6 +9,7 @@ import { scopedPrisma } from '@petiatrics/database';
 import { InvoiceCreatedEvent, InvoicePaidEvent, VisitFinalizedEvent } from '../../../common/events/domain-events';
 import { TaxEngineService } from './tax-engine.service';
 import { VisitService } from '../../clinical/services/visit.service';
+import { DocumentSequenceService, DOC_TYPE } from '../../document-sequence/services/document-sequence.service';
 
 export interface CreateInvoiceLineItemDto {
   itemType: 'SERVICE' | 'PRODUCT';
@@ -17,6 +18,7 @@ export interface CreateInvoiceLineItemDto {
   unitPriceMinor: number;
   /** Product ID — required for PRODUCT type lines to resolve VAT and dispensing compliance. */
   sourceReferenceId?: string;
+  productId?: string;
 }
 
 export interface CreateInvoiceDto {
@@ -43,11 +45,21 @@ export class InvoiceService {
     private readonly events: EventEmitter2,
     private readonly taxEngine: TaxEngineService,
     private readonly visitService: VisitService,
+    private readonly sequenceService: DocumentSequenceService,
   ) {}
 
   async create(clinicId: string, dto: CreateInvoiceDto) {
     const db = scopedPrisma(this.prisma, clinicId);
     const isClinicContext = !!dto.visitId;
+
+    // Generate running sequence code for customer invoice
+    let code: string | undefined;
+    try {
+      code = await this.sequenceService.generate(clinicId, DOC_TYPE.CUSTOMER_INVOICE);
+    } catch (e) {
+      // Fall back gracefully if sequence generation fails
+      code = undefined;
+    }
 
     // ── 1. Expand accessories ────────────────────────────────────────────────
     const expandedLineItems: Array<CreateInvoiceLineItemDto & { expandedFromId?: string }> = [];
@@ -180,6 +192,7 @@ export class InvoiceService {
       return tx.invoice.create({
         data: {
           clinicId,
+          code: code ?? null,
           visitId: dto.visitId ?? null,
           patientId: dto.patientId ?? null,
           ownerUserId: dto.ownerUserId ?? null,
@@ -198,6 +211,7 @@ export class InvoiceService {
               vatRateBps: li.vatRateBps,
               vatTotalMinor: li.vatTotalMinor,
               sourceReferenceId: li.sourceReferenceId,
+              productId: li.productId ?? (li.itemType === 'PRODUCT' ? li.sourceReferenceId : undefined),
             })),
           },
         },

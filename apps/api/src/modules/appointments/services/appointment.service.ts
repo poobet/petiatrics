@@ -7,6 +7,8 @@ import { PrismaClient } from '@prisma/client';
 import { scopedPrisma } from '@petiatrics/database';
 import { intervalsOverlap, appointmentEnd } from '../utils/overlap-detection.util';
 
+import { DocumentSequenceService, DOC_TYPE } from '../../document-sequence/services/document-sequence.service';
+
 export interface CreateAppointmentDto {
   patientId: string;
   ownerUserId: string;
@@ -23,7 +25,10 @@ export interface UpdateStatusDto {
 
 @Injectable()
 export class AppointmentService {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(
+    private readonly prisma: PrismaClient,
+    private readonly sequenceService: DocumentSequenceService,
+  ) {}
 
   async create(clinicId: string, dto: CreateAppointmentDto) {
     // Per-vet overlap detection
@@ -36,10 +41,19 @@ export class AppointmentService {
       );
     }
 
+    // Generate running sequence code for appointment
+    let code: string | undefined;
+    try {
+      code = await this.sequenceService.generate(clinicId, DOC_TYPE.APPOINTMENT);
+    } catch (e) {
+      code = undefined;
+    }
+
     const db = scopedPrisma(this.prisma, clinicId);
     return db.appointment.create({
       data: {
         clinicId,
+        code: code ?? null,
         patientId: dto.patientId,
         ownerUserId: dto.ownerUserId,
         vetUserId: dto.vetUserId,

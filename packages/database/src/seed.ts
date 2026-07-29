@@ -71,12 +71,12 @@ async function main() {
 
   // ── 0a. DocumentTypeDefinition — system built-in types ─────────────────────
   const systemDocTypes = [
-    { code: 'PURCHASE_ORDER', label: 'Purchase Order', defaultTemplate: 'PO{yyyy}-{number:4}' },
-    { code: 'GOODS_RECEIPT', label: 'Goods Receipt', defaultTemplate: 'GR{yyyy}-{number:4}' },
-    { code: 'PURCHASE_INVOICE', label: 'Purchase Invoice', defaultTemplate: 'PI{yyyy}-{number:4}' },
-    { code: 'SUPPLIER_PAYMENT', label: 'Supplier Payment', defaultTemplate: 'SP{yyyy}-{number:4}' },
-    { code: 'CUSTOMER_INVOICE', label: 'Customer Invoice', defaultTemplate: 'INV{yyyy}-{number:4}' },
-    { code: 'APPOINTMENT', label: 'Appointment', defaultTemplate: 'APT{yyyy}-{number:4}' },
+    { code: 'PURCHASE_ORDER', label: 'Purchase Order', defaultTemplate: 'PO{yyyy}-{number:4}', module: 'PROCUREMENT' },
+    { code: 'GOODS_RECEIPT', label: 'Goods Receipt', defaultTemplate: 'GR{yyyy}-{number:4}', module: 'PROCUREMENT' },
+    { code: 'PURCHASE_INVOICE', label: 'Purchase Invoice', defaultTemplate: 'PI{yyyy}-{number:4}', module: 'PROCUREMENT' },
+    { code: 'SUPPLIER_PAYMENT', label: 'Supplier Payment', defaultTemplate: 'SP{yyyy}-{number:4}', module: 'PROCUREMENT' },
+    { code: 'CUSTOMER_INVOICE', label: 'Customer Invoice', defaultTemplate: 'INV{yyyy}-{number:4}', module: 'BILLING' },
+    { code: 'APPOINTMENT', label: 'Appointment', defaultTemplate: 'APT{yyyy}-{number:4}', module: 'APPOINTMENT' },
   ];
 
   for (const dt of systemDocTypes) {
@@ -86,15 +86,16 @@ async function main() {
     if (existing) {
       await prisma.documentTypeDefinition.update({
         where: { id: existing.id },
-        data: { label: dt.label, defaultTemplate: dt.defaultTemplate, isSystem: true },
+        data: { label: dt.label, defaultTemplate: dt.defaultTemplate, isSystem: true, module: dt.module as any },
       });
     } else {
       await prisma.documentTypeDefinition.create({
-        data: { clinicId: null, code: dt.code, label: dt.label, defaultTemplate: dt.defaultTemplate, isSystem: true },
+        data: { clinicId: null, code: dt.code, label: dt.label, defaultTemplate: dt.defaultTemplate, isSystem: true, module: dt.module as any },
       });
     }
   }
   console.log('  ✓ System DocumentTypeDefinitions seeded');
+
 
   // ── 0. TaxCode — global RD-compliant reference data ───────────────────────
   //

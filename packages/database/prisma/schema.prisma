@@ -210,30 +210,30 @@ model Clinic {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
-  users                   User[]
-  branches                Branch[]
-  appointments            Appointment[]
-  products                Product[]
-  stockMovements          StockMovement[]
-  branchStockBalances     BranchStockBalance[]
-  stockAlerts             StockAlert[]
-  invoices                Invoice[]
-  businessPartners        BusinessPartner[]
-  bpGroups                BpGroup[]
-  rolePermissions         ClinicRolePermission[]
-  clinicRoles             ClinicRole[]             @relation("ClinicRoles")
-  purchaseOrders          PurchaseOrder[]
-  goodsReceipts           GoodsReceipt[]
-  purchaseInvoices        PurchaseInvoice[]
-  supplierPayments        SupplierPayment[]
-  documentSequenceConfigs DocumentSequenceConfig[]
-  documentTypeDefinitions DocumentTypeDefinition[]
+  users                    User[]
+  branches                 Branch[]
+  appointments             Appointment[]
+  products                 Product[]
+  stockMovements           StockMovement[]
+  branchStockBalances      BranchStockBalance[]
+  stockAlerts              StockAlert[]
+  invoices                 Invoice[]
+  businessPartners         BusinessPartner[]
+  bpGroups                 BpGroup[]
+  rolePermissions          ClinicRolePermission[]
+  clinicRoles              ClinicRole[]              @relation("ClinicRoles")
+  purchaseOrders           PurchaseOrder[]
+  goodsReceipts            GoodsReceipt[]
+  purchaseInvoices         PurchaseInvoice[]
+  supplierPayments         SupplierPayment[]
+  documentSequenceConfigs  DocumentSequenceConfig[]
+  documentTypeDefinitions  DocumentTypeDefinition[]
   matchingToleranceConfigs MatchingToleranceConfig[]
-  payments                Payment[]
-  journalEntries          JournalEntry[]
-  customerDeposits        CustomerDeposit[]
-  arOpenItems             ArOpenItem[]
-  cashierSessions         CashierSession[]
+  payments                 Payment[]
+  journalEntries           JournalEntry[]
+  customerDeposits         CustomerDeposit[]
+  arOpenItems              ArOpenItem[]
+  cashierSessions          CashierSession[]
 
   @@map("clinics")
 }
@@ -504,6 +504,7 @@ model BpContact {
 model Appointment {
   id                 String            @id @default(uuid())
   clinicId           String
+  code               String? // Auto-generated document sequence code (e.g. APT2026-0001)
   patientId          String // ObjectId ref to MongoDB PetProfile._id
   ownerUserId        String
   vetUserId          String?
@@ -662,6 +663,7 @@ model Product {
   goodsReceiptLines        GoodsReceiptLine[]
   purchaseInvoiceLines     PurchaseInvoiceLine[]
   branchSettings           ProductBranchSetting[]
+  invoiceLineItems         InvoiceLineItem[]
 
   @@unique([clinicId, code])
   @@unique([clinicId, sku])
@@ -783,6 +785,7 @@ model StockAlert {
 model Invoice {
   id            String        @id @default(uuid())
   clinicId      String
+  code          String? // Auto-generated document sequence code (e.g. INV2026-0001)
   visitId       String? // Nullable — null = Pet Shop Retail (OTC) context
   patientId     String? // Nullable — null = OTC checkout without patient link
   ownerUserId   String? // Nullable — null = OTC checkout
@@ -825,10 +828,13 @@ model InvoiceLineItem {
   vatRateBps        Int                 @default(0) // basis points — context-driven (700=7%, 0=exempt)
   vatTotalMinor     Int                 @default(0) // per-line VAT amount in minor units
   sourceReferenceId String?
+  productId         String?
 
-  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   @@index([invoiceId])
+  @@index([productId])
   @@map("invoice_line_items")
 }
 
@@ -981,39 +987,39 @@ enum MatchDiscrepancyType {
 // ─── Procurement Models ───────────────────────────────────────────────────────
 
 model PurchaseOrder {
-  id                 String              @id @default(uuid())
-  clinicId           String
-  supplierId         String
-  code               String              // System-generated running number
-  referenceNumber    String?             // Supplier's quotation or reference doc
-  status             PurchaseOrderStatus @default(DRAFT)
-  orderDate          DateTime            @default(now())
+  id                   String              @id @default(uuid())
+  clinicId             String
+  supplierId           String
+  code                 String // System-generated running number
+  referenceNumber      String? // Supplier's quotation or reference doc
+  status               PurchaseOrderStatus @default(DRAFT)
+  orderDate            DateTime            @default(now())
   expectedDeliveryDate DateTime?
-  creditTermDays     Int                 @default(0)
-  notes              String?             @db.Text
+  creditTermDays       Int                 @default(0)
+  notes                String?             @db.Text
 
   // Financials
-  subtotalMinor      Int                 @default(0)
-  discountTotalMinor Int                 @default(0) // Overall discount (line + header)
-  taxTotalMinor      Int                 @default(0)
-  totalMinor         Int                 @default(0)
+  subtotalMinor      Int @default(0)
+  discountTotalMinor Int @default(0) // Overall discount (line + header)
+  taxTotalMinor      Int @default(0)
+  totalMinor         Int @default(0)
 
   // Auditing
-  createdById        String
-  approvedById       String?
-  approvedAt         DateTime?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  deletedAt          DateTime?           // Soft delete support
+  createdById  String
+  approvedById String?
+  approvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime? // Soft delete support
 
   // Relations
-  clinic             Clinic              @relation(fields: [clinicId], references: [id], onDelete: Restrict)
-  supplier           BusinessPartner     @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-  createdBy          User                @relation("POCreatedBy", fields: [createdById], references: [id])
-  approvedBy         User?               @relation("POApprovedBy", fields: [approvedById], references: [id])
-  lines              PurchaseOrderLine[]
-  goodsReceipts      GoodsReceipt[]
-  purchaseInvoices   PurchaseInvoice[]
+  clinic           Clinic              @relation(fields: [clinicId], references: [id], onDelete: Restrict)
+  supplier         BusinessPartner     @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  createdBy        User                @relation("POCreatedBy", fields: [createdById], references: [id])
+  approvedBy       User?               @relation("POApprovedBy", fields: [approvedById], references: [id])
+  lines            PurchaseOrderLine[]
+  goodsReceipts    GoodsReceipt[]
+  purchaseInvoices PurchaseInvoice[]
 
   @@unique([clinicId, code])
   @@index([clinicId, status])
@@ -1022,24 +1028,24 @@ model PurchaseOrder {
 }
 
 model PurchaseOrderLine {
-  id               String   @id @default(uuid())
+  id               String  @id @default(uuid())
   purchaseOrderId  String
   productId        String
-  uomId            String?  // Alt UoM if ordered in alternate units
-  quantityOrdered  Decimal  @db.Decimal(10, 3)
-  quantityReceived Decimal  @default(0) @db.Decimal(10, 3)
-  quantityInvoiced Decimal  @default(0) @db.Decimal(10, 3)
+  uomId            String? // Alt UoM if ordered in alternate units
+  quantityOrdered  Decimal @db.Decimal(10, 3)
+  quantityReceived Decimal @default(0) @db.Decimal(10, 3)
+  quantityInvoiced Decimal @default(0) @db.Decimal(10, 3)
 
   // Financials
-  unitPriceMinor   Int
-  discountMinor    Int      @default(0) // Line-item discount in minor currency
-  subtotalMinor    Int
-  taxRateBps       Int      @default(0) // e.g. 700 = 7%
-  taxTotalMinor    Int      @default(0)
-  totalMinor       Int      @default(0)
+  unitPriceMinor Int
+  discountMinor  Int @default(0) // Line-item discount in minor currency
+  subtotalMinor  Int
+  taxRateBps     Int @default(0) // e.g. 700 = 7%
+  taxTotalMinor  Int @default(0)
+  totalMinor     Int @default(0)
 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   purchaseOrder PurchaseOrder         @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
   product       Product               @relation(fields: [productId], references: [id], onDelete: Restrict)
@@ -1200,6 +1206,15 @@ model SupplierPaymentAllocation {
 
 // ─── Document Sequencing ─────────────────────────────────────────────────────
 
+enum DocumentModule {
+  PROCUREMENT
+  BILLING
+  APPOINTMENT
+  INVENTORY
+  CLINICAL
+  GENERAL
+}
+
 enum SequenceScope {
   CLINIC
   BRANCH
@@ -1214,22 +1229,24 @@ enum ResetInterval {
 
 // Registry of document types (system built-ins + clinic-custom)
 model DocumentTypeDefinition {
-  id                   String        @id @default(uuid())
+  id                   String         @id @default(uuid())
   clinicId             String? // null = system-wide built-in
   code                 String // e.g. "PURCHASE_ORDER", "MY_CUSTOM_DOC"
   label                String // e.g. "Purchase Order"
+  module               DocumentModule @default(GENERAL)
   defaultTemplate      String // e.g. "PO{yyyy}-{number:4}"
-  defaultResetInterval ResetInterval @default(YEARLY)
-  scope                SequenceScope @default(CLINIC)
-  isSystem             Boolean       @default(false)
-  isActive             Boolean       @default(true)
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
+  defaultResetInterval ResetInterval  @default(YEARLY)
+  scope                SequenceScope  @default(CLINIC)
+  isSystem             Boolean        @default(false)
+  isActive             Boolean        @default(true)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
 
   clinic Clinic? @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
   @@unique([clinicId, code])
   @@index([clinicId])
+  @@index([module])
   @@map("document_type_definitions")
 }
 
@@ -1270,7 +1287,7 @@ model DocumentSequence {
 model MatchingToleranceConfig {
   id               String   @id @default(uuid())
   clinicId         String
-  categoryId       String?  // null = default for all categories
+  categoryId       String? // null = default for all categories
   tolerancePercent Decimal  @default(2.0) @db.Decimal(5, 2)
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
@@ -1332,34 +1349,34 @@ model CommissionRule {
 }
 
 model DfTransaction {
-  id                  String              @id @default(uuid())
-  clinicId            String
-  branchId            String
-  businessPartnerId   String
-  visitId             String?
-  invoiceId           String?
-  invoiceLineItemId   String?
-  productId           String?
+  id                String  @id @default(uuid())
+  clinicId          String
+  branchId          String
+  businessPartnerId String
+  visitId           String?
+  invoiceId         String?
+  invoiceLineItemId String?
+  productId         String?
 
-  revenueAmountMinor  Int
-  commissionType      CommissionType
-  commissionRate      Decimal             @db.Decimal(7, 4)
-  dfAmountMinor       Int
-  whtRate             Decimal             @default(0) @db.Decimal(5, 4)
-  whtAmountMinor      Int                 @default(0)
-  netPayableMinor     Int
+  revenueAmountMinor Int
+  commissionType     CommissionType
+  commissionRate     Decimal        @db.Decimal(7, 4)
+  dfAmountMinor      Int
+  whtRate            Decimal        @default(0) @db.Decimal(5, 4)
+  whtAmountMinor     Int            @default(0)
+  netPayableMinor    Int
 
-  status              DfTransactionStatus @default(ACCRUED)
-  accruedAt           DateTime            @default(now())
-  confirmedAt         DateTime?
-  settledAt           DateTime?
-  voidedAt            DateTime?
-  voidReason          String?
+  status      DfTransactionStatus @default(ACCRUED)
+  accruedAt   DateTime            @default(now())
+  confirmedAt DateTime?
+  settledAt   DateTime?
+  voidedAt    DateTime?
+  voidReason  String?
 
   paymentAllocationId String?
   idempotencyKey      String?
 
-  createdAt           DateTime            @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([clinicId, idempotencyKey])
   @@index([clinicId, businessPartnerId, status])
@@ -1370,29 +1387,29 @@ model DfTransaction {
 }
 
 model DfPaymentRun {
-  id                String             @id @default(uuid())
+  id                String   @id @default(uuid())
   clinicId          String
   code              String
   businessPartnerId String
   periodStart       DateTime
   periodEnd         DateTime
 
-  totalDfMinor      Int
-  totalWhtMinor     Int
-  totalNetMinor     Int
+  totalDfMinor  Int
+  totalWhtMinor Int
+  totalNetMinor Int
 
-  paymentMethod     String?
-  referenceNumber   String?
-  status            DfPaymentRunStatus @default(DRAFT)
+  paymentMethod   String?
+  referenceNumber String?
+  status          DfPaymentRunStatus @default(DRAFT)
 
-  approvedById      String?
-  approvedAt        DateTime?
-  paidAt            DateTime?
-  createdById       String
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  approvedById String?
+  approvedAt   DateTime?
+  paidAt       DateTime?
+  createdById  String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  allocations       DfPaymentAllocation[]
+  allocations DfPaymentAllocation[]
 
   @@unique([clinicId, code])
   @@index([clinicId, businessPartnerId])
@@ -1415,19 +1432,19 @@ model DfPaymentAllocation {
 }
 
 model WHTCertificate {
-  id                String   @id @default(uuid())
+  id                String  @id @default(uuid())
   clinicId          String
   code              String
   businessPartnerId String
   paymentRunId      String?
 
-  payerTaxId        String
-  payerName         String
-  payerAddress      String
+  payerTaxId   String
+  payerName    String
+  payerAddress String
 
-  payeeTaxId        String
-  payeeName         String
-  payeeAddress      String
+  payeeTaxId   String
+  payeeName    String
+  payeeAddress String
 
   incomeType        String
   incomeDescription String
@@ -1435,11 +1452,11 @@ model WHTCertificate {
   whtRateBps        Int
   whtAmountMinor    Int
 
-  taxMonth          Int
-  taxYear           Int
+  taxMonth Int
+  taxYear  Int
 
-  issuedAt          DateTime           @default(now())
-  createdAt         DateTime           @default(now())
+  issuedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([clinicId, code])
   @@index([clinicId, businessPartnerId])

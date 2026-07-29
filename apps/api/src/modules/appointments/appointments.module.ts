@@ -4,6 +4,8 @@ import { AppointmentService } from './services/appointment.service';
 import { ReminderService } from './services/reminder.service';
 import { AppointmentController } from './controllers/appointment.controller';
 
+import { DocumentSequenceModule } from '../document-sequence/document-sequence.module';
+
 /**
  * AppointmentsModule — US3: Appointment Scheduling
  *
@@ -11,6 +13,7 @@ import { AppointmentController } from './controllers/appointment.controller';
  * cancellation, 24-hour-before reminder polling.
  */
 @Module({
+  imports: [DocumentSequenceModule],
   controllers: [AppointmentController],
   providers: [
     {

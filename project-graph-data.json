@@ -1,8 +1,8 @@
 {
   "summary": {
-    "totalNodes": 1014,
-    "totalEdges": 1363,
-    "filesCount": 779,
+    "totalNodes": 1017,
+    "totalEdges": 1366,
+    "filesCount": 782,
     "foldersCount": 235
   },
   "nodes": [
@@ -4460,6 +4460,26 @@
         "category": "web-app",
         "ext": "ts",
         "path": "apps/web/lib/api-client.ts"
+      }
+    },
+    {
+      "data": {
+        "id": "apps/web/lib/currency.spec.ts",
+        "label": "currency.spec.ts",
+        "type": "file",
+        "category": "web-app",
+        "ext": "ts",
+        "path": "apps/web/lib/currency.spec.ts"
+      }
+    },
+    {
+      "data": {
+        "id": "apps/web/lib/currency.ts",
+        "label": "currency.ts",
+        "type": "file",
+        "category": "web-app",
+        "ext": "ts",
+        "path": "apps/web/lib/currency.ts"
       }
     },
     {
@@ -9189,6 +9209,16 @@
         "category": "ui-pkg",
         "ext": "json",
         "path": "packages/ui/tsconfig.stories.json"
+      }
+    },
+    {
+      "data": {
+        "id": "project-graph-data.json",
+        "label": "project-graph-data.json",
+        "type": "file",
+        "category": "root",
+        "ext": "json",
+        "path": "project-graph-data.json"
       }
     },
     {
@@ -15291,6 +15321,22 @@
     },
     {
       "data": {
+        "id": "tree_apps/web/lib_to_apps/web/lib/currency.spec.ts",
+        "source": "apps/web/lib",
+        "target": "apps/web/lib/currency.spec.ts",
+        "kind": "tree"
+      }
+    },
+    {
+      "data": {
+        "id": "tree_apps/web/lib_to_apps/web/lib/currency.ts",
+        "source": "apps/web/lib",
+        "target": "apps/web/lib/currency.ts",
+        "kind": "tree"
+      }
+    },
+    {
+      "data": {
         "id": "tree_apps/web/lib_to_apps/web/lib/push-notifications.ts",
         "source": "apps/web/lib",
         "target": "apps/web/lib/push-notifications.ts",
@@ -20222,6 +20268,14 @@
         "id": "tree_packages/ui_to_packages/ui/tsconfig.stories.json",
         "source": "packages/ui",
         "target": "packages/ui/tsconfig.stories.json",
+        "kind": "tree"
+      }
+    },
+    {
+      "data": {
+        "id": "tree_root_to_project-graph-data.json",
+        "source": "root",
+        "target": "project-graph-data.json",
         "kind": "tree"
       }
     },

@@ -12,12 +12,13 @@ import { ReportController } from './controllers/report.controller';
 import { PaymentController } from './controllers/payment.controller';
 import { IdentityModule } from '../identity/identity.module';
 import { ClinicalModule } from '../clinical/clinical.module';
+import { DocumentSequenceModule } from '../document-sequence/document-sequence.module';
 
 /**
  * BillingModule — US5: Billing & Invoicing
  */
 @Module({
-  imports: [IdentityModule, ClinicalModule],
+  imports: [IdentityModule, ClinicalModule, DocumentSequenceModule],
   controllers: [InvoiceController, ReportController, PaymentController],
   providers: [
     { provide: PrismaClient, useFactory: () => new PrismaClient() },

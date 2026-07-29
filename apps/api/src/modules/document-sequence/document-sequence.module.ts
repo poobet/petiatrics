@@ -5,11 +5,13 @@ import { DocumentTypeService } from './services/document-type.service';
 import { SequenceConfigService } from './services/sequence-config.service';
 import { DocumentTypeController } from './controllers/document-type.controller';
 import { SequenceConfigController } from './controllers/sequence-config.controller';
+import { DocumentSequenceController } from './controllers/document-sequence.controller';
 
 @Module({
   controllers: [
     DocumentTypeController,
     SequenceConfigController,
+    DocumentSequenceController,
   ],
   providers: [
     {

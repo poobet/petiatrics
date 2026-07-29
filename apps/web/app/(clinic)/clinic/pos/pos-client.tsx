@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Search, Trash2, ShoppingCart, AlertTriangle, Lock, CheckCircle, X, Loader2, CreditCard } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { useSessionStore } from '@/lib/session-store';
+import { formatMinor } from '@/lib/currency';
 import { cn } from '@petiatrics/ui';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -37,10 +38,6 @@ type SalesContext = 'OTC' | 'CLINICAL';
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const CONTROLLED = ['Dangerous_Drug', 'Specially_Controlled_Drug', 'Clinic_Use_Only'];
-
-function formatMinor(minor: number) {
-  return `฿${(minor / 100).toFixed(2)}`;
-}
 
 function resolveClientVatBps(vatType: string, ctx: SalesContext): number {
   if (ctx === 'CLINICAL') return 700;

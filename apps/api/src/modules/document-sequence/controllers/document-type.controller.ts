@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from '@nestjs/common';
 import { Roles } from '../../../common/guards/roles.decorator';
 import { TenantId } from '../../../common/decorators/tenant.decorator';
 import { Role } from '@petiatrics/types';
+import { DocumentModule } from '@prisma/client';
 import { DocumentTypeService, CreateDocumentTypeDto, UpdateDocumentTypeDto } from '../services/document-type.service';
 
 @Controller('document-sequence/types')
@@ -10,8 +11,11 @@ export class DocumentTypeController {
   constructor(private readonly documentTypeService: DocumentTypeService) {}
 
   @Get()
-  findAll(@TenantId() clinicId: string) {
-    return this.documentTypeService.findAll(clinicId);
+  findAll(
+    @TenantId() clinicId: string,
+    @Query('module') module?: DocumentModule,
+  ) {
+    return this.documentTypeService.findAll(clinicId, module);
   }
 
   @Post()
