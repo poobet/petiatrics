@@ -192,6 +192,25 @@ enum SessionStatus {
   CLOSED
 }
 
+enum AccountingPeriodStatus {
+  OPEN
+  CLOSING
+  CLOSED
+}
+
+enum DocumentType {
+  INVOICE
+  CREDIT_NOTE
+  DEBIT_NOTE
+}
+
+enum DfTransactionType {
+  NORMAL
+  ADJUSTMENT_ADD
+  ADJUSTMENT_DEDUCT
+}
+
+
 // ─── Clinic (Tenant Root) ────────────────────────────────────────────────────
 
 model Clinic {
@@ -234,6 +253,7 @@ model Clinic {
   customerDeposits         CustomerDeposit[]
   arOpenItems              ArOpenItem[]
   cashierSessions          CashierSession[]
+  accountingPeriods        AccountingPeriod[]
 
   @@map("clinics")
 }
@@ -310,6 +330,7 @@ model User {
   customerDeposits       CustomerDeposit[]
   arOpenItems            ArOpenItem[]
   cashierSessions        CashierSession[]
+  closedAccountingPeriods AccountingPeriod[]
 
   @@index([clinicId])
   @@index([email])
@@ -783,35 +804,41 @@ model StockAlert {
 // ─── Invoice ─────────────────────────────────────────────────────────────────
 
 model Invoice {
-  id            String        @id @default(uuid())
-  clinicId      String
-  code          String? // Auto-generated document sequence code (e.g. INV2026-0001)
-  visitId       String? // Nullable — null = Pet Shop Retail (OTC) context
-  patientId     String? // Nullable — null = OTC checkout without patient link
-  ownerUserId   String? // Nullable — null = OTC checkout
-  subtotalMinor Int
-  taxRateBps    Int           @default(0)
-  taxTotalMinor Int
-  totalMinor    Int
-  status        InvoiceStatus @default(DRAFT)
-  issuedAt      DateTime?
-  paidAt        DateTime?
-  voidedAt      DateTime?
-  voidReason    String?
-  voidActorId   String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id                 String        @id @default(uuid())
+  clinicId           String
+  code               String? // Auto-generated document sequence code (e.g. INV2026-0001)
+  visitId            String? // Nullable — null = Pet Shop Retail (OTC) context
+  patientId          String? // Nullable — null = OTC checkout without patient link
+  ownerUserId        String? // Nullable — null = OTC checkout
+  documentType       DocumentType  @default(INVOICE)
+  referenceInvoiceId String? // FK to reference Invoice for CN/DN
+  reasonCode         String? // Reason code for CN/DN
+  subtotalMinor      Int
+  taxRateBps         Int           @default(0)
+  taxTotalMinor      Int
+  totalMinor         Int
+  status             InvoiceStatus @default(DRAFT)
+  issuedAt           DateTime?
+  paidAt             DateTime?
+  voidedAt           DateTime?
+  voidReason         String?
+  voidActorId        String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
-  clinic     Clinic            @relation(fields: [clinicId], references: [id])
-  lineItems  InvoiceLineItem[]
-  payments   Payment[]
-  arOpenItem ArOpenItem?
+  clinic           Clinic            @relation(fields: [clinicId], references: [id])
+  lineItems        InvoiceLineItem[]
+  payments         Payment[]
+  arOpenItem       ArOpenItem?
+  referenceInvoice Invoice?          @relation("CreditNoteReference", fields: [referenceInvoiceId], references: [id])
+  creditNotes      Invoice[]         @relation("CreditNoteReference")
 
   @@index([clinicId])
   @@index([clinicId, ownerUserId])
   @@index([visitId])
   @@index([clinicId, status])
   @@index([clinicId, status, createdAt])
+  @@index([referenceInvoiceId])
   @@map("invoices")
 }
 
@@ -1349,21 +1376,24 @@ model CommissionRule {
 }
 
 model DfTransaction {
-  id                String  @id @default(uuid())
-  clinicId          String
-  branchId          String
-  businessPartnerId String
-  visitId           String?
-  invoiceId         String?
-  invoiceLineItemId String?
-  productId         String?
+  id                     String            @id @default(uuid())
+  clinicId               String
+  branchId               String
+  businessPartnerId      String
+  visitId                String?
+  invoiceId              String?
+  invoiceLineItemId      String?
+  productId              String?
+  transactionType        DfTransactionType @default(NORMAL)
+  adjustmentReason       String?
+  referenceTransactionId String?
 
   revenueAmountMinor Int
   commissionType     CommissionType
-  commissionRate     Decimal        @db.Decimal(7, 4)
+  commissionRate     Decimal           @db.Decimal(7, 4)
   dfAmountMinor      Int
-  whtRate            Decimal        @default(0) @db.Decimal(5, 4)
-  whtAmountMinor     Int            @default(0)
+  whtRate            Decimal           @default(0) @db.Decimal(5, 4)
+  whtAmountMinor     Int               @default(0)
   netPayableMinor    Int
 
   status      DfTransactionStatus @default(ACCRUED)
@@ -1619,3 +1649,29 @@ model CashierSession {
   @@index([clinicId, cashierUserId, status])
   @@map("cashier_sessions")
 }
+
+// ─── Accounting Period Management ──────────────────────────────────────────────
+
+model AccountingPeriod {
+  id         String                 @id @default(uuid())
+  clinicId   String
+  branchId   String?
+  year       Int
+  month      Int
+  startDate  DateTime
+  endDate    DateTime
+  status     AccountingPeriodStatus @default(OPEN)
+  closedById String?
+  closedAt   DateTime?
+  reopenReason String?
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+  closedBy User?   @relation(fields: [closedById], references: [id])
+
+  @@unique([clinicId, year, month])
+  @@index([clinicId, status])
+  @@map("accounting_periods")
+}
+
