@@ -35,6 +35,12 @@ describe('UserService', () => {
       $queryRaw: jest.fn().mockResolvedValue([
         { id: 'group-customer-1', prefix: 'C-', currentSequence: 0 },
       ]),
+      clinicRole: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      bpVet: {
+        create: jest.fn().mockResolvedValue({}),
+      },
     };
 
     prismaMock = {
@@ -58,6 +64,9 @@ describe('UserService', () => {
         findMany: jest.fn().mockResolvedValue([]),
         upsert: jest.fn().mockImplementation(({ create }) => Promise.resolve(create)),
       },
+      clinicRole: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
     };
 
     const module = await Test.createTestingModule({
@@ -76,14 +85,14 @@ describe('UserService', () => {
         usernamePrefix: 'john.vet',
         clinicSlug: 'happy-paws',
         clinicId: 'clinic-1',
-        name: 'John Vet',
+        name: 'John Staff',
         temporaryPassword: 'Password1!',
-        role: Role.VET,
+        role: Role.ASSISTANT,
       });
 
       expect(result.id).toBe('user-created-id');
       expect(txMock.user.create).toHaveBeenCalled();
-      expect(txMock.businessPartner.create).not.toHaveBeenCalled();
+      expect(txMock.businessPartner.create).toHaveBeenCalled();
     });
 
     it('creates customer user and automatically generates their BusinessPartner when role is CUSTOMER', async () => {
