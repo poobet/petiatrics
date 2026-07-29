@@ -8,6 +8,8 @@ export const DOC_TYPE = {
   PURCHASE_INVOICE: 'PURCHASE_INVOICE',
   SUPPLIER_PAYMENT: 'SUPPLIER_PAYMENT',
   CUSTOMER_INVOICE: 'CUSTOMER_INVOICE',
+  CREDIT_NOTE: 'CREDIT_NOTE',
+  DEBIT_NOTE: 'DEBIT_NOTE',
   APPOINTMENT: 'APPOINTMENT',
 } as const;
 
@@ -20,6 +22,8 @@ const SYSTEM_DEFAULTS: Record<string, { template: string; resetInterval: ResetIn
   PURCHASE_INVOICE: { template: 'PI{yyyy}-{number:4}', resetInterval: ResetInterval.YEARLY },
   SUPPLIER_PAYMENT: { template: 'SP{yyyy}-{number:4}', resetInterval: ResetInterval.YEARLY },
   CUSTOMER_INVOICE: { template: 'INV{yyyy}-{number:4}', resetInterval: ResetInterval.YEARLY },
+  CREDIT_NOTE: { template: 'CN{yyyy}-{number:4}', resetInterval: ResetInterval.YEARLY },
+  DEBIT_NOTE: { template: 'DN{yyyy}-{number:4}', resetInterval: ResetInterval.YEARLY },
   APPOINTMENT: { template: 'APT{yyyy}-{number:4}', resetInterval: ResetInterval.YEARLY },
 };
 

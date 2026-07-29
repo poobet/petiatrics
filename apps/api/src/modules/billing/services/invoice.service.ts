@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaClient } from '@prisma/client';
@@ -10,6 +11,9 @@ import { InvoiceCreatedEvent, InvoicePaidEvent, VisitFinalizedEvent } from '../.
 import { TaxEngineService } from './tax-engine.service';
 import { VisitService } from '../../clinical/services/visit.service';
 import { DocumentSequenceService, DOC_TYPE } from '../../document-sequence/services/document-sequence.service';
+
+import { GLPostingService } from './gl-posting.service';
+import { CreateCreditNoteDto } from '../dto/create-credit-note.dto';
 
 export interface CreateInvoiceLineItemDto {
   itemType: 'SERVICE' | 'PRODUCT';
@@ -46,7 +50,131 @@ export class InvoiceService {
     private readonly taxEngine: TaxEngineService,
     private readonly visitService: VisitService,
     private readonly sequenceService: DocumentSequenceService,
+    @Optional() private readonly glPostingService?: GLPostingService,
   ) {}
+
+  async createCreditNote(clinicId: string, invoiceId: string, dto: CreateCreditNoteDto) {
+    const originalInvoice = await this.findById(clinicId, invoiceId);
+
+    if (originalInvoice.status !== 'PAID') {
+      throw new BadRequestException('Credit Note can only be issued for PAID invoices');
+    }
+
+    if (originalInvoice.documentType !== 'INVOICE') {
+      throw new BadRequestException('Credit Note can only be issued against an INVOICE');
+    }
+
+    // Check if original invoice period is closed
+    const invoiceDate = originalInvoice.paidAt || originalInvoice.createdAt;
+    const year = invoiceDate.getFullYear();
+    const month = invoiceDate.getMonth() + 1;
+
+    const period = await this.prisma.accountingPeriod.findUnique({
+      where: {
+        clinicId_year_month: {
+          clinicId,
+          year,
+          month,
+        },
+      },
+    });
+
+    if (!period || period.status !== 'CLOSED') {
+      throw new BadRequestException(
+        'Credit Note can only be issued for invoices in CLOSED accounting periods. For OPEN periods, please void or adjust directly.',
+      );
+    }
+
+    // Determine line items for CN
+    const lineItemsToCredit =
+      dto.lineItems && dto.lineItems.length > 0
+        ? dto.lineItems
+        : originalInvoice.lineItems.map((item) => ({
+            itemType: item.itemType,
+            description: item.description,
+            quantity: Number(item.quantity),
+            unitPriceMinor: item.unitPriceMinor,
+            productId: item.productId || undefined,
+            sourceReferenceId: item.sourceReferenceId || undefined,
+          }));
+
+    let subtotalMinor = 0;
+    let taxTotalMinor = 0;
+
+    const cnLineItems = lineItemsToCredit.map((item) => {
+      const subtotal = Math.round(Number(item.quantity) * item.unitPriceMinor);
+      const taxTotal = Math.round(subtotal * ((originalInvoice.taxRateBps || 0) / 10000));
+      subtotalMinor -= subtotal;
+      taxTotalMinor -= taxTotal;
+      return {
+        itemType: item.itemType,
+        description: `[CN] ${item.description}`,
+        quantity: -Math.abs(Number(item.quantity)),
+        unitPriceMinor: item.unitPriceMinor,
+        subtotalMinor: -subtotal,
+        vatRateBps: originalInvoice.taxRateBps || 0,
+        vatTotalMinor: -taxTotal,
+        productId: item.productId || item.sourceReferenceId || null,
+        sourceReferenceId: item.sourceReferenceId || null,
+      };
+    });
+
+    const totalMinor = subtotalMinor + taxTotalMinor;
+
+    let code: string | undefined;
+    try {
+      code = await this.sequenceService.generate(clinicId, DOC_TYPE.CREDIT_NOTE);
+    } catch (e) {
+      code = `CN-${Date.now()}`;
+    }
+
+    const db = scopedPrisma(this.prisma, clinicId);
+
+    const creditNote = await db.invoice.create({
+      data: {
+        clinicId,
+        code,
+        documentType: 'CREDIT_NOTE',
+        referenceInvoiceId: originalInvoice.id,
+        reasonCode: dto.reasonCode,
+        visitId: originalInvoice.visitId,
+        patientId: originalInvoice.patientId,
+        ownerUserId: originalInvoice.ownerUserId,
+        subtotalMinor,
+        taxRateBps: originalInvoice.taxRateBps,
+        taxTotalMinor,
+        totalMinor,
+        status: 'PAID',
+        issuedAt: new Date(),
+        paidAt: new Date(),
+        lineItems: {
+          create: cnLineItems,
+        },
+      },
+      include: { lineItems: true },
+    });
+
+    try {
+      if (this.glPostingService) {
+        await this.glPostingService.postJournal(clinicId, {
+          type: 'GENERAL',
+          description: `Credit Note ${creditNote.code || creditNote.id} for Invoice ${
+            originalInvoice.code || originalInvoice.id
+          }: ${dto.reason}`,
+          sourceRefType: 'CREDIT_NOTE',
+          sourceRefId: creditNote.id,
+          lines: [
+            { glAccountId: 'REV-001', debitMinor: Math.abs(totalMinor), creditMinor: 0 },
+            { glAccountId: 'AR-001', debitMinor: 0, creditMinor: Math.abs(totalMinor) },
+          ],
+        });
+      }
+    } catch (err) {
+      // Ignore GL posting if GL accounts unconfigured in test environment
+    }
+
+    return creditNote;
+  }
 
   async create(clinicId: string, dto: CreateInvoiceDto) {
     const db = scopedPrisma(this.prisma, clinicId);

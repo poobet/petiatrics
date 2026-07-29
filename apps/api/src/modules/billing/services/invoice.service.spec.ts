@@ -3,7 +3,9 @@ import { PrismaClient } from '@prisma/client';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InvoiceService, CreateInvoiceDto } from './invoice.service';
 import { TaxEngineService } from './tax-engine.service';
+import { GLPostingService } from './gl-posting.service';
 import { VisitService } from '../../clinical/services/visit.service';
+import { DocumentSequenceService } from '../../document-sequence/services/document-sequence.service';
 import { DispensingCategory, DefaultVatType } from '@petiatrics/types';
 
 jest.mock('@petiatrics/database', () => ({
@@ -24,6 +26,9 @@ function buildPrismaMock() {
       findMany: jest.fn(),
       update: jest.fn(),
       aggregate: jest.fn(),
+    },
+    accountingPeriod: {
+      findUnique: jest.fn(),
     },
     productAccessory: {
       findMany: jest.fn().mockResolvedValue([]),
@@ -69,6 +74,14 @@ describe('InvoiceService', () => {
         { provide: EventEmitter2, useValue: events },
         { provide: TaxEngineService, useValue: taxEngine },
         { provide: VisitService, useValue: visitService },
+        {
+          provide: DocumentSequenceService,
+          useValue: { generate: jest.fn().mockResolvedValue('CN2026-0001') },
+        },
+        {
+          provide: GLPostingService,
+          useValue: { postJournal: jest.fn() },
+        },
       ],
     }).compile();
 
@@ -386,6 +399,72 @@ describe('InvoiceService', () => {
       await expect(service.create('clinic-1', dto)).rejects.toThrow(
         'cannot be sold at retail (OTC)',
       );
+    });
+  });
+
+  describe('createCreditNote()', () => {
+    it('creates a Credit Note with negative amounts for a PAID invoice in a CLOSED period', async () => {
+      prisma.invoice.findFirst.mockResolvedValue({
+        id: 'inv-1',
+        clinicId: 'clinic-1',
+        status: 'PAID',
+        documentType: 'INVOICE',
+        taxRateBps: 700,
+        paidAt: new Date('2026-06-15'),
+        lineItems: [
+          { itemType: 'SERVICE', description: 'Vet Exam', quantity: 1, unitPriceMinor: 50000 },
+        ],
+      });
+
+      prisma.accountingPeriod.findUnique.mockResolvedValue({
+        id: 'p-1',
+        clinicId: 'clinic-1',
+        year: 2026,
+        month: 6,
+        status: 'CLOSED',
+      });
+
+      prisma.invoice.create.mockResolvedValue({
+        id: 'cn-1',
+        code: 'CN2026-0001',
+        documentType: 'CREDIT_NOTE',
+        referenceInvoiceId: 'inv-1',
+        totalMinor: -53500,
+      });
+
+      const result = await service.createCreditNote('clinic-1', 'inv-1', {
+        reasonCode: 'WRONG_PRICE',
+        reason: 'Overcharged customer',
+      });
+
+      expect(result.documentType).toBe('CREDIT_NOTE');
+      expect(result.totalMinor).toBe(-53500);
+    });
+
+    it('throws BadRequestException if period is OPEN', async () => {
+      prisma.invoice.findFirst.mockResolvedValue({
+        id: 'inv-1',
+        clinicId: 'clinic-1',
+        status: 'PAID',
+        documentType: 'INVOICE',
+        paidAt: new Date('2026-07-15'),
+        lineItems: [],
+      });
+
+      prisma.accountingPeriod.findUnique.mockResolvedValue({
+        id: 'p-2',
+        clinicId: 'clinic-1',
+        year: 2026,
+        month: 7,
+        status: 'OPEN',
+      });
+
+      await expect(
+        service.createCreditNote('clinic-1', 'inv-1', {
+          reasonCode: 'WRONG_PRICE',
+          reason: 'Overcharged',
+        }),
+      ).rejects.toThrow('CLOSED accounting periods');
     });
   });
 });

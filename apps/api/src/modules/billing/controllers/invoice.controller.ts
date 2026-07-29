@@ -25,6 +25,8 @@ export class VerifyOverridePinDto {
   pin!: string;
 }
 
+import { CreateCreditNoteDto } from '../dto/create-credit-note.dto';
+
 @Controller('billing/invoices')
 export class InvoiceController {
   constructor(
@@ -93,6 +95,18 @@ export class InvoiceController {
     @Param('id') id: string,
   ) {
     return this.invoiceService.markPaid(clinicId, id);
+  }
+
+  @Post(':id/credit-note')
+  @Roles(Role.CASHIER, Role.CLINIC_OWNER)
+  @Permissions('BILLING:EDIT')
+  @Audit({ entity: 'Invoice', operation: 'create_credit_note' })
+  createCreditNote(
+    @TenantId() clinicId: string,
+    @Param('id') id: string,
+    @Body() dto: CreateCreditNoteDto,
+  ) {
+    return this.invoiceService.createCreditNote(clinicId, id, dto);
   }
 
   @Delete(':id')
