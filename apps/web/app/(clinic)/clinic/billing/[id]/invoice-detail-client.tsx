@@ -77,11 +77,27 @@ export default function InvoiceDetailClient({ invoice: initialInvoice }: { invoi
     setVoidReason('');
   }
 
+  const [showCnModal, setShowCnModal] = useState(false);
+  const [cnReasonCode, setCnReasonCode] = useState('WRONG_PRICE');
+  const [cnReason, setCnReason] = useState('');
+
+  async function handleIssueCreditNote(e: React.FormEvent) {
+    e.preventDefault();
+    if (!cnReason.trim()) return;
+    await performAction(`/api/v1/billing/invoices/${invoice.id}/credit-note`, 'POST', {
+      reasonCode: cnReasonCode,
+      reason: cnReason,
+    });
+    setShowCnModal(false);
+    setCnReason('');
+  }
+
   const STATUS_BG: Record<string, string> = {
     DRAFT: 'bg-gray-100 text-gray-700',
     ISSUED: 'bg-yellow-100 text-yellow-700',
     PAID: 'bg-green-100 text-green-700',
     VOIDED: 'bg-red-100 text-red-700',
+    CREDIT_NOTE: 'bg-purple-100 text-purple-700',
   };
 
   return (
@@ -217,6 +233,15 @@ export default function InvoiceDetailClient({ invoice: initialInvoice }: { invoi
               Mark as Paid
             </button>
           )}
+          {invoice.status === 'PAID' && (
+            <button
+              onClick={() => setShowCnModal(true)}
+              disabled={actionLoading}
+              className="px-4 py-2 bg-purple-600 text-white rounded-md text-sm hover:bg-purple-700 disabled:opacity-50"
+            >
+              📄 ออกใบลดหนี้ (Issue Credit Note / Refund)
+            </button>
+          )}
           {(invoice.status === 'DRAFT' || invoice.status === 'ISSUED') && (
             <button
               onClick={() => setShowVoidDialog(true)}
@@ -226,6 +251,61 @@ export default function InvoiceDetailClient({ invoice: initialInvoice }: { invoi
               Void
             </button>
           )}
+        </div>
+      )}
+
+      {/* Credit Note Modal */}
+      {showCnModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <form onSubmit={handleIssueCreditNote} className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl space-y-4">
+            <h3 className="text-lg font-bold text-gray-900">ออกใบลดหนี้ / คืนเงิน (Issue Credit Note)</h3>
+            <p className="text-xs text-gray-500">
+              สร้างใบลดหนี้ (Credit Note) อ้างอิงถึง Invoice ใบเดิมในเดือนปัจจุบัน (Forward-Only Adjustment)
+            </p>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">รหัสเหตุผล (Reason Code)</label>
+              <select
+                value={cnReasonCode}
+                onChange={(e) => setCnReasonCode(e.target.value)}
+                className="w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="WRONG_PRICE">WRONG_PRICE - คิดเงินเกิน / ราคาผิด</option>
+                <option value="DEFECTIVE">DEFECTIVE - สินค้าชำรุด / เสียหาย</option>
+                <option value="CUSTOMER_RETURN">CUSTOMER_RETURN - คืนสินค้า / ยกเลิกบริการ</option>
+                <option value="OTHER">OTHER - อื่นๆ</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">รายละเอียด / หมายเหตุ</label>
+              <textarea
+                value={cnReason}
+                onChange={(e) => setCnReason(e.target.value)}
+                required
+                rows={3}
+                placeholder="ระบุเหตุผลการคืนเงิน/ออกใบลดหนี้..."
+                className="w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowCnModal(false)}
+                className="px-4 py-2 border rounded-md text-sm"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="submit"
+                disabled={!cnReason.trim() || actionLoading}
+                className="px-4 py-2 bg-purple-600 text-white rounded-md text-sm hover:bg-purple-700 disabled:opacity-50"
+              >
+                {actionLoading ? 'กำลังสร้าง…' : 'ยืนยันออกใบลดหนี้'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
