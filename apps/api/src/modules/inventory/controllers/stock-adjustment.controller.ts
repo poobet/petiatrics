@@ -18,6 +18,9 @@ import { StockAdjustmentService } from '../services/stock-adjustment.service';
 import { SubmitAdjustmentDto } from '../dto/submit-adjustment.dto';
 import { RejectAdjustmentDto } from '../dto/reject-adjustment.dto';
 
+import { PeriodClosingGuard } from '../../../common/guards/period-closing.guard';
+import { CheckPeriodField } from '../../../common/decorators/check-period-field.decorator';
+
 @Controller('inventory/stock-adjustments')
 export class StockAdjustmentController {
   constructor(private readonly adjustmentService: StockAdjustmentService) {}
@@ -34,7 +37,8 @@ export class StockAdjustmentController {
 
   @Post()
   @Roles(Role.CLINIC_OWNER)
-  @UseGuards(BranchContextGuard)
+  @UseGuards(BranchContextGuard, PeriodClosingGuard)
+  @CheckPeriodField('adjustmentDate')
   @Audit({ entity: 'StockMovement', operation: 'create' })
   submit(
     @TenantId() clinicId: string,

@@ -26,4 +26,8 @@ export class SubmitAdjustmentDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  adjustmentDate?: string;
 }
