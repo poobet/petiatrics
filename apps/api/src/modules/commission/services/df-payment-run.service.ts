@@ -49,6 +49,12 @@ export class DfPaymentRunService {
       totalNetMinor += tx.netPayableMinor;
     }
 
+    if (totalNetMinor < 0) {
+      throw new BadRequestException(
+        `Cannot create payment run with negative net total amount (฿${(totalNetMinor / 100).toFixed(2)})`,
+      );
+    }
+
     const count = await this.prisma.dfPaymentRun.count({ where: { clinicId } });
     const code = `DFP-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
 

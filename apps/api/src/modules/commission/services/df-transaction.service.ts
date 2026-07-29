@@ -3,8 +3,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaClient, DfTransactionStatus, CommissionType } from '@prisma/client';
+import { PrismaClient, DfTransactionStatus, CommissionType, EmploymentType } from '@prisma/client';
 import { DfQueryDto } from '../dto/df-query.dto';
+import { CreateDfAdjustmentDto, DfAdjustmentTypeDto } from '../dto/create-df-adjustment.dto';
 
 export interface CreateAccrualInput {
   clinicId: string;
@@ -187,6 +188,40 @@ export class DfTransactionService {
         status: DfTransactionStatus.VOIDED,
         voidedAt: new Date(),
         voidReason,
+      },
+    });
+  }
+
+  async createAdjustment(clinicId: string, dto: CreateDfAdjustmentDto) {
+    const isDeduct = dto.type === DfAdjustmentTypeDto.ADJUSTMENT_DEDUCT;
+    const dfAmountMinor = isDeduct ? -Math.abs(dto.amountMinor) : Math.abs(dto.amountMinor);
+
+    const bpVet = await this.prisma.bpVet.findUnique({
+      where: { bpId: dto.businessPartnerId },
+    });
+
+    const whtRateDecimal = bpVet?.employmentType === EmploymentType.FREELANCE ? 0.03 : 0;
+    const whtAmountMinor = Math.round(dfAmountMinor * whtRateDecimal);
+    const netPayableMinor = dfAmountMinor - whtAmountMinor;
+
+    return this.prisma.dfTransaction.create({
+      data: {
+        clinicId,
+        branchId: dto.branchId || 'CLINIC',
+        businessPartnerId: dto.businessPartnerId,
+        transactionType: dto.type as any,
+        adjustmentReason: dto.reason,
+        referenceTransactionId: dto.referenceTransactionId || null,
+        revenueAmountMinor: 0,
+        commissionType: 'FLAT_RATE',
+        commissionRate: 0,
+        dfAmountMinor,
+        whtRate: whtRateDecimal,
+        whtAmountMinor,
+        netPayableMinor,
+        status: DfTransactionStatus.CONFIRMED,
+        accruedAt: new Date(),
+        confirmedAt: new Date(),
       },
     });
   }

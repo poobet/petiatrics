@@ -87,4 +87,22 @@ describe('DfTransactionService', () => {
     const result = await service.voidByInvoiceId('clinic-1', 'inv-1', 'Void reason');
     expect(result.count).toBe(3);
   });
+
+  describe('createAdjustment()', () => {
+    it('creates a CONFIRMED manual adjustment transaction', async () => {
+      prismaMock.bpVet = { findUnique: jest.fn().mockResolvedValue({ employmentType: 'FREELANCE' }) };
+      prismaMock.dfTransaction.create.mockImplementation(({ data }: any) => Promise.resolve({ id: 'adj-1', ...data }));
+
+      const result = await service.createAdjustment('clinic-1', {
+        businessPartnerId: 'bp-1',
+        type: 'ADJUSTMENT_ADD' as any,
+        amountMinor: 5000,
+        reason: 'Correction for June DF',
+      });
+
+      expect(result.status).toBe(DfTransactionStatus.CONFIRMED);
+      expect(result.dfAmountMinor).toBe(5000);
+      expect(result.whtAmountMinor).toBe(150); // 3% of 5000
+    });
+  });
 });
