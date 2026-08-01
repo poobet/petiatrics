@@ -201,7 +201,7 @@ interface AppShellProps {
  * - User menu shows logout option (POST /api/v1/auth/logout)
  */
 export function AppShell({ children, user }: AppShellProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [expandedNav, setExpandedNav] = useState<Record<NavKey, boolean>>({} as any);
   const [animationsEnabled, setAnimationsEnabled] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
@@ -211,13 +211,17 @@ export function AppShell({ children, user }: AppShellProps) {
   const tAuth = useTranslations('auth');
 
   // useLayoutEffect runs synchronously BEFORE the browser paints,
-  // so the user never sees the "all open" flash — groups snap to
-  // their saved collapsed state before anything is visible.
+  // so the user never sees a flash — sidebar and groups snap to
+  // their saved state before anything is visible.
   useLayoutEffect(() => {
     try {
-      const saved = localStorage.getItem('petiatrics_collapsed_groups');
-      if (saved) {
-        setCollapsedGroups(JSON.parse(saved));
+      const savedSidebar = localStorage.getItem('petiatrics_sidebar_open');
+      if (savedSidebar !== null) {
+        setSidebarOpen(savedSidebar === 'true');
+      }
+      const savedGroups = localStorage.getItem('petiatrics_collapsed_groups');
+      if (savedGroups) {
+        setCollapsedGroups(JSON.parse(savedGroups));
       }
     } catch (e) {}
   }, []);
@@ -228,6 +232,13 @@ export function AppShell({ children, user }: AppShellProps) {
       setAnimationsEnabled(true);
     });
   }, []);
+
+  function handleSidebarOpenChange(open: boolean) {
+    setSidebarOpen(open);
+    try {
+      localStorage.setItem('petiatrics_sidebar_open', String(open));
+    } catch (e) {}
+  }
 
   function toggleGroup(groupKey: string) {
     setCollapsedGroups((prev) => {
@@ -303,7 +314,7 @@ export function AppShell({ children, user }: AppShellProps) {
   const initials = displayName.slice(0, 2).toUpperCase();
 
   return (
-    <SidebarProvider defaultOpen={true}>
+    <SidebarProvider open={sidebarOpen} onOpenChange={handleSidebarOpenChange}>
       <Sidebar>
         {/* Brand Header */}
         <SidebarHeader className="p-4 border-b border-sidebar-border">
