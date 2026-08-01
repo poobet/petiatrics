@@ -203,19 +203,23 @@ interface AppShellProps {
 export function AppShell({ children, user }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedNav, setExpandedNav] = useState<Record<NavKey, boolean>>({} as any);
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [mounted, setMounted] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
+    if (typeof window === 'undefined') return {};
+    try {
+      const saved = localStorage.getItem('petiatrics_collapsed_groups');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
   const pathname = usePathname();
   const t = useTranslations('nav');
   const tLocale = useTranslations('locale');
   const tAuth = useTranslations('auth');
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('petiatrics_collapsed_groups');
-      if (saved) {
-        setCollapsedGroups(JSON.parse(saved));
-      }
-    } catch (e) {}
+    setMounted(true);
   }, []);
 
   function toggleGroup(groupKey: string) {
@@ -329,7 +333,7 @@ export function AppShell({ children, user }: AppShellProps) {
                       <ChevronRight className="size-3.5 shrink-0 transition-transform duration-200 group-data-[state=open]/group-collapsible:rotate-90 text-muted-foreground" />
                     </CollapsibleTrigger>
                   </SidebarGroupLabel>
-                  <CollapsibleContent>
+                  <CollapsibleContent className="transition-all duration-200 ease-in-out data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
                     <SidebarGroupContent>
                       <SidebarMenu>
                         {visibleItems.map((item) => {
