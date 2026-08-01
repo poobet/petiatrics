@@ -204,15 +204,7 @@ export function AppShell({ children, user }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedNav, setExpandedNav] = useState<Record<NavKey, boolean>>({} as any);
   const [mounted, setMounted] = useState(false);
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
-    if (typeof window === 'undefined') return {};
-    try {
-      const saved = localStorage.getItem('petiatrics_collapsed_groups');
-      return saved ? JSON.parse(saved) : {};
-    } catch (e) {
-      return {};
-    }
-  });
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const pathname = usePathname();
   const t = useTranslations('nav');
   const tLocale = useTranslations('locale');
@@ -220,6 +212,12 @@ export function AppShell({ children, user }: AppShellProps) {
 
   useEffect(() => {
     setMounted(true);
+    try {
+      const saved = localStorage.getItem('petiatrics_collapsed_groups');
+      if (saved) {
+        setCollapsedGroups(JSON.parse(saved));
+      }
+    } catch (e) {}
   }, []);
 
   function toggleGroup(groupKey: string) {
@@ -317,7 +315,7 @@ export function AppShell({ children, user }: AppShellProps) {
             const visibleItems = group.items.filter(canAccess);
             if (visibleItems.length === 0) return null;
 
-            const isGroupCollapsed = collapsedGroups[group.groupKey] ?? false;
+            const isGroupCollapsed = mounted ? (collapsedGroups[group.groupKey] ?? false) : false;
 
             return (
               <Collapsible
