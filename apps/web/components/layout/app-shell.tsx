@@ -196,9 +196,9 @@ const NAV_GROUPS: NavGroup[] = [
           { key: 'rolePermissions', href: '/clinic/settings/roles', icon: Shield, requiredPermission: 'SETTINGS:MANAGE' },
           { key: 'documentSequence', href: '/clinic/settings/document-sequence', icon: ClipboardList, requiredPermission: 'SETTINGS:MANAGE' },
         ],
-      },
     ],
   },
+];
 
 interface AppShellProps {
   children: React.ReactNode;
