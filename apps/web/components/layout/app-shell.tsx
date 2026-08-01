@@ -203,23 +203,28 @@ interface AppShellProps {
 export function AppShell({ children, user }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedNav, setExpandedNav] = useState<Record<NavKey, boolean>>({} as any);
-  const [mounted, setMounted] = useState(false);
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
-    if (typeof window === 'undefined') return {};
-    try {
-      const saved = localStorage.getItem('petiatrics_collapsed_groups');
-      return saved ? JSON.parse(saved) : {};
-    } catch (e) {
-      return {};
-    }
-  });
+  const [animationsEnabled, setAnimationsEnabled] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const pathname = usePathname();
   const t = useTranslations('nav');
   const tLocale = useTranslations('locale');
   const tAuth = useTranslations('auth');
 
   useEffect(() => {
-    setMounted(true);
+    // 1. Apply saved collapsed state instantly (no animation yet)
+    try {
+      const saved = localStorage.getItem('petiatrics_collapsed_groups');
+      if (saved) {
+        setCollapsedGroups(JSON.parse(saved));
+      }
+    } catch (e) {}
+    // 2. Enable animations only after the browser has painted the correct state
+    //    Double-rAF ensures the collapsed state is visually committed first
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setAnimationsEnabled(true);
+      });
+    });
   }, []);
 
   function toggleGroup(groupKey: string) {
@@ -334,11 +339,10 @@ export function AppShell({ children, user }: AppShellProps) {
                     </CollapsibleTrigger>
                   </SidebarGroupLabel>
                   <CollapsibleContent
-                    suppressHydrationWarning
                     className={cn(
-                      mounted
+                      animationsEnabled
                         ? 'transition-all duration-200 ease-in-out data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down'
-                        : '!transition-none !animate-none',
+                        : '[transition:none!important] [animation:none!important]',
                     )}
                   >
                     <SidebarGroupContent>
