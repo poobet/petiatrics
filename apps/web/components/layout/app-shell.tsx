@@ -47,6 +47,24 @@ import type { AuthProfile } from '@petiatrics/types';
 import { BranchSelector } from './branch-selector';
 import { useSessionStore } from '../../lib/session-store';
 
+type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'products' | 'stockLedger' | 'goodsReceipt' | 'goodsIssue' | 'adjustments' | 'billing' | 'billingSettings' | 'pos' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings' | 'settingsGeneral' | 'rolePermissions' | 'documentSequence' | 'accountingPeriods' | 'procurement' | 'purchaseOrders' | 'purchaseInvoices' | 'supplierPayments' | 'procurementSettings' | 'appointmentSettings' | 'commission' | 'commissionDashboard' | 'commissionRules' | 'commissionTransactions' | 'commissionPaymentRuns' | 'commissionWht' | 'accounting' | 'accountingJournal';
+
+interface SubNavItem {
+  key: NavKey;
+  href: string;
+  icon: React.ElementType;
+  requiredPermission?: string;
+}
+
+interface NavItem {
+  key: NavKey;
+  href?: string;
+  icon: React.ElementType;
+  roles?: string[];
+  requiredPermission?: string;
+  subItems?: SubNavItem[];
+}
+
 type NavGroupKey =
   | 'navGroupClinicOps'
   | 'navGroupInventoryProcurement'
