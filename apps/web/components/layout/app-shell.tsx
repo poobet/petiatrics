@@ -32,15 +32,25 @@ import {
   Coins,
   BookOpen,
 } from 'lucide-react';
-import { Avatar, AvatarFallback } from '@petiatrics/ui';
-import { Button } from '@petiatrics/ui';
 import {
+  Avatar,
+  AvatarFallback,
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupContent,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
 } from '@petiatrics/ui';
 import { cn } from '@petiatrics/ui';
 import type { AuthProfile } from '@petiatrics/types';
@@ -290,109 +300,98 @@ export function AppShell({ children, user }: AppShellProps) {
           </button>
         </div>
 
-        {/* Navigation Groups */}
-        <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
+        {/* Navigation Groups (Storybook Sidebar Design) */}
+        <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto">
           {NAV_GROUPS.map((group) => {
             const visibleItems = group.items.filter(canAccess);
             if (visibleItems.length === 0) return null;
 
             return (
-              <div key={group.groupKey} className="space-y-1">
-                <div className="px-3 text-[11px] font-bold tracking-wider text-gray-400 uppercase">
+              <SidebarGroup key={group.groupKey} className="p-0">
+                <SidebarGroupLabel className="px-2 text-[11px] font-bold uppercase tracking-wider text-sidebar-foreground/60 h-7 flex items-center">
                   {t(group.groupKey)}
-                </div>
-                <div className="space-y-0.5">
-                  {visibleItems.map((item) => {
-                    const Icon = item.icon;
-                    const itemActive = isItemOrSubitemActive(item);
-                    const isExpanded = expandedNav[item.key];
+                </SidebarGroupLabel>
+                <SidebarGroupContent className="mt-1">
+                  <SidebarMenu>
+                    {visibleItems.map((item) => {
+                      const Icon = item.icon;
+                      const itemActive = isItemOrSubitemActive(item);
+                      const isExpanded = expandedNav[item.key];
 
-                    if (item.subItems) {
-                      const visibleSubItems = item.subItems.filter(canAccess);
-                      if (visibleSubItems.length === 0) return null;
+                      if (item.subItems) {
+                        const visibleSubItems = item.subItems.filter(canAccess);
+                        if (visibleSubItems.length === 0) return null;
+
+                        return (
+                          <SidebarMenuItem key={item.key}>
+                            <SidebarMenuButton
+                              onClick={() => toggleNav(item.key)}
+                              isActive={itemActive}
+                              className="w-full justify-between font-medium cursor-pointer"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <Icon className="w-4 h-4 shrink-0" />
+                                <span className="truncate">{t(item.key)}</span>
+                              </div>
+                              <ChevronRight
+                                className={cn(
+                                  'w-4 h-4 shrink-0 transition-transform duration-200',
+                                  isExpanded && 'rotate-90',
+                                )}
+                              />
+                            </SidebarMenuButton>
+
+                            {isExpanded && (
+                              <SidebarMenuSub className="my-1 border-l border-sidebar-border ml-3.5 pl-2.5 py-0.5 flex flex-col gap-1">
+                                {visibleSubItems.map((subItem) => {
+                                  const SubIcon = subItem.icon;
+                                  const subActive = isActive(subItem.href);
+                                  return (
+                                    <SidebarMenuSubItem key={subItem.href}>
+                                      <SidebarMenuSubButton
+                                        asChild
+                                        isActive={subActive}
+                                      >
+                                        <Link
+                                          href={subItem.href}
+                                          onClick={() => setSidebarOpen(false)}
+                                          className="flex items-center gap-2"
+                                        >
+                                          <SubIcon className="w-3.5 h-3.5 shrink-0" />
+                                          <span className="truncate">{t(subItem.key)}</span>
+                                        </Link>
+                                      </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                  );
+                                })}
+                              </SidebarMenuSub>
+                            )}
+                          </SidebarMenuItem>
+                        );
+                      }
 
                       return (
-                        <div key={item.key}>
-                          <button
-                            onClick={() => toggleNav(item.key)}
-                            className={cn(
-                              'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left',
-                              itemActive
-                                ? 'bg-blue-50 text-blue-700'
-                                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-                            )}
+                        <SidebarMenuItem key={item.key}>
+                          <SidebarMenuButton
+                            asChild
+                            isActive={itemActive}
+                            className="font-medium"
                           >
-                            <Icon
-                              className={cn(
-                                'w-4 h-4 shrink-0',
-                                itemActive ? 'text-blue-600' : 'text-gray-400',
-                              )}
-                            />
-                            <span className="flex-1 text-left leading-tight">{t(item.key)}</span>
-                            <ChevronRight
-                              className={cn(
-                                'w-4 h-4 shrink-0 ml-auto transition-transform',
-                                isExpanded && 'rotate-90',
-                              )}
-                            />
-                          </button>
-                          {isExpanded && (
-                            <div className="mt-1 space-y-0.5 ml-5 pl-2 border-l border-gray-200">
-                              {visibleSubItems.map((subItem) => {
-                                const SubIcon = subItem.icon;
-                                const subActive = isActive(subItem.href);
-                                return (
-                                  <Link
-                                    key={subItem.href}
-                                    href={subItem.href}
-                                    onClick={() => setSidebarOpen(false)}
-                                    className={cn(
-                                      'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors',
-                                      subActive
-                                        ? 'bg-blue-50 text-blue-700 font-semibold'
-                                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-                                    )}
-                                  >
-                                    <SubIcon
-                                      className={cn(
-                                        'w-4 h-4 shrink-0',
-                                        subActive ? 'text-blue-600' : 'text-gray-400',
-                                      )}
-                                    />
-                                    <span className="truncate">{t(subItem.key)}</span>
-                                  </Link>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
+                            <Link
+                              href={item.href || '#'}
+                              onClick={() => setSidebarOpen(false)}
+                              className="flex items-center gap-2.5"
+                            >
+                              <Icon className="w-4 h-4 shrink-0" />
+                              <span className="truncate">{t(item.key)}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
                       );
-                    }
-
-                    return (
-                      <Link
-                        key={item.key}
-                        href={item.href || '#'}
-                        onClick={() => setSidebarOpen(false)}
-                        className={cn(
-                          'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                          itemActive
-                            ? 'bg-blue-50 text-blue-700'
-                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-                        )}
-                      >
-                        <Icon
-                          className={cn(
-                            'w-4 h-4 shrink-0',
-                            itemActive ? 'text-blue-600' : 'text-gray-400',
-                          )}
-                        />
-                        {t(item.key)}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
+                    })}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
             );
           })}
         </nav>
