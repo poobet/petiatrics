@@ -1,4 +1,4 @@
-﻿import type { NextConfig } from 'next';
+import type { NextConfig } from 'next';
 import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin('./i18n.ts');
@@ -28,7 +28,12 @@ const nextConfig: NextConfig = {
   webpack(config, { dev }) {
 
     if (dev) {
-      config.cache = false;
+      config.cache = {
+        type: 'filesystem',
+        buildDependencies: {
+          config: [__filename],
+        },
+      };
     }
 
     config.resolve.extensionAlias = {
