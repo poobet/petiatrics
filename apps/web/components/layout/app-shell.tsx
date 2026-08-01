@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useLayoutEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -191,6 +191,10 @@ const NAV_GROUPS: NavGroup[] = [
 interface AppShellProps {
   children: React.ReactNode;
   user: AuthProfile;
+  /** Read from cookie on the server — no flash */
+  initialSidebarOpen?: boolean;
+  /** Read from cookie on the server — no flash */
+  initialCollapsedGroups?: Record<string, boolean>;
 }
 
 /**
@@ -200,33 +204,17 @@ interface AppShellProps {
  * - Language switcher sets the `petiatrics_locale` cookie and reloads
  * - User menu shows logout option (POST /api/v1/auth/logout)
  */
-export function AppShell({ children, user }: AppShellProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+export function AppShell({ children, user, initialSidebarOpen = true, initialCollapsedGroups = {} }: AppShellProps) {
+  const [sidebarOpen, setSidebarOpen] = useState(initialSidebarOpen);
   const [expandedNav, setExpandedNav] = useState<Record<NavKey, boolean>>({} as any);
   const [animationsEnabled, setAnimationsEnabled] = useState(false);
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(initialCollapsedGroups);
   const pathname = usePathname();
   const t = useTranslations('nav');
   const tLocale = useTranslations('locale');
   const tAuth = useTranslations('auth');
 
-  // useLayoutEffect runs synchronously BEFORE the browser paints,
-  // so the user never sees a flash — sidebar and groups snap to
-  // their saved state before anything is visible.
-  useLayoutEffect(() => {
-    try {
-      const savedSidebar = localStorage.getItem('petiatrics_sidebar_open');
-      if (savedSidebar !== null) {
-        setSidebarOpen(savedSidebar === 'true');
-      }
-      const savedGroups = localStorage.getItem('petiatrics_collapsed_groups');
-      if (savedGroups) {
-        setCollapsedGroups(JSON.parse(savedGroups));
-      }
-    } catch (e) {}
-  }, []);
-
-  // Enable smooth animations only after the correct state has been painted
+  // Enable smooth animations after the first paint so initial render is instant
   useEffect(() => {
     requestAnimationFrame(() => {
       setAnimationsEnabled(true);
@@ -237,6 +225,7 @@ export function AppShell({ children, user }: AppShellProps) {
     setSidebarOpen(open);
     try {
       localStorage.setItem('petiatrics_sidebar_open', String(open));
+      document.cookie = `petiatrics_sidebar_open=${open}; path=/; max-age=31536000`;
     } catch (e) {}
   }
 
@@ -245,6 +234,7 @@ export function AppShell({ children, user }: AppShellProps) {
       const next = { ...prev, [groupKey]: !prev[groupKey] };
       try {
         localStorage.setItem('petiatrics_collapsed_groups', JSON.stringify(next));
+        document.cookie = `petiatrics_collapsed_groups=${encodeURIComponent(JSON.stringify(next))}; path=/; max-age=31536000`;
       } catch (e) {}
       return next;
     });

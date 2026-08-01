@@ -53,10 +53,28 @@ export default async function ClinicLayout({
     }
   }
 
+  // Read sidebar UI state from cookies so SSR renders the correct state (no flash)
+  const sidebarCookie = cookieStore.get('petiatrics_sidebar_open')?.value;
+  const initialSidebarOpen = sidebarCookie === undefined ? true : sidebarCookie === 'true';
+
+  let initialCollapsedGroups: Record<string, boolean> = {};
+  const groupsCookie = cookieStore.get('petiatrics_collapsed_groups')?.value;
+  if (groupsCookie) {
+    try {
+      initialCollapsedGroups = JSON.parse(decodeURIComponent(groupsCookie));
+    } catch (e) {}
+  }
+
   return (
     <>
       <StoreHydrator profile={user} />
-      <AppShell user={user}>{children}</AppShell>
+      <AppShell
+        user={user}
+        initialSidebarOpen={initialSidebarOpen}
+        initialCollapsedGroups={initialCollapsedGroups}
+      >
+        {children}
+      </AppShell>
     </>
   );
 }
