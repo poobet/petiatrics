@@ -36,22 +36,33 @@ import {
   Avatar,
   AvatarFallback,
   Button,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  SidebarProvider,
+  Separator,
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
   SidebarMenu,
-  SidebarMenuItem,
   SidebarMenuButton,
+  SidebarMenuItem,
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,
+  SidebarProvider,
+  SidebarRail,
+  SidebarTrigger,
 } from '@petiatrics/ui';
 import { cn } from '@petiatrics/ui';
 import type { AuthProfile } from '@petiatrics/types';
@@ -262,149 +273,82 @@ export function AppShell({ children, user }: AppShellProps) {
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="min-h-screen bg-gray-50 flex w-full">
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside
-        className={cn(
-          'fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200',
-          'flex flex-col transition-transform duration-200',
-          'lg:translate-x-0 lg:static lg:z-auto',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
-        )}
-      >
-        {/* Brand */}
-        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 shrink-0">
+      <Sidebar>
+        {/* Brand Header */}
+        <SidebarHeader className="p-4 border-b border-sidebar-border">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-              <PawPrint className="w-6 h-6 text-white" />
+            <div className="size-9 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">
+              <PawPrint className="size-5 text-white" />
             </div>
-            <div>
-              <p className="font-semibold text-gray-900 text-sm leading-none">
-                Petiatrics
-              </p>
-              <p className="text-xs text-gray-400 mt-0.5">Vet Management</p>
+            <div className="flex flex-col min-w-0">
+              <span className="font-semibold text-sm text-sidebar-foreground truncate leading-none">Petiatrics</span>
+              <span className="text-xs text-muted-foreground truncate mt-1">Vet Management</span>
             </div>
           </div>
-          <button
-            className="lg:hidden text-gray-400 hover:text-gray-600"
-            onClick={() => setSidebarOpen(false)}
-            aria-label="Close sidebar"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+        </SidebarHeader>
 
-        {/* Navigation Groups (Storybook DashboardLayout Design) */}
-        <nav className="flex-1 px-4 py-6 space-y-4 overflow-y-auto">
+        {/* Navigation Content */}
+        <SidebarContent>
           {NAV_GROUPS.map((group) => {
             const visibleItems = group.items.filter(canAccess);
             if (visibleItems.length === 0) return null;
 
             return (
-              <SidebarGroup key={group.groupKey} className="p-0">
-                <SidebarGroupLabel className="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 h-6 flex items-center mb-1">
+              <SidebarGroup key={group.groupKey}>
+                <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2">
                   {t(group.groupKey)}
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
-                  <SidebarMenu className="space-y-1">
+                  <SidebarMenu>
                     {visibleItems.map((item) => {
                       const Icon = item.icon;
                       const itemActive = isItemOrSubitemActive(item);
-                      const isExpanded = expandedNav[item.key];
 
                       if (item.subItems) {
                         const visibleSubItems = item.subItems.filter(canAccess);
                         if (visibleSubItems.length === 0) return null;
 
                         return (
-                          <SidebarMenuItem key={item.key}>
-                            <button
-                              onClick={() => toggleNav(item.key)}
-                              className={cn(
-                                'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left cursor-pointer',
-                                itemActive
-                                  ? 'bg-blue-50 text-blue-700'
-                                  : 'text-gray-700 hover:bg-gray-100',
-                              )}
-                            >
-                              <div className="flex items-center gap-3 min-w-0">
-                                <Icon
-                                  className={cn(
-                                    'w-5 h-5 shrink-0',
-                                    itemActive ? 'text-blue-700' : 'text-gray-500',
-                                  )}
-                                />
-                                <span className="truncate">{t(item.key)}</span>
-                              </div>
-                              <ChevronRight
-                                className={cn(
-                                  'w-4 h-4 shrink-0 transition-transform duration-200',
-                                  isExpanded ? 'rotate-90 text-blue-700' : 'text-gray-400',
-                                )}
-                              />
-                            </button>
-
-                            {isExpanded && (
-                              <div className="mt-1 space-y-1 pl-6 pr-1">
-                                {visibleSubItems.map((subItem) => {
-                                  const SubIcon = subItem.icon;
-                                  const subActive = isActive(subItem.href);
-                                  return (
-                                    <Link
-                                      key={subItem.href}
-                                      href={subItem.href}
-                                      onClick={() => setSidebarOpen(false)}
-                                      className={cn(
-                                        'flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium transition-colors',
-                                        subActive
-                                          ? 'bg-blue-50 text-blue-700 font-semibold'
-                                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-                                      )}
-                                    >
-                                      <SubIcon
-                                        className={cn(
-                                          'w-4 h-4 shrink-0',
-                                          subActive ? 'text-blue-700' : 'text-gray-400',
-                                        )}
-                                      />
-                                      <span className="truncate">{t(subItem.key)}</span>
-                                    </Link>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </SidebarMenuItem>
+                          <Collapsible key={item.key} defaultOpen={itemActive} className="group/collapsible">
+                            <SidebarMenuItem>
+                              <CollapsibleTrigger asChild>
+                                <SidebarMenuButton tooltip={t(item.key)} isActive={itemActive}>
+                                  <Icon className="size-4 shrink-0" />
+                                  <span className="truncate">{t(item.key)}</span>
+                                  <ChevronRight className="ml-auto size-4 shrink-0 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                </SidebarMenuButton>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <SidebarMenuSub>
+                                  {visibleSubItems.map((subItem) => {
+                                    const SubIcon = subItem.icon;
+                                    const subActive = isActive(subItem.href);
+                                    return (
+                                      <SidebarMenuSubItem key={subItem.href}>
+                                        <SidebarMenuSubButton asChild isActive={subActive}>
+                                          <Link href={subItem.href}>
+                                            <SubIcon className="size-3.5 shrink-0" />
+                                            <span className="truncate">{t(subItem.key)}</span>
+                                          </Link>
+                                        </SidebarMenuSubButton>
+                                      </SidebarMenuSubItem>
+                                    );
+                                  })}
+                                </SidebarMenuSub>
+                              </CollapsibleContent>
+                            </SidebarMenuItem>
+                          </Collapsible>
                         );
                       }
 
                       return (
                         <SidebarMenuItem key={item.key}>
-                          <Link
-                            href={item.href || '#'}
-                            onClick={() => setSidebarOpen(false)}
-                            className={cn(
-                              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                              itemActive
-                                ? 'bg-blue-50 text-blue-700'
-                                : 'text-gray-700 hover:bg-gray-100',
-                            )}
-                          >
-                            <Icon
-                              className={cn(
-                                'w-5 h-5 shrink-0',
-                                itemActive ? 'text-blue-700' : 'text-gray-500',
-                              )}
-                            />
-                            <span className="truncate">{t(item.key)}</span>
-                          </Link>
+                          <SidebarMenuButton asChild tooltip={t(item.key)} isActive={itemActive}>
+                            <Link href={item.href || '#'}>
+                              <Icon className="size-4 shrink-0" />
+                              <span className="truncate">{t(item.key)}</span>
+                            </Link>
+                          </SidebarMenuButton>
                         </SidebarMenuItem>
                       );
                     })}
@@ -413,44 +357,50 @@ export function AppShell({ children, user }: AppShellProps) {
               </SidebarGroup>
             );
           })}
-        </nav>
-      </aside>
+        </SidebarContent>
 
-      {/* Main content area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top header */}
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6 shrink-0">
-          {/* Mobile menu toggle */}
-          <button
-            className="lg:hidden text-gray-500 hover:text-gray-700"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Open sidebar"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
+        {/* Footer */}
+        <SidebarFooter className="p-3 border-t border-sidebar-border">
+          <div className="flex items-center gap-3 px-1">
+            <Avatar className="size-8">
+              <AvatarFallback className="bg-blue-100 text-blue-700 text-xs font-semibold">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="text-left text-xs truncate flex-1 min-w-0">
+              <p className="font-medium text-sidebar-foreground truncate">{displayName.includes('@') ? displayName.split('@')[0] : displayName}</p>
+              <p className="text-muted-foreground capitalize truncate">{user.role.replace(/_/g, ' ').toLowerCase()}</p>
+            </div>
+          </div>
+        </SidebarFooter>
 
-          {/* Search bar */}
-          <div className="flex-1 max-w-2xl mx-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+        <SidebarRail />
+      </Sidebar>
+
+      <SidebarInset>
+        {/* Header */}
+        <header className="flex h-16 items-center justify-between border-b border-border px-4 lg:px-6 bg-background sticky top-0 z-40">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <SidebarTrigger />
+            <Separator orientation="vertical" className="h-4" />
+            <div className="relative flex-1 max-w-md hidden sm:block">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Search patients, clients, appointments..."
-                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-9 pr-4 py-1.5 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Branch selector — only visible for multi-branch users */}
+          <div className="flex items-center gap-2 shrink-0">
             <BranchSelector />
 
-            {/* Language switcher */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-gray-600">
+                <Button variant="ghost" size="sm" className="text-muted-foreground">
                   {user.preferredLocale === 'TH' ? 'TH' : 'EN'}
-                  <ChevronDown className="w-3 h-3 ml-1" />
+                  <ChevronDown className="size-3 ml-1" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={4} className="w-40">
@@ -463,26 +413,24 @@ export function AppShell({ children, user }: AppShellProps) {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Notification bell */}
-            <button className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg focus-visible:outline-none">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full" />
+            <button className="relative p-2 text-muted-foreground hover:bg-accent rounded-lg focus-visible:outline-none">
+              <Bell className="size-5" />
+              <span className="absolute top-1.5 right-1.5 size-2 bg-orange-500 rounded-full" />
             </button>
 
-            {/* User menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 pl-2 pr-3 py-1.5 hover:bg-gray-100 rounded-lg focus-visible:outline-none">
-                  <Avatar className="w-8 h-8">
+                <button className="flex items-center gap-2 pl-2 pr-3 py-1.5 hover:bg-accent rounded-lg focus-visible:outline-none">
+                  <Avatar className="size-8">
                     <AvatarFallback className="bg-blue-100 text-blue-700 text-xs font-semibold">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
                   <div className="text-left hidden sm:block">
-                    <p className="text-sm font-medium text-gray-900 leading-none">{displayName.includes('@') ? displayName.split('@')[0] : displayName}</p>
-                    <p className="text-xs text-gray-500 capitalize mt-0.5">{user.role.replace(/_/g, ' ').toLowerCase()}</p>
+                    <p className="text-sm font-medium text-foreground leading-none">{displayName.includes('@') ? displayName.split('@')[0] : displayName}</p>
+                    <p className="text-xs text-muted-foreground capitalize mt-0.5">{user.role.replace(/_/g, ' ').toLowerCase()}</p>
                   </div>
-                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                  <ChevronDown className="size-4 text-muted-foreground" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={4} className="w-56">
@@ -496,7 +444,7 @@ export function AppShell({ children, user }: AppShellProps) {
                   className="text-red-600 focus:text-red-600"
                   onClick={handleLogout}
                 >
-                  <LogOut className="w-4 h-4 mr-2" />
+                  <LogOut className="size-4 mr-2" />
                   {tAuth('logout')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -506,8 +454,7 @@ export function AppShell({ children, user }: AppShellProps) {
 
         {/* Page content */}
         <main className="flex-1 overflow-auto p-4 lg:p-6">{children}</main>
-      </div>
-    </div>
-  </SidebarProvider>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
