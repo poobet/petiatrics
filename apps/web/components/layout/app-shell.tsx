@@ -320,7 +320,7 @@ export function AppShell({ children, user, initialSidebarOpen = true, initialCol
     <SidebarProvider open={sidebarOpen} onOpenChange={handleSidebarOpenChange}>
       <Sidebar>
         {/* Brand Header */}
-        <SidebarHeader className="p-4 border-b border-sidebar-border">
+        <SidebarHeader className="h-16 flex items-center px-4 border-b border-sidebar-border">
           <div className="flex items-center gap-3">
             <div className="size-9 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">
               <PawPrint className="size-5 text-white" />
