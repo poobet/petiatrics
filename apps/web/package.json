@@ -3,6 +3,8 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
+    "clean": "node -e \"fs.rmSync('.next', { recursive: true, force: true })\"",
+    "predev": "npm run clean",
     "build": "next build",
     "dev": "next dev --port 3000",
     "start": "next start",
