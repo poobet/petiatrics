@@ -7,6 +7,7 @@
     "packages/*"
   ],
   "scripts": {
+    "predev": "node scripts/kill-ports.js",
     "build": "turbo run build",
     "dev": "turbo run dev",
     "storybook": "npm --prefix packages/ui run storybook -- --ci",
