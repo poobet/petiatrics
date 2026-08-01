@@ -47,113 +47,102 @@ import type { AuthProfile } from '@petiatrics/types';
 import { BranchSelector } from './branch-selector';
 import { useSessionStore } from '../../lib/session-store';
 
-type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'products' | 'stockLedger' | 'goodsReceipt' | 'goodsIssue' | 'adjustments' | 'billing' | 'billingSettings' | 'pos' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings' | 'settingsGeneral' | 'rolePermissions' | 'documentSequence' | 'accountingPeriods' | 'procurement' | 'purchaseOrders' | 'purchaseInvoices' | 'supplierPayments' | 'procurementSettings' | 'appointmentSettings' | 'commission' | 'commissionDashboard' | 'commissionRules' | 'commissionTransactions' | 'commissionPaymentRuns' | 'commissionWht' | 'accounting' | 'accountingJournal';
+type NavGroupKey =
+  | 'navGroupClinicOps'
+  | 'navGroupInventoryProcurement'
+  | 'navGroupFinanceAccounting'
+  | 'navGroupAdministration';
 
-interface SubNavItem {
-  key: NavKey;
-  href: string;
-  icon: React.ElementType;
-  requiredPermission?: string;
+interface NavGroup {
+  groupKey: NavGroupKey;
+  items: NavItem[];
 }
 
-interface NavItem {
-  key: NavKey;
-  href?: string;
-  icon: React.ElementType;
-  roles?: string[];
-  requiredPermission?: string;
-  subItems?: SubNavItem[];
-}
-
-const NAV_ITEMS: NavItem[] = [
-  { key: 'dashboard', href: '/clinic/dashboard', icon: LayoutDashboard },
-  { key: 'appointments', href: '/clinic/appointments', icon: Calendar },
-  { key: 'patients', href: '/clinic/patients', icon: PawPrint, requiredPermission: 'PATIENT:VIEW' },
-  { key: 'clients', href: '/clinic/clients', icon: Users, requiredPermission: 'PATIENT:VIEW' },
-  { key: 'medicalRecords', href: '/medical-records', icon: FileText, requiredPermission: 'PATIENT:VIEW' },
+const NAV_GROUPS: NavGroup[] = [
   {
-    key: 'inventory',
-    icon: Package,
-    subItems: [
-      { key: 'products', href: '/clinic/inventory/products', icon: Package, requiredPermission: 'INVENTORY:VIEW' },
-      { key: 'stockLedger', href: '/clinic/inventory/stock-ledger', icon: Archive, requiredPermission: 'INVENTORY:VIEW' },
-      { key: 'goodsReceipt', href: '/clinic/inventory/receipt', icon: Boxes, requiredPermission: 'INVENTORY:ADD' },
-      { key: 'goodsIssue', href: '/clinic/inventory/issue', icon: Archive, requiredPermission: 'INVENTORY:ADD' },
-      { key: 'adjustments', href: '/clinic/inventory/adjustments', icon: Boxes, requiredPermission: 'INVENTORY:EDIT' },
+    groupKey: 'navGroupClinicOps',
+    items: [
+      { key: 'dashboard', href: '/clinic/dashboard', icon: LayoutDashboard },
+      { key: 'appointments', href: '/clinic/appointments', icon: Calendar },
+      { key: 'patients', href: '/clinic/patients', icon: PawPrint, requiredPermission: 'PATIENT:VIEW' },
+      { key: 'clients', href: '/clinic/clients', icon: Users, requiredPermission: 'PATIENT:VIEW' },
+      { key: 'medicalRecords', href: '/medical-records', icon: FileText, requiredPermission: 'PATIENT:VIEW' },
+      { key: 'pos', href: '/clinic/pos', icon: ShoppingCart, requiredPermission: 'BILLING:ADD' },
     ],
   },
   {
-    key: 'procurement',
-    icon: ClipboardList,
-    subItems: [
-      { key: 'purchaseOrders', href: '/clinic/procurement/orders', icon: FileText, requiredPermission: 'INVENTORY:VIEW' },
-      { key: 'goodsReceipt', href: '/clinic/procurement/receipts', icon: Boxes, requiredPermission: 'INVENTORY:ADD' },
-      { key: 'purchaseInvoices', href: '/clinic/procurement/invoices', icon: Receipt, requiredPermission: 'INVENTORY:VIEW' },
-      { key: 'supplierPayments', href: '/clinic/procurement/payments', icon: CreditCard, requiredPermission: 'INVENTORY:VIEW' },
-      { key: 'procurementSettings', href: '/clinic/procurement/settings', icon: Settings, requiredPermission: 'SETTINGS:MANAGE' },
-    ],
-  },
-  {
-    key: 'billing',
-    icon: CreditCard,
-    subItems: [
-      { key: 'billing', href: '/clinic/billing', icon: CreditCard, requiredPermission: 'BILLING:VIEW' },
-      { key: 'billingSettings', href: '/clinic/billing/settings', icon: Settings, requiredPermission: 'SETTINGS:MANAGE' },
-    ],
-  },
-  {
-    key: 'commission',
-    icon: Coins,
-    subItems: [
-      { key: 'commissionDashboard', href: '/clinic/commission', icon: LayoutDashboard, requiredPermission: 'COMMISSION:VIEW' },
-      { key: 'commissionRules', href: '/clinic/commission/rules', icon: ClipboardList, requiredPermission: 'COMMISSION:VIEW' },
-      { key: 'commissionTransactions', href: '/clinic/commission/transactions', icon: FileText, requiredPermission: 'COMMISSION:VIEW' },
-      { key: 'commissionPaymentRuns', href: '/clinic/commission/payment-runs', icon: CreditCard, requiredPermission: 'COMMISSION:VIEW' },
-      { key: 'commissionWht', href: '/clinic/commission/wht', icon: Receipt, requiredPermission: 'COMMISSION:VIEW' },
-    ],
-  },
-  {
-    key: 'accounting',
-    icon: BookOpen,
-    subItems: [
-      { key: 'accountingJournal', href: '/clinic/accounting/journal', icon: BookOpen, requiredPermission: 'BILLING:VIEW' },
-      { key: 'accountingPeriods', href: '/clinic/settings/accounting-periods', icon: Calendar, requiredPermission: 'SETTINGS:MANAGE' },
-    ],
-  },
-  { key: 'pos', href: '/clinic/pos', icon: ShoppingCart, requiredPermission: 'BILLING:ADD' },
-  {
-    key: 'staff',
-    href: '/clinic/staff',
-    icon: UserCog,
-    requiredPermission: 'SETTINGS:MANAGE',
-  },
-  {
-    key: 'businessPartners',
-    href: '/clinic/business-partners',
-    icon: Briefcase,
-  },
-  {
-    key: 'audit',
-    href: '/clinic/audit',
-    icon: ClipboardList,
-    requiredPermission: 'SETTINGS:MANAGE',
-  },
-  {
-    key: 'settings',
-    icon: Settings,
-    subItems: [
-      { key: 'settingsGeneral', href: '/clinic/settings', icon: Settings },
+    groupKey: 'navGroupInventoryProcurement',
+    items: [
       {
-        key: 'rolePermissions',
-        href: '/clinic/settings/roles',
-        icon: Shield,
-        requiredPermission: 'SETTINGS:MANAGE',
+        key: 'inventory',
+        icon: Package,
+        subItems: [
+          { key: 'products', href: '/clinic/inventory/products', icon: Package, requiredPermission: 'INVENTORY:VIEW' },
+          { key: 'stockLedger', href: '/clinic/inventory/stock-ledger', icon: Archive, requiredPermission: 'INVENTORY:VIEW' },
+          { key: 'goodsReceipt', href: '/clinic/inventory/receipt', icon: Boxes, requiredPermission: 'INVENTORY:ADD' },
+          { key: 'goodsIssue', href: '/clinic/inventory/issue', icon: Archive, requiredPermission: 'INVENTORY:ADD' },
+          { key: 'adjustments', href: '/clinic/inventory/adjustments', icon: Boxes, requiredPermission: 'INVENTORY:EDIT' },
+        ],
       },
       {
-        key: 'documentSequence',
-        href: '/clinic/settings/document-sequence',
+        key: 'procurement',
         icon: ClipboardList,
-        requiredPermission: 'SETTINGS:MANAGE',
+        subItems: [
+          { key: 'purchaseOrders', href: '/clinic/procurement/orders', icon: FileText, requiredPermission: 'INVENTORY:VIEW' },
+          { key: 'goodsReceipt', href: '/clinic/procurement/receipts', icon: Boxes, requiredPermission: 'INVENTORY:ADD' },
+          { key: 'purchaseInvoices', href: '/clinic/procurement/invoices', icon: Receipt, requiredPermission: 'INVENTORY:VIEW' },
+          { key: 'supplierPayments', href: '/clinic/procurement/payments', icon: CreditCard, requiredPermission: 'INVENTORY:VIEW' },
+          { key: 'procurementSettings', href: '/clinic/procurement/settings', icon: Settings, requiredPermission: 'SETTINGS:MANAGE' },
+        ],
+      },
+    ],
+  },
+  {
+    groupKey: 'navGroupFinanceAccounting',
+    items: [
+      {
+        key: 'billing',
+        icon: CreditCard,
+        subItems: [
+          { key: 'billing', href: '/clinic/billing', icon: CreditCard, requiredPermission: 'BILLING:VIEW' },
+          { key: 'billingSettings', href: '/clinic/billing/settings', icon: Settings, requiredPermission: 'SETTINGS:MANAGE' },
+        ],
+      },
+      {
+        key: 'commission',
+        icon: Coins,
+        subItems: [
+          { key: 'commissionDashboard', href: '/clinic/commission', icon: LayoutDashboard, requiredPermission: 'COMMISSION:VIEW' },
+          { key: 'commissionRules', href: '/clinic/commission/rules', icon: ClipboardList, requiredPermission: 'COMMISSION:VIEW' },
+          { key: 'commissionTransactions', href: '/clinic/commission/transactions', icon: FileText, requiredPermission: 'COMMISSION:VIEW' },
+          { key: 'commissionPaymentRuns', href: '/clinic/commission/payment-runs', icon: CreditCard, requiredPermission: 'COMMISSION:VIEW' },
+          { key: 'commissionWht', href: '/clinic/commission/wht', icon: Receipt, requiredPermission: 'COMMISSION:VIEW' },
+        ],
+      },
+      {
+        key: 'accounting',
+        icon: BookOpen,
+        subItems: [
+          { key: 'accountingJournal', href: '/clinic/accounting/journal', icon: BookOpen, requiredPermission: 'BILLING:VIEW' },
+          { key: 'accountingPeriods', href: '/clinic/settings/accounting-periods', icon: Calendar, requiredPermission: 'SETTINGS:MANAGE' },
+        ],
+      },
+    ],
+  },
+  {
+    groupKey: 'navGroupAdministration',
+    items: [
+      { key: 'staff', href: '/clinic/staff', icon: UserCog, requiredPermission: 'SETTINGS:MANAGE' },
+      { key: 'businessPartners', href: '/clinic/business-partners', icon: Briefcase },
+      { key: 'audit', href: '/clinic/audit', icon: ClipboardList, requiredPermission: 'SETTINGS:MANAGE' },
+      {
+        key: 'settings',
+        icon: Settings,
+        subItems: [
+          { key: 'settingsGeneral', href: '/clinic/settings', icon: Settings },
+          { key: 'rolePermissions', href: '/clinic/settings/roles', icon: Shield, requiredPermission: 'SETTINGS:MANAGE' },
+          { key: 'documentSequence', href: '/clinic/settings/document-sequence', icon: ClipboardList, requiredPermission: 'SETTINGS:MANAGE' },
+        ],
       },
     ],
   },
@@ -283,118 +272,112 @@ export function AppShell({ children, user }: AppShellProps) {
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {NAV_ITEMS.filter(canAccess).map((item) => {
-            const Icon = item.icon;
-            const itemActive = isItemOrSubitemActive(item);
-            const isExpanded = expandedNav[item.key];
+        {/* Navigation Groups */}
+        <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
+          {NAV_GROUPS.map((group) => {
+            const visibleItems = group.items.filter(canAccess);
+            if (visibleItems.length === 0) return null;
 
-            // If item has sub-items, render as expandable menu
-            if (item.subItems) {
-              const visibleSubItems = item.subItems.filter(canAccess);
-              if (visibleSubItems.length === 0) return null;
+            return (
+              <div key={group.groupKey} className="space-y-1">
+                <div className="px-3 text-[11px] font-bold tracking-wider text-gray-400 uppercase">
+                  {t(group.groupKey)}
+                </div>
+                <div className="space-y-0.5">
+                  {visibleItems.map((item) => {
+                    const Icon = item.icon;
+                    const itemActive = isItemOrSubitemActive(item);
+                    const isExpanded = expandedNav[item.key];
 
-              return (
-                <div key={item.key}>
-                  <button
-                    onClick={() => toggleNav(item.key)}
-                    className={cn(
-                      'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left',
-                      itemActive
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-                    )}
-                  >
-                    <Icon
-                      className={cn(
-                        'w-5 h-5 shrink-0',
-                        itemActive ? 'text-blue-600' : 'text-gray-400',
-                      )}
-                    />
-                    <span className="flex-1 text-left leading-tight">{t(item.key)}</span>
-                    <ChevronRight
-                      className={cn(
-                        'w-4 h-4 shrink-0 ml-auto transition-transform',
-                        isExpanded && 'rotate-90',
-                      )}
-                    />
-                  </button>
-                  {/* Sub-menu items */}
-                  {isExpanded && (
-                    <div className="mt-1 space-y-0.5 ml-5 pl-2 border-l border-gray-200">
-                      {visibleSubItems.map((subItem) => {
-                        const SubIcon = subItem.icon;
-                        const subActive = isActive(subItem.href);
-                        return (
-                          <Link
-                            key={subItem.href}
-                            href={subItem.href}
-                            onClick={() => setSidebarOpen(false)}
+                    if (item.subItems) {
+                      const visibleSubItems = item.subItems.filter(canAccess);
+                      if (visibleSubItems.length === 0) return null;
+
+                      return (
+                        <div key={item.key}>
+                          <button
+                            onClick={() => toggleNav(item.key)}
                             className={cn(
-                              'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors',
-                              subActive
-                                ? 'bg-blue-50 text-blue-700 font-semibold'
+                              'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left',
+                              itemActive
+                                ? 'bg-blue-50 text-blue-700'
                                 : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
                             )}
                           >
-                            <SubIcon
+                            <Icon
                               className={cn(
                                 'w-4 h-4 shrink-0',
-                                subActive ? 'text-blue-600' : 'text-gray-400',
+                                itemActive ? 'text-blue-600' : 'text-gray-400',
                               )}
                             />
-                            <span className="truncate">{t(subItem.key)}</span>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            }
+                            <span className="flex-1 text-left leading-tight">{t(item.key)}</span>
+                            <ChevronRight
+                              className={cn(
+                                'w-4 h-4 shrink-0 ml-auto transition-transform',
+                                isExpanded && 'rotate-90',
+                              )}
+                            />
+                          </button>
+                          {isExpanded && (
+                            <div className="mt-1 space-y-0.5 ml-5 pl-2 border-l border-gray-200">
+                              {visibleSubItems.map((subItem) => {
+                                const SubIcon = subItem.icon;
+                                const subActive = isActive(subItem.href);
+                                return (
+                                  <Link
+                                    key={subItem.href}
+                                    href={subItem.href}
+                                    onClick={() => setSidebarOpen(false)}
+                                    className={cn(
+                                      'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors',
+                                      subActive
+                                        ? 'bg-blue-50 text-blue-700 font-semibold'
+                                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                                    )}
+                                  >
+                                    <SubIcon
+                                      className={cn(
+                                        'w-4 h-4 shrink-0',
+                                        subActive ? 'text-blue-600' : 'text-gray-400',
+                                      )}
+                                    />
+                                    <span className="truncate">{t(subItem.key)}</span>
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
 
-            // Regular link item
-            return (
-              <Link
-                key={item.key}
-                href={item.href || '#'}
-                onClick={() => setSidebarOpen(false)}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                  itemActive
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-                )}
-              >
-                <Icon
-                  className={cn(
-                    'w-5 h-5 shrink-0',
-                    itemActive ? 'text-blue-600' : 'text-gray-400',
-                  )}
-                />
-                {t(item.key)}
-              </Link>
+                    return (
+                      <Link
+                        key={item.key}
+                        href={item.href || '#'}
+                        onClick={() => setSidebarOpen(false)}
+                        className={cn(
+                          'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                          itemActive
+                            ? 'bg-blue-50 text-blue-700'
+                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                        )}
+                      >
+                        <Icon
+                          className={cn(
+                            'w-4 h-4 shrink-0',
+                            itemActive ? 'text-blue-600' : 'text-gray-400',
+                          )}
+                        />
+                        {t(item.key)}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </nav>
-
-        {/* Mobile App card */}
-        <div className="p-4 border-t border-gray-200 shrink-0">
-          <Link
-            href="/mobile-app"
-            onClick={() => setSidebarOpen(false)}
-            className="flex items-center gap-3 px-4 py-3 bg-linear-to-r from-green-50 to-blue-50 rounded-xl border border-green-200"
-          >
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center shrink-0">
-              <Smartphone className="w-5 h-5 text-green-700" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900">{t('mobileApp')}</p>
-              <p className="text-xs text-gray-600">{t('mobileAppSubtitle')}</p>
-            </div>
-          </Link>
-        </div>
       </aside>
 
       {/* Main content area */}
