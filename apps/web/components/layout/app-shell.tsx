@@ -132,7 +132,6 @@ const NAV_GROUPS: NavGroup[] = [
           { key: 'goodsReceipt', href: '/clinic/procurement/receipts', icon: Boxes, requiredPermission: 'INVENTORY:ADD' },
           { key: 'purchaseInvoices', href: '/clinic/procurement/invoices', icon: Receipt, requiredPermission: 'INVENTORY:VIEW' },
           { key: 'supplierPayments', href: '/clinic/procurement/payments', icon: CreditCard, requiredPermission: 'INVENTORY:VIEW' },
-          { key: 'procurementSettings', href: '/clinic/procurement/settings', icon: Settings, requiredPermission: 'SETTINGS:MANAGE' },
         ],
       },
     ],
@@ -145,7 +144,6 @@ const NAV_GROUPS: NavGroup[] = [
         icon: CreditCard,
         subItems: [
           { key: 'billing', href: '/clinic/billing', icon: CreditCard, requiredPermission: 'BILLING:VIEW' },
-          { key: 'billingSettings', href: '/clinic/billing/settings', icon: Settings, requiredPermission: 'SETTINGS:MANAGE' },
         ],
       },
       {
@@ -164,7 +162,6 @@ const NAV_GROUPS: NavGroup[] = [
         icon: BookOpen,
         subItems: [
           { key: 'accountingJournal', href: '/clinic/accounting/journal', icon: BookOpen, requiredPermission: 'BILLING:VIEW' },
-          { key: 'accountingPeriods', href: '/clinic/settings/accounting-periods', icon: Calendar, requiredPermission: 'SETTINGS:MANAGE' },
         ],
       },
     ],
@@ -182,6 +179,10 @@ const NAV_GROUPS: NavGroup[] = [
           { key: 'settingsGeneral', href: '/clinic/settings', icon: Settings },
           { key: 'rolePermissions', href: '/clinic/settings/roles', icon: Shield, requiredPermission: 'SETTINGS:MANAGE' },
           { key: 'documentSequence', href: '/clinic/settings/document-sequence', icon: ClipboardList, requiredPermission: 'SETTINGS:MANAGE' },
+          { key: 'appointmentSettings', href: '/clinic/appointments/settings', icon: Calendar, requiredPermission: 'SETTINGS:MANAGE' },
+          { key: 'billingSettings', href: '/clinic/billing/settings', icon: CreditCard, requiredPermission: 'SETTINGS:MANAGE' },
+          { key: 'procurementSettings', href: '/clinic/procurement/settings', icon: ClipboardList, requiredPermission: 'SETTINGS:MANAGE' },
+          { key: 'accountingPeriods', href: '/clinic/settings/accounting-periods', icon: Calendar, requiredPermission: 'SETTINGS:MANAGE' },
         ],
       },
     ],
