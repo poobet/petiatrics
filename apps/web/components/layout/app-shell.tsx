@@ -42,6 +42,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  SidebarProvider,
   SidebarGroup,
   SidebarGroupLabel,
   SidebarGroupContent,
@@ -260,7 +261,8 @@ export function AppShell({ children, user }: AppShellProps) {
   const initials = displayName.slice(0, 2).toUpperCase();
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <SidebarProvider defaultOpen={true}>
+      <div className="min-h-screen bg-gray-50 flex w-full">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -488,6 +490,6 @@ export function AppShell({ children, user }: AppShellProps) {
         {/* Page content */}
         <main className="flex-1 overflow-auto p-4 lg:p-6">{children}</main>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }
