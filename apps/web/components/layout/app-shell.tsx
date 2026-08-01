@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -210,20 +210,22 @@ export function AppShell({ children, user }: AppShellProps) {
   const tLocale = useTranslations('locale');
   const tAuth = useTranslations('auth');
 
-  useEffect(() => {
-    // 1. Apply saved collapsed state instantly (no animation yet)
+  // useLayoutEffect runs synchronously BEFORE the browser paints,
+  // so the user never sees the "all open" flash — groups snap to
+  // their saved collapsed state before anything is visible.
+  useLayoutEffect(() => {
     try {
       const saved = localStorage.getItem('petiatrics_collapsed_groups');
       if (saved) {
         setCollapsedGroups(JSON.parse(saved));
       }
     } catch (e) {}
-    // 2. Enable animations only after the browser has painted the correct state
-    //    Double-rAF ensures the collapsed state is visually committed first
+  }, []);
+
+  // Enable smooth animations only after the correct state has been painted
+  useEffect(() => {
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setAnimationsEnabled(true);
-      });
+      setAnimationsEnabled(true);
     });
   }, []);
 
