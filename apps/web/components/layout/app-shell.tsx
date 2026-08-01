@@ -435,9 +435,13 @@ export function AppShell({ children, user, initialSidebarOpen = true, initialCol
             <SidebarTrigger />
             <Separator orientation="vertical" className="h-4" />
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="size-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0 shadow-xs">
-                <PawPrint className="size-4.5 text-white" />
-              </div>
+              {(user as any).clinicLogoUrl ? (
+                <img
+                  src={(user as any).clinicLogoUrl}
+                  alt={user.clinicName || 'Clinic Logo'}
+                  className="size-8 rounded-lg object-cover shrink-0"
+                />
+              ) : null}
               <div className="flex flex-col min-w-0">
                 <span className="font-semibold text-sm text-foreground truncate leading-tight">
                   {user.clinicName || 'Petiatrics'}
