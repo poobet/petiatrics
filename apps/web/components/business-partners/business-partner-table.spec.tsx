@@ -28,6 +28,22 @@ function makeBp(overrides?: Partial<BusinessPartnerResponse>): BusinessPartnerRe
     defaultWhtCode: null,
     isVatRegistered: false,
     creditTermDays: 0,
+    phone: null,
+    email: null,
+    lineId: null,
+    creditLimit: null,
+    creditHold: false,
+    discountGroupId: null,
+    groupId: null,
+    code: null,
+    isMarketingOptIn: false,
+    internalNotes: null,
+    alertMessage: null,
+    group: null,
+    bankAccountName: null,
+    bankAccountBranch: null,
+    bankAccountNumber: null,
+    contacts: [],
     activeRoles: [],
     isActive: true,
     user: null,
@@ -100,7 +116,18 @@ describe('BusinessPartnerTable', () => {
   it('shows linked user email when present', () => {
     render(
       <BusinessPartnerTable
-        partners={[makeBp({ user: { id: 'u-1', role: Role.VET, email: 'vet@clinic.com', username: 'vet' } })]}
+        partners={[
+          makeBp({
+            user: {
+              id: 'u-1',
+              name: 'Dr Vet',
+              status: 'ACTIVE',
+              role: Role.VET,
+              email: 'vet@clinic.com',
+              username: 'vet',
+            },
+          }),
+        ]}
         canWrite={false}
         canDeactivate={false}
         busyId={null}

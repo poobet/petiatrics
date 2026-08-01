@@ -1,6 +1,17 @@
 import mongoose from 'mongoose';
 
-export type AuditOperation = 'create' | 'update' | 'delete' | 'void' | 'amend' | 'status_change';
+export type AuditOperation =
+  | 'create'
+  | 'update'
+  | 'delete'
+  | 'void'
+  | 'amend'
+  | 'status_change'
+  | 'password_reset'
+  | 'close'
+  | 'reopen'
+  | 'create_credit_note'
+  | 'create_adjustment';
 
 export interface IAuditLog extends mongoose.Document {
   clinicId?: string | null; // null for platform-level entries
@@ -22,7 +33,19 @@ const AuditLogSchema = new mongoose.Schema<IAuditLog>(
     entityId: { type: String, required: true },
     operation: {
       type: String,
-      enum: ['create', 'update', 'delete', 'void', 'amend', 'status_change'],
+      enum: [
+        'create',
+        'update',
+        'delete',
+        'void',
+        'amend',
+        'status_change',
+        'password_reset',
+        'close',
+        'reopen',
+        'create_credit_note',
+        'create_adjustment',
+      ],
       required: true,
     },
     actorId: { type: String, required: true, index: true },

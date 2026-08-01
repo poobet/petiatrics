@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import ItemTable from './item-table';
-import { ItemType } from '@petiatrics/types';
+import { ItemType, DefaultVatType, WhtRate, DispensingCategory } from '@petiatrics/types';
 import type { ItemSummaryResponse } from '@petiatrics/types';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -24,6 +24,12 @@ function makeItem(overrides: Partial<ItemSummaryResponse> = {}): ItemSummaryResp
     baseUnit: { id: 'unit-001', name: 'Box', symbol: 'bx' },
     defaultTaxCode: null,
     defaultSupplier: null,
+    defaultVatType: DefaultVatType.VAT_7,
+    whtRate: WhtRate.WHT_0,
+    dispensingCategory: DispensingCategory.General_Retail,
+    revenueAccountId: null,
+    cogsAccountId: null,
+    inventoryAssetAccountId: null,
     ...overrides,
   };
 }

@@ -1,14 +1,14 @@
-import { IsInt, IsMax, IsMin, IsOptional, IsString } from 'class-validator';
+import { IsInt, Max, Min, IsOptional, IsString } from 'class-validator';
 
 export class CreateAccountingPeriodDto {
   @IsInt()
-  @IsMin(2000)
-  @IsMax(2100)
+  @Min(2000)
+  @Max(2100)
   year!: number;
 
   @IsInt()
-  @IsMin(1)
-  @IsMax(12)
+  @Min(1)
+  @Max(12)
   month!: number;
 
   @IsString()

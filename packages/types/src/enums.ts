@@ -115,6 +115,11 @@ export enum AuditOperation {
   VOID = 'void',
   AMEND = 'amend',
   STATUS_CHANGE = 'status_change',
+  PASSWORD_RESET = 'password_reset',
+  CLOSE = 'close',
+  REOPEN = 'reopen',
+  CREATE_CREDIT_NOTE = 'create_credit_note',
+  CREATE_ADJUSTMENT = 'create_adjustment',
 }
 
 // 8 Infor LN partner roles — AR side (receivables) and AP side (payables).
