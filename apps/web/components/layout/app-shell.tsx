@@ -302,19 +302,19 @@ export function AppShell({ children, user }: AppShellProps) {
           </button>
         </div>
 
-        {/* Navigation Groups (Storybook Sidebar Design) */}
-        <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto">
+        {/* Navigation Groups (Storybook DashboardLayout Design) */}
+        <nav className="flex-1 px-4 py-6 space-y-4 overflow-y-auto">
           {NAV_GROUPS.map((group) => {
             const visibleItems = group.items.filter(canAccess);
             if (visibleItems.length === 0) return null;
 
             return (
               <SidebarGroup key={group.groupKey} className="p-0">
-                <SidebarGroupLabel className="px-2 text-[11px] font-bold uppercase tracking-wider text-sidebar-foreground/60 h-7 flex items-center">
+                <SidebarGroupLabel className="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 h-6 flex items-center mb-1">
                   {t(group.groupKey)}
                 </SidebarGroupLabel>
-                <SidebarGroupContent className="mt-1">
-                  <SidebarMenu>
+                <SidebarGroupContent>
+                  <SidebarMenu className="space-y-1">
                     {visibleItems.map((item) => {
                       const Icon = item.icon;
                       const itemActive = isItemOrSubitemActive(item);
@@ -326,47 +326,60 @@ export function AppShell({ children, user }: AppShellProps) {
 
                         return (
                           <SidebarMenuItem key={item.key}>
-                            <SidebarMenuButton
+                            <button
                               onClick={() => toggleNav(item.key)}
-                              isActive={itemActive}
-                              className="w-full justify-between font-medium cursor-pointer"
+                              className={cn(
+                                'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left cursor-pointer',
+                                itemActive
+                                  ? 'bg-blue-50 text-blue-700'
+                                  : 'text-gray-700 hover:bg-gray-100',
+                              )}
                             >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <Icon className="w-4 h-4 shrink-0" />
+                              <div className="flex items-center gap-3 min-w-0">
+                                <Icon
+                                  className={cn(
+                                    'w-5 h-5 shrink-0',
+                                    itemActive ? 'text-blue-700' : 'text-gray-500',
+                                  )}
+                                />
                                 <span className="truncate">{t(item.key)}</span>
                               </div>
                               <ChevronRight
                                 className={cn(
                                   'w-4 h-4 shrink-0 transition-transform duration-200',
-                                  isExpanded && 'rotate-90',
+                                  isExpanded ? 'rotate-90 text-blue-700' : 'text-gray-400',
                                 )}
                               />
-                            </SidebarMenuButton>
+                            </button>
 
                             {isExpanded && (
-                              <SidebarMenuSub className="my-1 border-l border-sidebar-border ml-3.5 pl-2.5 py-0.5 flex flex-col gap-1">
+                              <div className="mt-1 space-y-1 pl-6 pr-1">
                                 {visibleSubItems.map((subItem) => {
                                   const SubIcon = subItem.icon;
                                   const subActive = isActive(subItem.href);
                                   return (
-                                    <SidebarMenuSubItem key={subItem.href}>
-                                      <SidebarMenuSubButton
-                                        asChild
-                                        isActive={subActive}
-                                      >
-                                        <Link
-                                          href={subItem.href}
-                                          onClick={() => setSidebarOpen(false)}
-                                          className="flex items-center gap-2"
-                                        >
-                                          <SubIcon className="w-3.5 h-3.5 shrink-0" />
-                                          <span className="truncate">{t(subItem.key)}</span>
-                                        </Link>
-                                      </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
+                                    <Link
+                                      key={subItem.href}
+                                      href={subItem.href}
+                                      onClick={() => setSidebarOpen(false)}
+                                      className={cn(
+                                        'flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium transition-colors',
+                                        subActive
+                                          ? 'bg-blue-50 text-blue-700 font-semibold'
+                                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                                      )}
+                                    >
+                                      <SubIcon
+                                        className={cn(
+                                          'w-4 h-4 shrink-0',
+                                          subActive ? 'text-blue-700' : 'text-gray-400',
+                                        )}
+                                      />
+                                      <span className="truncate">{t(subItem.key)}</span>
+                                    </Link>
                                   );
                                 })}
-                              </SidebarMenuSub>
+                              </div>
                             )}
                           </SidebarMenuItem>
                         );
@@ -374,20 +387,24 @@ export function AppShell({ children, user }: AppShellProps) {
 
                       return (
                         <SidebarMenuItem key={item.key}>
-                          <SidebarMenuButton
-                            asChild
-                            isActive={itemActive}
-                            className="font-medium"
+                          <Link
+                            href={item.href || '#'}
+                            onClick={() => setSidebarOpen(false)}
+                            className={cn(
+                              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                              itemActive
+                                ? 'bg-blue-50 text-blue-700'
+                                : 'text-gray-700 hover:bg-gray-100',
+                            )}
                           >
-                            <Link
-                              href={item.href || '#'}
-                              onClick={() => setSidebarOpen(false)}
-                              className="flex items-center gap-2.5"
-                            >
-                              <Icon className="w-4 h-4 shrink-0" />
-                              <span className="truncate">{t(item.key)}</span>
-                            </Link>
-                          </SidebarMenuButton>
+                            <Icon
+                              className={cn(
+                                'w-5 h-5 shrink-0',
+                                itemActive ? 'text-blue-700' : 'text-gray-500',
+                              )}
+                            />
+                            <span className="truncate">{t(item.key)}</span>
+                          </Link>
                         </SidebarMenuItem>
                       );
                     })}
