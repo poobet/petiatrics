@@ -91,8 +91,7 @@ type NavGroupKey =
   | 'navGroupClinicOps'
   | 'navGroupInventoryProcurement'
   | 'navGroupFinanceAccounting'
-  | 'navGroupAdministration'
-  | 'navGroupSettings';
+  | 'navGroupAdministration';
 
 interface NavGroup {
   groupKey: NavGroupKey;
@@ -109,6 +108,13 @@ const NAV_GROUPS: NavGroup[] = [
       { key: 'clients', href: '/clinic/clients', icon: Users, requiredPermission: 'PATIENT:VIEW' },
       { key: 'medicalRecords', href: '/medical-records', icon: FileText, requiredPermission: 'PATIENT:VIEW' },
       { key: 'pos', href: '/clinic/pos', icon: ShoppingCart, requiredPermission: 'BILLING:ADD' },
+      {
+        key: 'settings',
+        icon: Settings,
+        subItems: [
+          { key: 'appointmentSettings', href: '/clinic/appointments/settings', icon: Calendar, requiredPermission: 'SETTINGS:MANAGE' },
+        ],
+      },
     ],
   },
   {
@@ -135,6 +141,13 @@ const NAV_GROUPS: NavGroup[] = [
           { key: 'supplierPayments', href: '/clinic/procurement/payments', icon: CreditCard, requiredPermission: 'INVENTORY:VIEW' },
         ],
       },
+      {
+        key: 'settings',
+        icon: Settings,
+        subItems: [
+          { key: 'procurementSettings', href: '/clinic/procurement/settings', icon: ClipboardList, requiredPermission: 'SETTINGS:MANAGE' },
+        ],
+      },
     ],
   },
   {
@@ -159,6 +172,14 @@ const NAV_GROUPS: NavGroup[] = [
           { key: 'accountingJournal', href: '/clinic/accounting/journal', icon: BookOpen, requiredPermission: 'BILLING:VIEW' },
         ],
       },
+      {
+        key: 'settings',
+        icon: Settings,
+        subItems: [
+          { key: 'billingSettings', href: '/clinic/billing/settings', icon: CreditCard, requiredPermission: 'SETTINGS:MANAGE' },
+          { key: 'accountingPeriods', href: '/clinic/settings/accounting-periods', icon: Calendar, requiredPermission: 'SETTINGS:MANAGE' },
+        ],
+      },
     ],
   },
   {
@@ -167,21 +188,17 @@ const NAV_GROUPS: NavGroup[] = [
       { key: 'staff', href: '/clinic/staff', icon: UserCog, requiredPermission: 'SETTINGS:MANAGE' },
       { key: 'businessPartners', href: '/clinic/business-partners', icon: Briefcase },
       { key: 'audit', href: '/clinic/audit', icon: ClipboardList, requiredPermission: 'SETTINGS:MANAGE' },
+      {
+        key: 'settings',
+        icon: Settings,
+        subItems: [
+          { key: 'settingsGeneral', href: '/clinic/settings', icon: Settings },
+          { key: 'rolePermissions', href: '/clinic/settings/roles', icon: Shield, requiredPermission: 'SETTINGS:MANAGE' },
+          { key: 'documentSequence', href: '/clinic/settings/document-sequence', icon: ClipboardList, requiredPermission: 'SETTINGS:MANAGE' },
+        ],
+      },
     ],
   },
-  {
-    groupKey: 'navGroupSettings',
-    items: [
-      { key: 'settingsGeneral', href: '/clinic/settings', icon: Settings },
-      { key: 'rolePermissions', href: '/clinic/settings/roles', icon: Shield, requiredPermission: 'SETTINGS:MANAGE' },
-      { key: 'documentSequence', href: '/clinic/settings/document-sequence', icon: ClipboardList, requiredPermission: 'SETTINGS:MANAGE' },
-      { key: 'appointmentSettings', href: '/clinic/appointments/settings', icon: Calendar, requiredPermission: 'SETTINGS:MANAGE' },
-      { key: 'billingSettings', href: '/clinic/billing/settings', icon: CreditCard, requiredPermission: 'SETTINGS:MANAGE' },
-      { key: 'procurementSettings', href: '/clinic/procurement/settings', icon: ClipboardList, requiredPermission: 'SETTINGS:MANAGE' },
-      { key: 'accountingPeriods', href: '/clinic/settings/accounting-periods', icon: Calendar, requiredPermission: 'SETTINGS:MANAGE' },
-    ],
-  },
-];
 
 interface AppShellProps {
   children: React.ReactNode;
