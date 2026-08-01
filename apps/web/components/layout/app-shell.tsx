@@ -287,8 +287,8 @@ export function AppShell({ children, user }: AppShellProps) {
           </div>
         </SidebarHeader>
 
-        {/* Navigation Content */}
-        <SidebarContent>
+        {/* Navigation Content (No visible scrollbar) */}
+        <SidebarContent className="[scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {NAV_GROUPS.map((group) => {
             const visibleItems = group.items.filter(canAccess);
             if (visibleItems.length === 0) return null;
@@ -358,21 +358,6 @@ export function AppShell({ children, user }: AppShellProps) {
             );
           })}
         </SidebarContent>
-
-        {/* Footer */}
-        <SidebarFooter className="p-3 border-t border-sidebar-border">
-          <div className="flex items-center gap-3 px-1">
-            <Avatar className="size-8">
-              <AvatarFallback className="bg-blue-100 text-blue-700 text-xs font-semibold">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <div className="text-left text-xs truncate flex-1 min-w-0">
-              <p className="font-medium text-sidebar-foreground truncate">{displayName.includes('@') ? displayName.split('@')[0] : displayName}</p>
-              <p className="text-muted-foreground capitalize truncate">{user.role.replace(/_/g, ' ').toLowerCase()}</p>
-            </div>
-          </div>
-        </SidebarFooter>
 
         <SidebarRail />
       </Sidebar>
