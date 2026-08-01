@@ -356,6 +356,7 @@ export function AppShell({ children, user, initialSidebarOpen = true, initialCol
                   </SidebarGroupLabel>
                   <CollapsibleContent
                     className={cn(
+                      'overflow-hidden',
                       animationsEnabled
                         ? 'transition-all duration-200 ease-in-out data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down'
                         : '[transition:none!important] [animation:none!important]',
@@ -381,7 +382,7 @@ export function AppShell({ children, user, initialSidebarOpen = true, initialCol
                                       <ChevronRight className="ml-auto size-4 shrink-0 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                                     </SidebarMenuButton>
                                   </CollapsibleTrigger>
-                                  <CollapsibleContent>
+                                  <CollapsibleContent className="overflow-hidden transition-all duration-200 ease-in-out data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
                                     <SidebarMenuSub>
                                       {visibleSubItems.map((subItem) => {
                                         const SubIcon = subItem.icon;
