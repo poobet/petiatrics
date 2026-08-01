@@ -117,6 +117,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: BookOpen,
     subItems: [
       { key: 'accountingJournal', href: '/clinic/accounting/journal', icon: BookOpen, requiredPermission: 'BILLING:VIEW' },
+      { key: 'accountingPeriods', href: '/clinic/settings/accounting-periods', icon: Calendar, requiredPermission: 'SETTINGS:MANAGE' },
     ],
   },
   { key: 'pos', href: '/clinic/pos', icon: ShoppingCart, requiredPermission: 'BILLING:ADD' },
@@ -152,12 +153,6 @@ const NAV_ITEMS: NavItem[] = [
         key: 'documentSequence',
         href: '/clinic/settings/document-sequence',
         icon: ClipboardList,
-        requiredPermission: 'SETTINGS:MANAGE',
-      },
-      {
-        key: 'accountingPeriods',
-        href: '/clinic/settings/accounting-periods',
-        icon: BookOpen,
         requiredPermission: 'SETTINGS:MANAGE',
       },
     ],
