@@ -431,16 +431,21 @@ export function AppShell({ children, user, initialSidebarOpen = true, initialCol
       <SidebarInset>
         {/* Header */}
         <header className="flex h-16 items-center justify-between border-b border-border px-4 lg:px-6 bg-background sticky top-0 z-40">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="flex items-center gap-3 min-w-0">
             <SidebarTrigger />
             <Separator orientation="vertical" className="h-4" />
-            <div className="relative flex-1 max-w-md hidden sm:block">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search patients, clients, appointments..."
-                className="w-full pl-9 pr-4 py-1.5 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="size-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0 shadow-xs">
+                <PawPrint className="size-4.5 text-white" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="font-semibold text-sm text-foreground truncate leading-tight">
+                  {user.clinicName || 'Petiatrics'}
+                </span>
+                <span className="text-[11px] text-muted-foreground truncate hidden sm:block">
+                  Vet Management
+                </span>
+              </div>
             </div>
           </div>
 
