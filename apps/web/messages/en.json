@@ -130,7 +130,8 @@
     "commissionPaymentRuns": "Payment Runs",
     "commissionWht": "WHT & Tax Reports",
     "accounting": "General Ledger (GL)",
-    "accountingJournal": "Journal & Trial Balance"
+    "accountingJournal": "Journal & Trial Balance",
+    "chartOfAccounts": "Chart of Accounts"
   },
   "dashboard": {
     "title": "Dashboard",

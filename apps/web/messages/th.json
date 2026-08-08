@@ -130,7 +130,8 @@
     "commissionPaymentRuns": "รอบการชำระเงิน",
     "commissionWht": "ภาษีหัก ณ ที่จ่าย (50 ทวิ)",
     "accounting": "ระบบบัญชี (GL)",
-    "accountingJournal": "สมุดรายวัน & งบทดลอง"
+    "accountingJournal": "สมุดรายวัน & งบทดลอง",
+    "chartOfAccounts": "ผังบัญชี (Chart of Accounts)"
   },
   "dashboard": {
     "title": "แดชบอร์ด",
