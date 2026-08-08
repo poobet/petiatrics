@@ -120,6 +120,35 @@ export default function ClinicSettingsPage() {
             </div>
           </section>
 
+          <section className="bg-white border rounded-lg p-5 space-y-4">
+            <h2 className="font-semibold text-gray-800">Financial & Accounting Setup</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <a
+                href="/clinic/settings/chart-of-accounts"
+                className="p-4 border rounded-xl hover:border-indigo-500 hover:shadow-sm transition-all group block"
+              >
+                <div className="font-bold text-sm text-slate-900 group-hover:text-indigo-600 flex items-center gap-2">
+                  <span>📖</span> Chart of Accounts (COA)
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  Manage 5 category accounts, protected system accounts & user sub-accounts
+                </div>
+              </a>
+
+              <a
+                href="/clinic/settings/accounting-rules"
+                className="p-4 border rounded-xl hover:border-indigo-500 hover:shadow-sm transition-all group block"
+              >
+                <div className="font-bold text-sm text-slate-900 group-hover:text-indigo-600 flex items-center gap-2">
+                  <span>⚙️</span> Dynamic Posting Rules
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  Rule evaluator engine for perpetual inventory journal entry posting
+                </div>
+              </a>
+            </div>
+          </section>
+
           <div className="flex justify-end">
             <button
               type="submit"
