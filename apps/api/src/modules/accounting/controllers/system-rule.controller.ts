@@ -8,6 +8,7 @@ import {
   Body,
   Query,
 } from '@nestjs/common';
+import { TenantId } from '../../../common/decorators/tenant.decorator';
 import { SystemRuleService } from '../services/system-rule.service';
 import { CreateSystemRuleDto } from '../dto/create-system-rule.dto';
 import { UpdateSystemRuleDto } from '../dto/update-system-rule.dto';
@@ -17,16 +18,24 @@ export class SystemRuleController {
   constructor(private readonly ruleService: SystemRuleService) {}
 
   @Post()
-  create(@Body() dto: CreateSystemRuleDto) {
-    return this.ruleService.create(dto);
+  create(
+    @TenantId() clinicId: string | null,
+    @Body() dto: CreateSystemRuleDto,
+  ) {
+    return this.ruleService.create({
+      ...dto,
+      clinicId: dto.clinicId ?? clinicId ?? undefined,
+    });
   }
 
   @Get()
   findAll(
+    @TenantId() clinicId: string | null,
     @Query('eventType') eventType?: string,
-    @Query('clinicId') clinicId?: string,
+    @Query('clinicId') queryClinicId?: string,
   ) {
-    return this.ruleService.findAll({ eventType, clinicId });
+    const effectiveClinicId = queryClinicId ?? clinicId ?? undefined;
+    return this.ruleService.findAll({ eventType, clinicId: effectiveClinicId });
   }
 
   @Get(':id')

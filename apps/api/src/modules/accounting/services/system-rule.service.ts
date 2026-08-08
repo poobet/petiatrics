@@ -25,7 +25,12 @@ export class SystemRuleService {
   async findAll(filters?: { eventType?: string; clinicId?: string }) {
     const where: any = {};
     if (filters?.eventType) where.eventType = filters.eventType;
-    if (filters?.clinicId) where.clinicId = filters.clinicId;
+    if (filters?.clinicId) {
+      where.OR = [
+        { clinicId: filters.clinicId },
+        { clinicId: null },
+      ];
+    }
 
     return this.prisma.systemRule.findMany({
       where,
