@@ -23,6 +23,8 @@ import {
 import { apiClient } from '../../../../lib/api-client';
 import { useSessionStore } from '../../../../lib/session-store';
 import { Role } from '@petiatrics/types';
+import { Money } from '@/components/ui/money';
+import { formatMinor } from '@/lib/currency';
 import Link from 'next/link';
 
 interface PO {
@@ -882,7 +884,7 @@ export default function ProcurementClient({ initialTab = 'pos' }: ProcurementCli
               >
                 <option value="">Select PO (Optional)...</option>
                 {pos.filter(po => !selectedSupplierId || po.supplier.name === suppliers.find(s=>s.id===selectedSupplierId)?.name).map(po => (
-                  <option key={po.id} value={po.id}>{po.code} - ฿{(po.totalMinor/100).toFixed(2)}</option>
+                  <option key={po.id} value={po.id}>{po.code} - {formatMinor(po.totalMinor)}</option>
                 ))}
               </select>
             </div>
@@ -1090,48 +1092,57 @@ export default function ProcurementClient({ initialTab = 'pos' }: ProcurementCli
 
           {unpaidInvoices.length > 0 ? (
             <div className="space-y-3">
-              <div className="border-b pb-2">
-                <h3 className="text-sm font-bold text-gray-900">Allocate Payment to Outstanding Invoices</h3>
-                <p className="text-xs text-gray-500">Unpaid posted invoices for the selected supplier.</p>
+                <Money baht={whtAmount} />
               </div>
+            </div>
+          </div>
 
-              <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-                {unpaidInvoices.map((inv) => {
-                  const outstanding = (inv.totalMinor - inv.amountPaidMinor) / 100;
-                  return (
-                    <div key={inv.id} className="flex justify-between items-center border-b pb-2 gap-4">
-                      <div className="flex-1">
-                        <div className="text-xs font-bold text-gray-900">{inv.code} ({inv.invoiceNumber})</div>
-                        <div className="text-[10px] text-gray-500">
-                          Outstanding: ฿{outstanding.toFixed(2)} | Due: {new Date(inv.dueDate).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <div className="w-36 flex items-center gap-2">
-                        <span className="text-xs font-semibold text-gray-500">฿</span>
-                        <input
-                          type="number"
-                          min={0}
-                          max={outstanding}
-                          step="0.01"
-                          value={allocations[inv.id] || ''}
-                          onChange={(e) => {
-                            const val = parseFloat(e.target.value) || 0;
-                            setAllocations(prev => ({ ...prev, [inv.id]: val }));
-                          }}
-                          className="w-full border rounded px-2 py-1 text-xs focus:outline-blue-500 font-mono text-right"
-                          placeholder="0.00"
-                        />
+          <div className="space-y-3">
+            <label className="block text-xs font-semibold text-gray-700">
+              Select Supplier Invoices to Settle (Allocation)
+            </label>
+            {unpaidInvoices.length === 0 ? (
+              <p className="text-xs text-gray-400 italic">No unpaid posted invoices available for this supplier.</p>
+            ) : (
+              unpaidInvoices.map((inv) => {
+                const outstanding = (inv.totalMinor - inv.amountPaidMinor) / 100;
+                const isChecked = selectedInvoiceIds.includes(inv.id);
+                return (
+                  <div
+                    key={inv.id}
+                    onClick={() => toggleInvoiceSelection(inv.id)}
+                    className={`p-3 border rounded-lg cursor-pointer flex items-center justify-between text-xs transition-colors ${
+                      isChecked ? 'bg-indigo-50 border-indigo-300 ring-1 ring-indigo-300' : 'bg-white hover:bg-gray-50'
+                    }`}
+                  >
+                    <div>
+                      <span className="font-bold text-gray-900">{inv.code}</span>
+                      <span className="text-gray-400 ml-2">({new Date(inv.issueDate).toLocaleDateString()})</span>
+                      <div className="text-[11px] text-gray-500 mt-0.5">
+                        Outstanding: <Money baht={outstanding} /> | Due: {new Date(inv.dueDate).toLocaleDateString()}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : selectedSupplierId ? (
-            <div className="p-4 border rounded-lg bg-gray-50 text-center text-xs text-gray-500">
-              No unpaid invoices found for this supplier.
-            </div>
-          ) : null}
+                    <div className="w-36 flex items-center gap-2">
+                      <span className="text-xs font-semibold text-gray-500">฿</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={outstanding}
+                        step="0.01"
+                        value={allocations[inv.id] || ''}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          setAllocations(prev => ({ ...prev, [inv.id]: val }));
+                        }}
+                        className="w-full border rounded px-2 py-1 text-xs focus:outline-blue-500 font-mono text-right"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
 
           <div className="pt-4 border-t flex justify-end gap-3">
             <Button type="button" variant="outline" onClick={() => setViewMode('list')}>
@@ -1225,8 +1236,8 @@ export default function ProcurementClient({ initialTab = 'pos' }: ProcurementCli
                         <td className="p-3 text-center font-mono">{line.quantityOrdered}</td>
                         <td className="p-3 text-center font-mono">{line.quantityReceived}</td>
                         <td className="p-3 text-center font-mono">{line.quantityInvoiced}</td>
-                        <td className="p-3 text-right font-mono">฿{(line.unitPriceMinor / 100).toFixed(2)}</td>
-                        <td className="p-3 text-right font-mono font-semibold">฿{((line.quantityOrdered * line.unitPriceMinor) / 100).toFixed(2)}</td>
+                        <td className="p-3 text-right font-mono"><Money minor={line.unitPriceMinor} /></td>
+                        <td className="p-3 text-right font-mono font-semibold"><Money minor={line.quantityOrdered * line.unitPriceMinor} /></td>
                       </tr>
                     ))}
                   </tbody>
@@ -1396,30 +1407,19 @@ export default function ProcurementClient({ initialTab = 'pos' }: ProcurementCli
                       <tr key={idx} className="border-b hover:bg-gray-50">
                         <td className="p-3 font-semibold text-gray-800">{line.product.name} ({line.product.code})</td>
                         <td className="p-3 text-center font-mono">{line.quantity}</td>
-                        <td className="p-3 text-right font-mono">฿{(line.unitPriceMinor / 100).toFixed(2)}</td>
+                        <td className="p-3 text-right font-mono"><Money minor={line.unitPriceMinor} /></td>
                         <td className="p-3 text-right font-mono">{(line.taxRateBps / 100)}%</td>
-                        <td className="p-3 text-right font-mono font-semibold">฿{(line.totalMinor / 100).toFixed(2)}</td>
+                        <td className="p-3 text-right font-mono font-semibold"><Money minor={line.totalMinor} /></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
               
-              <div className="flex justify-end pt-3">
-                <div className="w-64 space-y-1.5 text-xs">
-                  <div className="flex justify-between text-gray-500">
-                    <span>Subtotal:</span>
-                    <span className="font-mono">฿{(selectedInvoiceDetails.subtotalMinor / 100).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-gray-500">
-                    <span>Tax (VAT):</span>
-                    <span className="font-mono">฿{(selectedInvoiceDetails.taxTotalMinor / 100).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between font-bold text-gray-900 border-t pt-1.5">
-                    <span>Invoice Total:</span>
-                    <span className="font-mono">฿{(selectedInvoiceDetails.totalMinor / 100).toFixed(2)}</span>
-                  </div>
-                </div>
+              <div className="flex justify-end gap-6 text-xs text-gray-700 pt-2 border-t font-medium">
+                <div>Subtotal: <span className="font-mono"><Money minor={selectedInvoiceDetails.subtotalMinor} /></span></div>
+                <div>Tax: <span className="font-mono"><Money minor={selectedInvoiceDetails.taxTotalMinor} /></span></div>
+                <div className="font-bold text-gray-900">Total: <span className="font-mono"><Money minor={selectedInvoiceDetails.totalMinor} /></span></div>
               </div>
             </div>
           )}
@@ -1486,28 +1486,13 @@ export default function ProcurementClient({ initialTab = 'pos' }: ProcurementCli
           <div className="grid grid-cols-3 gap-4 border-t pt-4">
             <div>
               <label className="block text-xs font-semibold text-gray-400 mb-1">Payment Amount (฿)</label>
-              <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-gray-800 font-bold">฿{(selectedPaymentDetails.amountMinor / 100).toFixed(2)}</div>
+              <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-gray-800 font-bold"><Money minor={selectedPaymentDetails.amountMinor} /></div>
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-400 mb-1">Withholding Tax (WHT %)</label>
               <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-red-600 font-semibold">{(selectedPaymentDetails.whtRateBps / 100)}%</div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1">WHT Deducted Amount</label>
-              <div className="w-full bg-gray-50 border rounded px-3 py-2 text-sm text-red-600 font-bold">฿{(selectedPaymentDetails.whtAmountMinor / 100).toFixed(2)}</div>
-            </div>
-          </div>
-
-          {selectedPaymentDetails.allocations && (
-            <div className="space-y-4">
-              <h3 className="text-sm font-bold text-gray-900 border-b pb-2">Allocated Invoices</h3>
-              <div className="border rounded-lg overflow-hidden">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-gray-100 font-semibold border-b text-gray-700">
-                    <tr>
-                      <th className="p-3">Invoice Ref</th>
-                      <th className="p-3 text-right">Invoice Total</th>
-                      <th className="p-3 text-right">Amount Allocated</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1622,7 +1607,7 @@ export default function ProcurementClient({ initialTab = 'pos' }: ProcurementCli
                         {po.status}
                       </span>
                     </td>
-                    <td className="p-3 font-medium">฿{(po.totalMinor / 100).toFixed(2)}</td>
+                    <td className="p-3 font-medium"><Money minor={po.totalMinor} /></td>
                     <td className="p-3 text-right flex justify-end gap-2">
                       <button
                         onClick={() => showPoDetails(po.id)}
@@ -1738,7 +1723,7 @@ export default function ProcurementClient({ initialTab = 'pos' }: ProcurementCli
                         {inv.matchStatus}
                       </span>
                     </td>
-                    <td className="p-3 font-medium">฿{(inv.totalMinor / 100).toFixed(2)}</td>
+                    <td className="p-3 font-medium"><Money minor={inv.totalMinor} /></td>
                     <td className="p-3">
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${
                         inv.status === 'POSTED' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' :
@@ -1822,8 +1807,8 @@ export default function ProcurementClient({ initialTab = 'pos' }: ProcurementCli
                     <td className="p-3">{new Date(pay.paymentDate).toLocaleDateString()}</td>
                     <td className="p-3 font-semibold text-xs text-indigo-600">{pay.paymentMethod}</td>
                     <td className="p-3 font-mono text-xs">{pay.referenceNumber ?? 'N/A'}</td>
-                    <td className="p-3 text-red-600 font-medium">฿{(pay.whtAmountMinor / 100).toFixed(2)} ({pay.whtRateBps / 100}%)</td>
-                    <td className="p-3 font-medium text-green-600">฿{(pay.amountMinor / 100).toFixed(2)}</td>
+                    <td className="p-3 text-red-600 font-medium"><Money minor={pay.whtAmountMinor} /> ({pay.whtRateBps / 100}%)</td>
+                    <td className="p-3 font-medium text-green-600"><Money minor={pay.amountMinor} /></td>
                     <td className="p-3 text-right">
                       <button
                         onClick={() => showPaymentDetails(pay.id)}
@@ -1929,8 +1914,8 @@ export default function ProcurementClient({ initialTab = 'pos' }: ProcurementCli
                         <td className="p-3 text-center font-mono">{line.poQuantity ?? 'N/A'}</td>
                         <td className="p-3 text-center font-mono">{line.grQuantity ?? 'N/A'}</td>
                         <td className="p-3 text-center font-mono font-semibold">{line.invoiceQuantity}</td>
-                        <td className="p-3 text-right font-mono">฿{(line.poUnitPrice / 100).toFixed(2)}</td>
-                        <td className="p-3 text-right font-mono font-semibold">฿{(line.invoiceUnitPrice / 100).toFixed(2)}</td>
+                        <td className="p-3 text-right font-mono"><Money minor={line.poUnitPrice} /></td>
+                        <td className="p-3 text-right font-mono font-semibold"><Money minor={line.invoiceUnitPrice} /></td>
                         <td className="p-3 text-center font-semibold font-mono">
                           {line.discrepancyType === 'PRICE' && <span className="text-amber-600">Price: {line.priceVariancePercent}%</span>}
                           {line.discrepancyType === 'QUANTITY' && <span className="text-indigo-600">Qty: {line.quantityVariancePercent}%</span>}

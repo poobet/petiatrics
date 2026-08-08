@@ -21,41 +21,59 @@ async function getSummaries(): Promise<DfSummary[]> {
       headers: { Cookie: `petiatrics_sid=${sid}` },
       cache: 'no-store',
     });
-    if (!res.ok) return [];
-    const json = await res.json();
-    return json.data ?? [];
-  } catch {
-    return [];
-  }
-}
+import { DollarSign, ArrowRight } from 'lucide-react';
+import { apiClient } from '@/lib/api-client';
+import { Money } from '@/components/ui/money';
 
-export default async function CommissionDashboardPage() {
-  const summaries = await getSummaries();
+export default function CommissionDashboardPage() {
+  const [summaries, setSummaries] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const totalAccrued = summaries.reduce((acc, s) => acc + s.totalAccruedMinor, 0);
-  const totalConfirmed = summaries.reduce((acc, s) => acc + s.totalConfirmedMinor, 0);
-  const totalSettled = summaries.reduce((acc, s) => acc + s.totalSettledMinor, 0);
-  const totalWht = summaries.reduce((acc, s) => acc + s.totalWhtMinor, 0);
+  useEffect(() => {
+    apiClient
+      .get('/billing/commission/partner-summary')
+      .then((data) => setSummaries(Array.isArray(data) ? data : []))
+      .catch(() => setSummaries([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const totalAccrued = summaries.reduce((acc, curr) => acc + (curr.totalAccruedMinor || 0), 0);
+  const totalConfirmed = summaries.reduce((acc, curr) => acc + (curr.totalConfirmedMinor || 0), 0);
+  const totalSettled = summaries.reduce((acc, curr) => acc + (curr.totalSettledMinor || 0), 0);
+  const totalWht = summaries.reduce((acc, curr) => acc + (curr.totalWhtMinor || 0), 0);
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="p-8 space-y-6">
+      {/* Top Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Doctor Fee & Commission Engine</h1>
-          <p className="text-sm text-slate-500">Revenue splitting, accrual tracking, payment runs, and WHT compliance</p>
+          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <DollarSign className="w-7 h-7 text-amber-500" />
+            Doctor Fee & Commission Engine
+          </h1>
+          <p className="text-slate-500 text-sm mt-1">
+            Automated DF calculations, tier rules, WHT (3%) deductions & settlement runs
+          </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
           <Link
-            href="/clinic/commission/payment-runs"
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-emerald-700"
+            href="/clinic/commission/rules"
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-colors"
           >
-            Payment Runs
+            Commission Rules
           </Link>
           <Link
-            href="/clinic/commission/wht"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            href="/clinic/commission/transactions"
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-colors"
           >
-            WHT / Tax Reports
+            All Transactions
+          </Link>
+          <Link
+            href="/clinic/commission/payment-runs"
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl transition-colors flex items-center gap-1.5"
+          >
+            <span>Payment Runs</span>
+            <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       </div>
@@ -64,19 +82,19 @@ export default async function CommissionDashboardPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Accrued (Pending Invoice)</p>
-          <p className="mt-2 text-2xl font-extrabold text-amber-600">฿{(totalAccrued / 100).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</p>
+          <p className="mt-2 text-2xl font-extrabold text-amber-600"><Money minor={totalAccrued} /></p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Confirmed (Ready for Payout)</p>
-          <p className="mt-2 text-2xl font-extrabold text-blue-600">฿{(totalConfirmed / 100).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</p>
+          <p className="mt-2 text-2xl font-extrabold text-blue-600"><Money minor={totalConfirmed} /></p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Settled (Paid Out)</p>
-          <p className="mt-2 text-2xl font-extrabold text-emerald-600">฿{(totalSettled / 100).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</p>
+          <p className="mt-2 text-2xl font-extrabold text-emerald-600"><Money minor={totalSettled} /></p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total WHT Deducted (3%)</p>
-          <p className="mt-2 text-2xl font-extrabold text-slate-700">฿{(totalWht / 100).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</p>
+          <p className="mt-2 text-2xl font-extrabold text-slate-700"><Money minor={totalWht} /></p>
         </div>
       </div>
 
@@ -102,7 +120,7 @@ export default async function CommissionDashboardPage() {
               {summaries.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-8 text-center text-slate-400">
-                    No doctor fee earnings recorded yet
+                    {loading ? 'Loading...' : 'No doctor fee earnings recorded yet'}
                   </td>
                 </tr>
               ) : (
@@ -111,19 +129,19 @@ export default async function CommissionDashboardPage() {
                     <td className="px-6 py-4 font-medium text-slate-900">{s.businessPartnerId}</td>
                     <td className="px-6 py-4 text-right font-mono">{s.transactionCount}</td>
                     <td className="px-6 py-4 text-right font-mono text-amber-600 font-medium">
-                      {(s.totalAccruedMinor / 100).toFixed(2)}
+                      <Money minor={s.totalAccruedMinor} showSymbol={false} />
                     </td>
                     <td className="px-6 py-4 text-right font-mono text-blue-600 font-medium">
-                      {(s.totalConfirmedMinor / 100).toFixed(2)}
+                      <Money minor={s.totalConfirmedMinor} showSymbol={false} />
                     </td>
                     <td className="px-6 py-4 text-right font-mono text-emerald-600 font-medium">
-                      {(s.totalSettledMinor / 100).toFixed(2)}
+                      <Money minor={s.totalSettledMinor} showSymbol={false} />
                     </td>
                     <td className="px-6 py-4 text-right font-mono text-slate-500">
-                      {(s.totalWhtMinor / 100).toFixed(2)}
+                      <Money minor={s.totalWhtMinor} showSymbol={false} />
                     </td>
                     <td className="px-6 py-4 text-right font-mono font-bold text-slate-900">
-                      {(s.totalNetPayableMinor / 100).toFixed(2)}
+                      <Money minor={s.totalNetPayableMinor} showSymbol={false} />
                     </td>
                   </tr>
                 ))

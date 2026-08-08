@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { BookOpen, FileText, CheckCircle } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 
+import { Money } from '@/components/ui/money';
+
 export default function AccountingJournalPage() {
   const [report, setReport] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,9 +55,9 @@ export default function AccountingJournalPage() {
                   <td className="px-6 py-4 font-mono font-medium text-slate-800">{row.code}</td>
                   <td className="px-6 py-4 font-medium text-slate-900">{row.name}</td>
                   <td className="px-6 py-4 text-xs font-semibold text-slate-500">{row.type}</td>
-                  <td className="px-6 py-4 text-right font-mono text-emerald-600">฿{(row.debitMinor / 100).toFixed(2)}</td>
-                  <td className="px-6 py-4 text-right font-mono text-blue-600">฿{(row.creditMinor / 100).toFixed(2)}</td>
-                  <td className="px-6 py-4 text-right font-mono font-semibold text-slate-900">฿{(row.balanceMinor / 100).toFixed(2)}</td>
+                  <td className="px-6 py-4 text-right font-mono text-emerald-600"><Money minor={row.debitMinor} /></td>
+                  <td className="px-6 py-4 text-right font-mono text-blue-600"><Money minor={row.creditMinor} /></td>
+                  <td className="px-6 py-4 text-right font-mono font-semibold text-slate-900"><Money minor={row.balanceMinor} /></td>
                 </tr>
               ))
             )}

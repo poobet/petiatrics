@@ -16,6 +16,7 @@ import {
   Package,
 } from 'lucide-react';
 import { apiClient } from '../../../../../lib/api-client';
+import { Money } from '@/components/ui/money';
 import Link from 'next/link';
 
 interface SupplierScorecard {
@@ -158,7 +159,7 @@ export default function AnalyticsClient() {
                 <span className="text-xs font-semibold uppercase tracking-wider">Total Supplier Spend</span>
                 <DollarSign className="w-5 h-5 text-green-600" />
               </div>
-              <div className="text-2xl font-bold text-gray-900">฿{(aggregatedMetrics.totalSpend / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              <div className="text-2xl font-bold text-gray-900"><Money minor={aggregatedMetrics.totalSpend} /></div>
               <div className="text-xs text-gray-500">Aggregated across all suppliers</div>
             </div>
 
@@ -220,7 +221,7 @@ export default function AnalyticsClient() {
                         </span>
                       </td>
                       <td className="p-3.5 text-center font-mono text-xs">{s.averageLeadTimeDays} days</td>
-                      <td className="p-3.5 text-right font-medium">฿{(s.totalSpendMinor / 100).toFixed(2)}</td>
+                      <td className="p-3.5 text-right font-medium"><Money minor={s.totalSpendMinor} /></td>
                       <td className="p-3.5 text-right">
                         <Button
                           size="sm"
@@ -311,7 +312,7 @@ export default function AnalyticsClient() {
 
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-gray-500">Total Account Spend</span>
-                      <span className="font-semibold text-green-600">฿{((selectedScorecard?.totalSpendMinor ?? 0) / 100).toFixed(2)}</span>
+                      <Money minor={selectedScorecard?.totalSpendMinor} className="font-semibold text-green-600" />
                     </div>
                   </div>
                 </div>
