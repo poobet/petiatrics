@@ -19,6 +19,7 @@ import {
   ZapOff,
   Zap,
 } from 'lucide-react';
+import { thaiBahtText, parseBahtToMinor, formatMinorToBahtString, formatMinor } from '@/lib/currency';
 
 interface RuleFormClientProps {
   ruleId?: string; // If provided, we are editing an existing rule
@@ -69,6 +70,12 @@ const OPERATOR_OPTIONS = [
   { label: 'IN in (อยู่ในกลุ่ม array)', value: 'in' },
 ];
 
+const isMonetaryFact = (key: string) =>
+  key.toLowerCase().includes('minor') ||
+  key.toLowerCase().includes('amount') ||
+  key.toLowerCase().includes('price') ||
+  key.toLowerCase().includes('variance');
+
 export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
   const router = useRouter();
   const isEditing = Boolean(ruleId);
@@ -92,7 +99,7 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
   const [formReasonCode, setFormReasonCode] = useState('EXPIRED');
   const [formFactKey, setFormFactKey] = useState('varianceAmountMinor');
   const [formOperator, setFormOperator] = useState('lessThanInclusive');
-  const [formValue, setFormValue] = useState<string>('10000');
+  const [formValue, setFormValue] = useState<string>('100.00');
   const [formValueType, setFormValueType] = useState<'NUMBER' | 'STRING'>('NUMBER');
 
   // Step 3: GL Action Accounts & Execution Control Mode
@@ -140,19 +147,25 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
       const cond = rule.conditions || {};
       if (cond.fact && cond.operator !== undefined && cond.value !== undefined) {
         setConditionMode('DYNAMIC');
-        setFormFactKey(String(cond.fact));
+        const factKey = String(cond.fact);
+        setFormFactKey(factKey);
         setFormOperator(String(cond.operator));
-        setFormValue(String(cond.value));
-        setFormValueType(typeof cond.value === 'number' ? 'NUMBER' : 'STRING');
+        const valType = typeof cond.value === 'number' ? 'NUMBER' : 'STRING';
+        setFormValueType(valType);
+        if (valType === 'NUMBER' && isMonetaryFact(factKey)) {
+          setFormValue(formatMinorToBahtString(Number(cond.value)));
+        } else {
+          setFormValue(String(cond.value));
+        }
       } else if (cond.varianceAmountMinor) {
         setConditionMode('DYNAMIC');
         setFormFactKey('varianceAmountMinor');
         if (cond.varianceAmountMinor.$lte) {
           setFormOperator('lessThanInclusive');
-          setFormValue(String(cond.varianceAmountMinor.$lte));
+          setFormValue(formatMinorToBahtString(Number(cond.varianceAmountMinor.$lte)));
         } else if (cond.varianceAmountMinor.$gt) {
           setFormOperator('greaterThan');
-          setFormValue(String(cond.varianceAmountMinor.$gt));
+          setFormValue(formatMinorToBahtString(Number(cond.varianceAmountMinor.$gt)));
         }
         setFormValueType('NUMBER');
       } else if (cond.reasonCode) {
@@ -227,7 +240,10 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
     let conditionsPayload: Record<string, any> = {};
 
     if (conditionMode === 'DYNAMIC') {
-      const parsedValue = formValueType === 'NUMBER' ? Number(formValue) : formValue;
+      const parsedValue =
+        formValueType === 'NUMBER'
+          ? (isMonetaryFact(formFactKey) ? parseBahtToMinor(formValue) : Number(formValue))
+          : formValue;
       conditionsPayload = {
         fact: formFactKey,
         operator: formOperator,
@@ -574,16 +590,36 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
                     <label className="block text-xs font-semibold text-purple-900 mb-1">
                       3. ค่าที่ต้องการเปรียบเทียบ (Value)
                     </label>
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <input
                         type="text"
                         autoComplete="off"
                         value={formValue}
                         onChange={(e) => setFormValue(e.target.value)}
+                        onBlur={() => {
+                          if (formValueType === 'NUMBER' && isMonetaryFact(formFactKey) && formValue.trim()) {
+                            const num = parseFloat(formValue);
+                            if (!isNaN(num)) {
+                              setFormValue(num.toFixed(2));
+                            }
+                          }
+                        }}
                         onKeyDown={handleKeyDownBlockEnter}
-                        placeholder="ใส่ค่าอิสระ เช่น 10000 (100 บาท), 50000 (500 บาท)..."
+                        placeholder={
+                          isMonetaryFact(formFactKey)
+                            ? 'ใส่จำนวนเงินทศนิยม เช่น 100.00 (100 บาท), 500.50 (500.50 บาท)...'
+                            : 'ใส่ค่าอิสระ เช่น 100, EXPIRED...'
+                        }
                         className="w-full border rounded-xl px-3.5 py-2.5 text-sm bg-white font-mono focus:ring-2 focus:ring-purple-500"
                       />
+
+                      {formValueType === 'NUMBER' && isMonetaryFact(formFactKey) && (
+                        <div className="text-xs font-semibold text-purple-900 bg-purple-100/70 border border-purple-200/80 rounded-xl px-3.5 py-2 flex items-center space-x-1.5 animate-in fade-in">
+                          <span className="shrink-0">💬 คำอ่าน:</span>
+                          <span className="font-bold text-purple-950">{thaiBahtText(parseBahtToMinor(formValue))}</span>
+                        </div>
+                      )}
+
                       <div className="flex items-center justify-between text-xs text-purple-900">
                         <span>ประเภทข้อมูล:</span>
                         <div className="space-x-3">
@@ -613,12 +649,17 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
 
                 {/* Preview JSON Spec */}
                 <div className="bg-purple-950 text-purple-100 rounded-xl p-4 text-xs font-mono flex items-center justify-between">
-                  <span>JSON Condition Spec ที่ถูกสร้าง:</span>
+                  <span>JSON Condition Spec ที่ถูกสร้าง (หน่วย Satang Integer):</span>
                   <code className="text-amber-300 font-bold text-sm">
                     {JSON.stringify({
                       fact: formFactKey,
                       operator: formOperator,
-                      value: formValueType === 'NUMBER' ? Number(formValue) : formValue,
+                      value:
+                        formValueType === 'NUMBER'
+                          ? isMonetaryFact(formFactKey)
+                            ? parseBahtToMinor(formValue)
+                            : Number(formValue)
+                          : formValue,
                     })}
                   </code>
                 </div>
@@ -784,6 +825,15 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
                   ) : (
                     <span className="bg-emerald-100 text-emerald-900 font-bold px-2 py-0.5 rounded">⚡ ลงบัญชีอัตโนมัติทันที</span>
                   )}
+                </div>
+                <div className="md:col-span-2">
+                  <span className="text-slate-500">เงื่อนไข (Condition):</span>{' '}
+                  <span className="bg-purple-100 text-purple-900 font-mono px-2 py-0.5 rounded font-bold">
+                    {formFactKey} {formOperator}{' '}
+                    {formValueType === 'NUMBER' && isMonetaryFact(formFactKey)
+                      ? formatMinor(parseBahtToMinor(formValue), { showSymbol: false, suffix: 'บาท', showThaiText: true })
+                      : formValue}
+                  </span>
                 </div>
                 <div className="md:col-span-2">
                   <span className="text-slate-500">GL Action:</span>{' '}
