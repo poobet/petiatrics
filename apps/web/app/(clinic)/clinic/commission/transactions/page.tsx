@@ -1,32 +1,5 @@
-import { cookies } from 'next/headers';
+'use client';
 
-interface DfTx {
-  id: string;
-  businessPartnerId: string;
-  visitId: string | null;
-  invoiceId: string | null;
-  productId: string | null;
-  revenueAmountMinor: number;
-  commissionType: string;
-  commissionRate: number;
-  dfAmountMinor: number;
-  whtRate: number;
-  whtAmountMinor: number;
-  netPayableMinor: number;
-  status: 'ACCRUED' | 'CONFIRMED' | 'SETTLED' | 'VOIDED';
-  accruedAt: string;
-}
-
-async function getTransactions(): Promise<DfTx[]> {
-  try {
-    const cookieStore = await cookies();
-    const sid = cookieStore.get('petiatrics_sid')?.value;
-    if (!sid) return [];
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
-    const res = await fetch(`${apiUrl}/api/v1/commission/transactions`, {
-      headers: { Cookie: `petiatrics_sid=${sid}` },
-      cache: 'no-store',
-    });
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';

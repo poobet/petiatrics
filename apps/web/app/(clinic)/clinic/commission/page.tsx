@@ -1,26 +1,7 @@
-import { cookies } from 'next/headers';
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-
-interface DfSummary {
-  businessPartnerId: string;
-  totalAccruedMinor: number;
-  totalConfirmedMinor: number;
-  totalSettledMinor: number;
-  totalWhtMinor: number;
-  totalNetPayableMinor: number;
-  transactionCount: number;
-}
-
-async function getSummaries(): Promise<DfSummary[]> {
-  try {
-    const cookieStore = await cookies();
-    const sid = cookieStore.get('petiatrics_sid')?.value;
-    if (!sid) return [];
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
-    const res = await fetch(`${apiUrl}/api/v1/commission/transactions/summary`, {
-      headers: { Cookie: `petiatrics_sid=${sid}` },
-      cache: 'no-store',
-    });
 import { DollarSign, ArrowRight } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { Money } from '@/components/ui/money';
