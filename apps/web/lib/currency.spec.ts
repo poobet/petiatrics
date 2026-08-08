@@ -14,6 +14,11 @@ describe('Currency Utils', () => {
       expect(formatMinor(50)).toBe('฿0.50');
     });
 
+    it('supports thousand comma separators e.g. 100,000.00', () => {
+      expect(formatMinor(10000000)).toBe('฿100,000.00');
+      expect(formatMinor(123456789)).toBe('฿1,234,567.89');
+    });
+
     it('supports omitting currency symbol', () => {
       expect(formatMinor(10700, { showSymbol: false })).toBe('107.00');
     });
@@ -26,9 +31,9 @@ describe('Currency Utils', () => {
       expect(formatMinor(10750, { showSymbol: false, suffix: 'บาท' })).toBe('107.50 บาท');
     });
 
-    it('supports showThaiText option', () => {
-      expect(formatMinor(10750, { showSymbol: false, suffix: 'บาท', showThaiText: true }))
-        .toBe('107.50 บาท (หนึ่งร้อยเจ็ดบาทห้าสิบสตางค์)');
+    it('supports showThaiText option with thousand separators', () => {
+      expect(formatMinor(10000050, { showSymbol: false, suffix: 'บาท', showThaiText: true }))
+        .toBe('100,000.50 บาท (หนึ่งแสนบาทห้าสิบสตางค์)');
     });
   });
 
@@ -39,6 +44,11 @@ describe('Currency Utils', () => {
 
     it('parses string "100.25" to 10025 satang', () => {
       expect(parseBahtToMinor('100.25')).toBe(10025);
+    });
+
+    it('parses string with commas "1,000.50" to 100050 satang', () => {
+      expect(parseBahtToMinor('1,000.50')).toBe(100050);
+      expect(parseBahtToMinor('1,234,567.89')).toBe(123456789);
     });
 
     it('handles invalid inputs gracefully as 0', () => {
@@ -84,6 +94,10 @@ describe('Currency Utils', () => {
   describe('formatMinorToBahtString', () => {
     it('formats 10750 satang to "107.50"', () => {
       expect(formatMinorToBahtString(10750)).toBe('107.50');
+    });
+
+    it('formats 10000000 satang with commas to "100,000.00"', () => {
+      expect(formatMinorToBahtString(10000000)).toBe('100,000.00');
     });
 
     it('formats 0 satang to "0.00"', () => {

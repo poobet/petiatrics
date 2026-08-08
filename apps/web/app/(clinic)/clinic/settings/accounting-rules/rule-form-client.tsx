@@ -598,10 +598,8 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
                         onChange={(e) => setFormValue(e.target.value)}
                         onBlur={() => {
                           if (formValueType === 'NUMBER' && isMonetaryFact(formFactKey) && formValue.trim()) {
-                            const num = parseFloat(formValue);
-                            if (!isNaN(num)) {
-                              setFormValue(num.toFixed(2));
-                            }
+                            const minor = parseBahtToMinor(formValue);
+                            setFormValue(formatMinorToBahtString(minor));
                           }
                         }}
                         onKeyDown={handleKeyDownBlockEnter}

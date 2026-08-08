@@ -88,8 +88,18 @@ export function thaiBahtText(minor: number): string {
 }
 
 /**
+ * Helper to format a number with thousand comma separators and fixed fraction digits.
+ * Example: 100000.5 -> "100,000.50"
+ */
+export function formatNumberWithCommas(num: number, fractionDigits = 2): string {
+  const parts = (num || 0).toFixed(fractionDigits).split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return parts.join('.');
+}
+
+/**
  * Converts minor satang units (integer) to formatted Baht currency string.
- * Example: 10750 -> "฿107.50" or "107.50 บาท (หนึ่งร้อยเจ็ดบาทห้าสิบสตางค์)"
+ * Example: 10000000 -> "฿100,000.00" or "100,000.00 บาท (หนึ่งแสนบาทถ้วน)"
  */
 export function formatMinor(minor: number, options: FormatCurrencyOptions = {}): string {
   const {
@@ -101,7 +111,7 @@ export function formatMinor(minor: number, options: FormatCurrencyOptions = {}):
   } = options;
 
   const baht = (minor || 0) / 100;
-  const formattedNumber = baht.toFixed(minimumFractionDigits);
+  const formattedNumber = formatNumberWithCommas(baht, minimumFractionDigits);
 
   let formatted = showSymbol ? `${currencySymbol}${formattedNumber}` : formattedNumber;
 
@@ -119,20 +129,29 @@ export function formatMinor(minor: number, options: FormatCurrencyOptions = {}):
 
 /**
  * Converts minor satang units to fixed 2 decimal Baht string for UI form inputs.
- * Example: 10750 -> "107.50"
+ * Example: 10000000 -> "100,000.00"
  */
-export function formatMinorToBahtString(minor: number): string {
+export function formatMinorToBahtString(minor: number, useCommas = true): string {
   const baht = (minor || 0) / 100;
-  return baht.toFixed(2);
+  return useCommas ? formatNumberWithCommas(baht, 2) : baht.toFixed(2);
 }
 
 /**
- * Converts decimal Baht to minor satang integer safely.
- * Example: 107.5 -> 10750
+ * Converts decimal Baht (with or without commas, e.g. "1,000.50") to minor satang integer safely.
+ * Example: "1,000.50" -> 100050
  */
 export function parseBahtToMinor(baht: number | string): number {
-  const val = typeof baht === 'string' ? parseFloat(baht) : baht;
-  if (isNaN(val)) return 0;
-  return Math.round(val * 100);
+  if (typeof baht === 'number') {
+    if (isNaN(baht) || !isFinite(baht)) return 0;
+    return Math.round(baht * 100);
+  }
+  if (typeof baht === 'string') {
+    const cleaned = baht.replace(/,/g, '').trim();
+    const val = parseFloat(cleaned);
+    if (isNaN(val) || !isFinite(val)) return 0;
+    return Math.round(val * 100);
+  }
+  return 0;
 }
+
 
