@@ -684,6 +684,9 @@ async function main() {
 
   // ── 8. Sample Invoices ────────────────────────────────────────────────────
   if (ownerUser) {
+    await prisma.paymentTender.deleteMany({ where: { payment: { clinicId: clinic.id } } });
+    await prisma.payment.deleteMany({ where: { clinicId: clinic.id } });
+    await prisma.arOpenItem.deleteMany({ where: { clinicId: clinic.id } });
     await prisma.invoiceLineItem.deleteMany({ where: { invoice: { clinicId: clinic.id } } });
     await prisma.invoice.deleteMany({ where: { clinicId: clinic.id } });
     {
