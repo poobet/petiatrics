@@ -16,8 +16,9 @@ import {
   BookOpen,
   CheckCircle2,
   AlertCircle,
-  ToggleLeft,
-  ToggleRight,
+  Lock,
+  Cog,
+  UserCheck,
 } from 'lucide-react';
 
 interface SystemRule {
@@ -33,9 +34,63 @@ interface SystemRule {
     creditAccountCode: string;
   };
   isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+  isBuiltIn?: boolean;
+  ruleCategory?: 'HARD_RULE' | 'SYSTEM_DEFAULT' | 'CUSTOM';
 }
+
+// System Built-in Rules (Read-Only System Defaults & Hard Compliance Rules)
+const BUILTIN_SYSTEM_RULES: SystemRule[] = [
+  {
+    id: 'system-hard-shrinkage',
+    name: 'Shortage Deemed Sale Compliance (สินค้าขาดหายถือเป็นขายเพื่อภาษี)',
+    description: 'ตามประมวลรัษฎากร (VAT & CIT) สินค้าขาดหายไม่มีเหตุผล (SHRINKAGE) ถูกถือเป็นการขาย บังคับลง Dr. 4110 / Cr. 1310 ในระดับ Domain Layer เสมอ',
+    eventType: 'inventory.goods_issued',
+    priority: 999,
+    conditions: { reasonCode: 'SHRINKAGE' },
+    action: { debitAccountCode: '4110', creditAccountCode: '1310' },
+    isActive: true,
+    isBuiltIn: true,
+    ruleCategory: 'HARD_RULE',
+  },
+  {
+    id: 'system-default-grn',
+    name: 'Default Goods Receipt Posting (รับสินค้าเข้าคลังมาตรฐาน)',
+    description: 'การตั้งหนี้เจ้าหนี้การค้าและบันทึกมูลค่าสินค้ารวมคลังจากการรับสินค้าเข้าสต็อก',
+    eventType: 'inventory.goods_receipt_completed',
+    priority: 0,
+    conditions: { reasonCode: 'DEFAULT (รับสินค้าเข้าสต็อก)' },
+    action: { debitAccountCode: '1310', creditAccountCode: '2110' },
+    isActive: true,
+    isBuiltIn: true,
+    ruleCategory: 'SYSTEM_DEFAULT',
+  },
+  {
+    id: 'system-default-issue',
+    name: 'Default Goods Issue COGS Posting (ตัดจ่ายสินค้าเข้าต้นทุนขาย)',
+    description: 'บันทึกต้นทุนขายสินค้า (COGS) และลดมูลค่าสินค้าคงเหลือจากการเบิกจ่ายสินค้าใช้งานปกติ',
+    eventType: 'inventory.goods_issued',
+    priority: 0,
+    conditions: { reasonCode: 'DEFAULT (เบิกจ่ายสินค้า)' },
+    action: { debitAccountCode: '5110', creditAccountCode: '1310' },
+    isActive: true,
+    isBuiltIn: true,
+    ruleCategory: 'SYSTEM_DEFAULT',
+  },
+  {
+    id: 'system-default-tolerance-pass',
+    name: '3-Way Matching Auto-Pass (ส่วนต่างเบิกจ่าย <= 100 บาท)',
+    description: 'ส่วนต่างใบแจ้งหนี้ผู้ขายกับ PO/GR ไม่เกิน 100 บาท ระบบอนุมัติผ่านเงื่อนไข (PASS) ให้ตั้งฎีกาเบิกจ่ายอัตโนมัติ',
+    eventType: 'procurement.three_way_matching',
+    priority: 0,
+    conditions: { varianceAmountMinor: { $lte: 10000 } },
+    action: { debitAccountCode: 'AUTO_PASS', creditAccountCode: 'DISBURSEMENT_OK' },
+    isActive: true,
+    isBuiltIn: true,
+    ruleCategory: 'SYSTEM_DEFAULT',
+  },
+];
 
 // Predefined GL Accounts for easy selection in dropdowns
 const STANDARD_GL_ACCOUNTS = [
@@ -66,7 +121,7 @@ const REASON_CODE_OPTIONS = [
 ];
 
 export default function AccountingRulesPage() {
-  const [rules, setRules] = useState<SystemRule[]>([]);
+  const [customRules, setCustomRules] = useState<SystemRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -74,6 +129,7 @@ export default function AccountingRulesPage() {
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEventType, setSelectedEventType] = useState('ALL');
+  const [selectedCategory, setSelectedCategory] = useState('ALL'); // ALL, SYSTEM, CUSTOM
   const [selectedStatus, setSelectedStatus] = useState('ALL');
 
   // Modal State
@@ -106,7 +162,8 @@ export default function AccountingRulesPage() {
       const res = await fetch('/api/v1/accounting/system-rules');
       if (!res.ok) throw new Error('ไม่สามารถดึงข้อมูลกฎการลงบัญชีได้');
       const data = await res.json();
-      setRules(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []);
+      const rawRules = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+      setCustomRules(rawRules.map((r: SystemRule) => ({ ...r, ruleCategory: 'CUSTOM' })));
     } catch (err: any) {
       setError(err.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล');
     } finally {
@@ -129,6 +186,7 @@ export default function AccountingRulesPage() {
   }
 
   function openEditModal(rule: SystemRule) {
+    if (rule.isBuiltIn) return; // Read-only for system rules
     setEditingRule(rule);
     setFormName(rule.name);
     setFormDescription(rule.description || '');
@@ -138,9 +196,14 @@ export default function AccountingRulesPage() {
     setFormCreditCode(rule.action?.creditAccountCode || '1310');
     setFormIsActive(rule.isActive);
 
-    // Extract reasonCode condition
     const cond = rule.conditions || {};
-    if (cond.reasonCode) {
+    if (cond.varianceAmountMinor) {
+      if (cond.varianceAmountMinor.$lte) {
+        setFormReasonCode('VARIANCE_LE_100');
+      } else {
+        setFormReasonCode('VARIANCE_GT_100');
+      }
+    } else if (cond.reasonCode) {
       if (typeof cond.reasonCode === 'object' && cond.reasonCode.$in) {
         setFormOperator('IN');
         setFormReasonCode(cond.reasonCode.$in[0] || 'EXPIRED');
@@ -164,7 +227,6 @@ export default function AccountingRulesPage() {
     setSaving(true);
     setError('');
 
-    // Build conditions object
     let conditionsPayload: Record<string, any> = {};
     if (formReasonCode === 'VARIANCE_LE_100') {
       conditionsPayload = { varianceAmountMinor: { $lte: 10000 } };
@@ -220,6 +282,7 @@ export default function AccountingRulesPage() {
   }
 
   async function handleToggleStatus(rule: SystemRule) {
+    if (rule.isBuiltIn) return;
     try {
       const res = await fetch(`/api/v1/accounting/system-rules/${rule.id}`, {
         method: 'PATCH',
@@ -234,7 +297,7 @@ export default function AccountingRulesPage() {
   }
 
   async function handleDeleteRule() {
-    if (!deletingRule) return;
+    if (!deletingRule || deletingRule.isBuiltIn) return;
     try {
       const res = await fetch(`/api/v1/accounting/system-rules/${deletingRule.id}`, {
         method: 'DELETE',
@@ -249,8 +312,11 @@ export default function AccountingRulesPage() {
     }
   }
 
+  // Combine System Built-in rules + Custom Clinic rules
+  const allCombinedRules = [...BUILTIN_SYSTEM_RULES, ...customRules];
+
   // Filter Rules
-  const filteredRules = rules.filter((r) => {
+  const filteredRules = allCombinedRules.filter((r) => {
     const matchesSearch =
       r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (r.description && r.description.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -259,7 +325,12 @@ export default function AccountingRulesPage() {
       selectedStatus === 'ALL' ||
       (selectedStatus === 'ACTIVE' && r.isActive) ||
       (selectedStatus === 'INACTIVE' && !r.isActive);
-    return matchesSearch && matchesEvent && matchesStatus;
+    const matchesCategory =
+      selectedCategory === 'ALL' ||
+      (selectedCategory === 'SYSTEM' && r.isBuiltIn) ||
+      (selectedCategory === 'CUSTOM' && !r.isBuiltIn);
+
+    return matchesSearch && matchesEvent && matchesStatus && matchesCategory;
   });
 
   return (
@@ -274,7 +345,7 @@ export default function AccountingRulesPage() {
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Dynamic Accounting Rules (กฎบันทึกบัญชีอัตโนมัติ)</h1>
               <p className="text-sm text-gray-500 mt-0.5">
-                กำหนดกฎ JSON Rule Engine เพื่อระบุผังบัญชีเดบิตและเครดิตอัตโนมัติเมื่อเกิดกิจกรรมคลังสินค้า
+                แสดงกฎมาตรฐานของระบบ (System Rules) และกฎที่ปรับแต่งโดยผู้บริหารคลินิก (Custom Rules) สำหรับผังบัญชีอัตโนมัติ
               </p>
             </div>
           </div>
@@ -284,7 +355,7 @@ export default function AccountingRulesPage() {
           className="inline-flex items-center justify-center px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-sm transition-all duration-150 space-x-2"
         >
           <Plus className="w-4 h-4" />
-          <span>สร้างกฎใหม่ (Create Rule)</span>
+          <span>สร้างกฎใหม่ (Create Custom Rule)</span>
         </button>
       </div>
 
@@ -315,15 +386,15 @@ export default function AccountingRulesPage() {
           </div>
           <div className="space-y-1 text-sm text-amber-900">
             <div className="flex items-center space-x-2">
-              <span className="font-bold text-base text-amber-950">Hard Rule Compliance Notice (ข้อกำหนดตามกฎหมายภาษี)</span>
-              <span className="px-2 py-0.5 bg-amber-200 text-amber-900 rounded text-xs font-semibold">Native Override</span>
+              <span className="font-bold text-base text-amber-950">Hard Rule Compliance Notice (กฎหมายบังคับภาษี VAT/CIT)</span>
+              <span className="px-2 py-0.5 bg-amber-200 text-amber-950 rounded text-xs font-bold border border-amber-300">SYSTEM HARD RULE</span>
             </div>
             <p className="text-amber-800/90 leading-relaxed">
               ตามประมวลรัษฎากร รายการสินค้าขาดหายที่ไม่มีสาเหตุสมควร (Reason Code: <code className="bg-amber-100 px-1.5 py-0.5 rounded font-mono font-bold">SHRINKAGE</code>) 
               ระบบจะบังคับบันทึกเป็น <strong className="text-amber-950">การขาย (Deemed Sale)</strong> โดยอัตโนมัติ: 
               <span className="inline-flex items-center mx-1 font-mono font-bold bg-amber-200/60 px-2 py-0.5 rounded text-amber-950">Dr. 4110 Revenue</span> ➔ 
               <span className="inline-flex items-center mx-1 font-mono font-bold bg-amber-200/60 px-2 py-0.5 rounded text-amber-950">Cr. 1310 Inventory Asset</span> 
-              กฎนี้ถูกบังคับใช้ในระดับ Domain Logic ไม่สามารถปิดการใช้งานหรือเขียนทับด้วย Dynamic Rule ได้
+              กฎนี้ถูกบังคับใช้ในระดับ Domain Layer เสมอ ไม่สามารถถูกเขียนทับด้วย Dynamic Rule ได้
             </p>
           </div>
         </div>
@@ -331,7 +402,7 @@ export default function AccountingRulesPage() {
 
       {/* Search & Filter Toolbar */}
       <div className="bg-white border rounded-xl p-4 shadow-2xs flex flex-col md:flex-row gap-3 items-center justify-between">
-        <div className="relative w-full md:w-80">
+        <div className="relative w-full md:w-72">
           <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
           <input
             type="text"
@@ -341,7 +412,16 @@ export default function AccountingRulesPage() {
             className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <div className="flex items-center gap-3 w-full md:w-auto">
+        <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="ALL">ประเภทกฎ: ทั้งหมด (All Rules)</option>
+            <option value="SYSTEM">⚙️ กฎมาตรฐานระบบ (System Rules)</option>
+            <option value="CUSTOM">✏️ กฎของคลินิก (Custom Rules)</option>
+          </select>
           <select
             value={selectedEventType}
             onChange={(e) => setSelectedEventType(e.target.value)}
@@ -351,15 +431,6 @@ export default function AccountingRulesPage() {
             {EVENT_TYPES.map((ev) => (
               <option key={ev.value} value={ev.value}>{ev.label}</option>
             ))}
-          </select>
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="ALL">ทุกสถานะ (All Status)</option>
-            <option value="ACTIVE">เปิดใช้งาน (Active Only)</option>
-            <option value="INACTIVE">ปิดใช้งาน (Inactive Only)</option>
           </select>
           <button
             onClick={fetchRules}
@@ -382,13 +453,13 @@ export default function AccountingRulesPage() {
           <div className="p-12 text-center text-sm text-gray-500 flex flex-col items-center justify-center space-y-2">
             <BookOpen className="w-8 h-8 text-gray-300" />
             <span className="font-medium text-gray-700">ไม่พบข้อมูลกฎการลงบัญชี</span>
-            <span className="text-xs text-gray-400">กดปุ่ม "+ สร้างกฎใหม่" เพื่อเพิ่มกฎสำหรับจับคู่ผังบัญชีอัตโนมัติ</span>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm border-collapse">
               <thead className="bg-gray-50 border-b text-gray-600 uppercase text-xs font-semibold">
                 <tr>
+                  <th className="py-3.5 px-4 w-28 text-center">ประเภทกฎ</th>
                   <th className="py-3.5 px-4 w-20 text-center">Priority</th>
                   <th className="py-3.5 px-4">ชื่อกฎ & คำอธิบาย</th>
                   <th className="py-3.5 px-4">เหตุการณ์ (Event)</th>
@@ -405,77 +476,150 @@ export default function AccountingRulesPage() {
                   const creditAcc = STANDARD_GL_ACCOUNTS.find((g) => g.code === rule.action?.creditAccountCode);
 
                   return (
-                    <tr key={rule.id} className="hover:bg-gray-50/80 transition-colors">
+                    <tr
+                      key={rule.id}
+                      className={`transition-colors ${
+                        rule.ruleCategory === 'HARD_RULE'
+                          ? 'bg-amber-50/40 hover:bg-amber-50/80'
+                          : rule.isBuiltIn
+                          ? 'bg-slate-50/50 hover:bg-slate-50'
+                          : 'hover:bg-gray-50/80'
+                      }`}
+                    >
+                      {/* Rule Category Badge */}
+                      <td className="py-3.5 px-4 text-center">
+                        {rule.ruleCategory === 'HARD_RULE' ? (
+                          <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-amber-100 text-amber-900 border border-amber-300 rounded-md text-[11px] font-bold">
+                            <ShieldAlert className="w-3 h-3 text-amber-700 shrink-0" />
+                            <span>Hard Rule</span>
+                          </span>
+                        ) : rule.isBuiltIn ? (
+                          <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-300 rounded-md text-[11px] font-semibold">
+                            <Cog className="w-3 h-3 text-slate-500 shrink-0" />
+                            <span>System Rule</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-purple-100 text-purple-800 border border-purple-200 rounded-md text-[11px] font-semibold">
+                            <UserCheck className="w-3 h-3 text-purple-600 shrink-0" />
+                            <span>Custom Rule</span>
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Priority */}
                       <td className="py-3.5 px-4 text-center font-mono font-semibold">
-                        <span className="px-2.5 py-1 bg-slate-100 text-slate-800 rounded-md text-xs">
+                        <span
+                          className={`px-2 py-0.5 rounded text-xs ${
+                            rule.priority >= 900
+                              ? 'bg-amber-200 text-amber-950 font-bold'
+                              : rule.priority > 0
+                              ? 'bg-purple-100 text-purple-800'
+                              : 'bg-slate-100 text-slate-700'
+                          }`}
+                        >
                           #{rule.priority}
                         </span>
                       </td>
+
+                      {/* Rule Name & Description */}
                       <td className="py-3.5 px-4">
-                        <div className="font-semibold text-gray-900">{rule.name}</div>
+                        <div className="font-semibold text-gray-900 flex items-center space-x-1.5">
+                          <span>{rule.name}</span>
+                          {rule.isBuiltIn && (
+                            <span className="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded font-mono font-normal">
+                              Read-Only
+                            </span>
+                          )}
+                        </div>
                         {rule.description && (
-                          <div className="text-xs text-gray-500 mt-0.5">{rule.description}</div>
+                          <div className="text-xs text-gray-500 mt-0.5 leading-relaxed">{rule.description}</div>
                         )}
                       </td>
+
+                      {/* Event Type */}
                       <td className="py-3.5 px-4">
                         <span className="inline-flex items-center px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium border border-blue-200/60">
                           {rule.eventType}
                         </span>
                       </td>
+
+                      {/* Conditions */}
                       <td className="py-3.5 px-4 font-mono text-xs">
                         <span className="inline-flex items-center px-2 py-1 bg-purple-50 text-purple-700 rounded-md border border-purple-200/60 space-x-1">
                           <Tag className="w-3 h-3 text-purple-500" />
                           <span>{condStr}</span>
                         </span>
                       </td>
+
+                      {/* Action Account Mapping */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center space-x-2 text-xs">
                           <span className="px-2 py-1 bg-emerald-50 text-emerald-800 rounded border border-emerald-200 font-mono font-semibold">
-                            Dr. {rule.action?.debitAccountCode} ({debitAcc?.name.split(' ')[0] || ''})
+                            Dr. {rule.action?.debitAccountCode} ({debitAcc?.name.split(' ')[0] || rule.action?.debitAccountCode})
                           </span>
                           <ArrowRight className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                           <span className="px-2 py-1 bg-rose-50 text-rose-800 rounded border border-rose-200 font-mono font-semibold">
-                            Cr. {rule.action?.creditAccountCode} ({creditAcc?.name.split(' ')[0] || ''})
+                            Cr. {rule.action?.creditAccountCode} ({creditAcc?.name.split(' ')[0] || rule.action?.creditAccountCode})
                           </span>
                         </div>
                       </td>
+
+                      {/* Status */}
                       <td className="py-3.5 px-4 text-center">
-                        <button
-                          onClick={() => handleToggleStatus(rule)}
-                          className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
-                            rule.isActive
-                              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                          }`}
-                        >
-                          {rule.isActive ? (
-                            <>
-                              <Check className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>Active</span>
-                            </>
-                          ) : (
-                            <>
-                              <X className="w-3.5 h-3.5 text-gray-400" />
-                              <span>Disabled</span>
-                            </>
-                          )}
-                        </button>
+                        {rule.isBuiltIn ? (
+                          <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-semibold inline-flex items-center space-x-1">
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Active (Built-in)</span>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleToggleStatus(rule)}
+                            className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
+                              rule.isActive
+                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                          >
+                            {rule.isActive ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Active</span>
+                              </>
+                            ) : (
+                              <>
+                                <X className="w-3.5 h-3.5 text-gray-400" />
+                                <span>Disabled</span>
+                              </>
+                            )}
+                          </button>
+                        )}
                       </td>
-                      <td className="py-3.5 px-4 text-right space-x-1">
-                        <button
-                          onClick={() => openEditModal(rule)}
-                          className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-md transition-colors"
-                          title="แก้ไขกฎ"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setDeletingRule(rule)}
-                          className="p-1.5 hover:bg-red-50 text-red-600 rounded-md transition-colors"
-                          title="ลบกฎ"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+
+                      {/* Action buttons */}
+                      <td className="py-3.5 px-4 text-right">
+                        {rule.isBuiltIn ? (
+                          <span className="text-xs text-gray-400 inline-flex items-center space-x-1 font-mono">
+                            <Lock className="w-3 h-3" />
+                            <span>System</span>
+                          </span>
+                        ) : (
+                          <div className="space-x-1">
+                            <button
+                              onClick={() => openEditModal(rule)}
+                              className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-md transition-colors"
+                              title="แก้ไขกฎ"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setDeletingRule(rule)}
+                              className="p-1.5 hover:bg-red-50 text-red-600 rounded-md transition-colors"
+                              title="ลบกฎ"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );
@@ -576,7 +720,7 @@ export default function AccountingRulesPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">เหตุผลสินค้า (Reason Code)</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">เหตุผลสินค้า / ส่วนต่าง</label>
                     <select
                       value={formReasonCode}
                       onChange={(e) => setFormReasonCode(e.target.value)}
@@ -667,7 +811,7 @@ export default function AccountingRulesPage() {
       )}
 
       {/* Delete Confirmation Modal */}
-      {deletingRule && (
+      {deletingRule && !deletingRule.isBuiltIn && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white border rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
             <div className="flex items-center space-x-3 text-red-600">
