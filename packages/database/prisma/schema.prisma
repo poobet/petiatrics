@@ -167,6 +167,7 @@ enum JournalType {
   SALES
   CASH_RECEIPT
   GENERAL
+  INVENTORY
 }
 
 enum JournalStatus {
@@ -265,6 +266,7 @@ model Clinic {
   accountingPeriods        AccountingPeriod[]
   inventoryLocations       InventoryLocation[]
   reasonCodes              ReasonCode[]
+  systemRules              SystemRule[]
 
   @@map("clinics")
 }
@@ -1746,5 +1748,27 @@ model AccountingPeriod {
   @@unique([clinicId, year, month])
   @@index([clinicId, status])
   @@map("accounting_periods")
+}
+
+// ─── SystemRule (Dynamic GL Mapping Rule Engine) ─────────────────────────────
+
+model SystemRule {
+  id          String   @id @default(uuid())
+  clinicId    String?  // null = global rule, non-null = clinic-specific override
+  name        String
+  description String?
+  eventType   String   // e.g. "inventory.goods_issued", "inventory.goods_receipt_completed"
+  priority    Int      @default(0) // higher = evaluated first
+  conditions  Json     // JSONB: e.g. { "reasonCode": "EXPIRED" }
+  action      Json     // JSONB: e.g. { "debitAccountCode": "5290", "creditAccountCode": "1310" }
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  clinic Clinic? @relation(fields: [clinicId], references: [id])
+
+  @@index([eventType, isActive])
+  @@index([clinicId])
+  @@map("system_rules")
 }
 

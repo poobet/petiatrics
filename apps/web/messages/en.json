@@ -110,6 +110,7 @@
     "rolePermissions": "Roles & Permissions",
     "documentSequence": "Document Sequencing",
     "accountingPeriods": "Accounting Periods",
+    "accountingRules": "Dynamic GL Rules",
     "pos": "POS",
     "mobileApp": "Mobile App",
     "mobileAppSubtitle": "Owner mobile view",

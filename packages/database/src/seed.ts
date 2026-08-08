@@ -194,12 +194,19 @@ async function main() {
     { code: '4003', name: 'Laboratory Revenue', type: 'REVENUE' as const },
     { code: '4004', name: 'Procedure Revenue', type: 'REVENUE' as const },
     { code: '4005', name: 'Consultation Revenue', type: 'REVENUE' as const },
+    { code: '4110', name: 'Revenue', type: 'REVENUE' as const },
     // COGS accounts
     { code: '5000', name: 'Medicine COGS', type: 'COGS' as const },
     { code: '5001', name: 'Retail COGS', type: 'COGS' as const },
+    { code: '5110', name: 'Cost of Goods Sold', type: 'COGS' as const },
     // Asset accounts
-    { code: '1100', name: 'Inventory Asset', type: 'ASSET' as const },
+    { code: '1100', name: 'Inventory Asset (Legacy)', type: 'ASSET' as const },
+    { code: '1310', name: 'Inventory Asset', type: 'ASSET' as const },
+    // Liability accounts
+    { code: '2110', name: 'Accounts Payable', type: 'LIABILITY' as const },
+    { code: '2170', name: 'Output VAT', type: 'LIABILITY' as const },
     // Expense accounts
+    { code: '5290', name: 'Write-down Loss (LCNRV)', type: 'EXPENSE' as const },
     { code: '6000', name: 'General Operating Expense', type: 'EXPENSE' as const },
   ];
 
@@ -677,6 +684,9 @@ async function main() {
 
   // ── 8. Sample Invoices ────────────────────────────────────────────────────
   if (ownerUser) {
+    await prisma.paymentTender.deleteMany({ where: { payment: { clinicId: clinic.id } } });
+    await prisma.payment.deleteMany({ where: { clinicId: clinic.id } });
+    await prisma.arOpenItem.deleteMany({ where: { clinicId: clinic.id } });
     await prisma.invoiceLineItem.deleteMany({ where: { invoice: { clinicId: clinic.id } } });
     await prisma.invoice.deleteMany({ where: { clinicId: clinic.id } });
     {
@@ -974,6 +984,7 @@ async function main() {
     migratedCount++;
   }
   console.log(`  ✓ Migrated ${migratedCount}/${allUsers.length} users to ClinicRole`);
+
 
   console.log('\n🎉 Seed complete!\n');
 

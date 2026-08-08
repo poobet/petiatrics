@@ -64,3 +64,32 @@ export class InvoiceVoidedEvent {
   ) {}
 }
 
+/** Emitted when a goods receipt is completed and inventory is increased */
+export class GoodsReceiptCompletedEvent {
+  constructor(
+    public readonly clinicId: string,
+    public readonly branchId: string,
+    public readonly productId: string,
+    public readonly quantity: number,
+    /** Unit cost in minor currency (satang) for GL journal amount calculation */
+    public readonly unitCostMinor: number,
+    public readonly reasonCode: string | null,
+    public readonly referenceId: string,
+    public readonly referenceType: string,
+  ) {}
+}
+
+/** Emitted when goods are issued (consumed, sold, or written down) */
+export class GoodsIssuedEvent {
+  constructor(
+    public readonly clinicId: string,
+    public readonly branchId: string,
+    public readonly productId: string,
+    public readonly quantity: number,
+    /** Unit cost in minor currency (satang) for GL journal amount calculation */
+    public readonly unitCostMinor: number,
+    public readonly reasonCode: string | null,
+    public readonly referenceId: string,
+    public readonly referenceType: string,
+  ) {}
+}
