@@ -168,7 +168,8 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
     }
   }
 
-  function handleNextStep() {
+  function handleNextStep(e?: React.MouseEvent) {
+    if (e) e.preventDefault();
     setError('');
     if (currentStep === 1) {
       if (!formName.trim()) {
@@ -191,15 +192,27 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
     }
   }
 
-  function handlePrevStep() {
+  function handlePrevStep(e?: React.MouseEvent) {
+    if (e) e.preventDefault();
     setError('');
     if (currentStep > 1) {
       setCurrentStep((prev) => prev - 1);
     }
   }
 
+  function preventEnterSubmit(e: React.KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // Block submission if not on final step 3
+    if (currentStep !== 3) {
+      return;
+    }
+
     setSaving(true);
     setError('');
 
@@ -281,6 +294,7 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
       <div className="flex items-center justify-between border-b pb-5">
         <div className="flex items-center space-x-4">
           <button
+            type="button"
             onClick={() => router.push('/clinic/settings/accounting-rules')}
             className="p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors cursor-pointer"
             title="ย้อนกลับไปหน้ารายการกฎ"
@@ -309,7 +323,7 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
             <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
             <span>{error}</span>
           </div>
-          <button onClick={() => setError('')} className="text-red-400 hover:text-red-600">
+          <button type="button" onClick={() => setError('')} className="text-red-400 hover:text-red-600">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -392,7 +406,7 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
       </div>
 
       {/* ── WIZARD FORM CONTENT STEP PANELS ── */}
-      <form onSubmit={handleSubmit} className="bg-white border rounded-2xl shadow-xs p-8 space-y-6">
+      <form onSubmit={handleSubmit} onKeyDown={preventEnterSubmit} className="bg-white border rounded-2xl shadow-xs p-8 space-y-6">
         {/* ── STEP 1: BASIC INFORMATION ── */}
         {currentStep === 1 && (
           <div className="space-y-5 animate-in fade-in duration-200">
@@ -662,7 +676,7 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <label
+                <div
                   onClick={() => setFormExecutionMode('MANUAL_REVIEW')}
                   className={`flex items-start space-x-3 p-4 border rounded-xl cursor-pointer transition-all ${
                     formExecutionMode === 'MANUAL_REVIEW'
@@ -686,9 +700,9 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
                       เมื่อตรงเงื่อนไข ระบบจะไม่อนุมัติหรือลงบัญชีทันที แต่จะตั้งสถานะเป็น <strong className="text-amber-950 font-mono">PENDING_REVIEW</strong> เพื่อให้ผู้บริหารคลินิกตรวจสอบและอนุมัติด้วยตนเอง
                     </p>
                   </div>
-                </label>
+                </div>
 
-                <label
+                <div
                   onClick={() => setFormExecutionMode('AUTO_POST')}
                   className={`flex items-start space-x-3 p-4 border rounded-xl cursor-pointer transition-all ${
                     formExecutionMode === 'AUTO_POST'
@@ -712,7 +726,7 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
                       ระบบจะอนุมัติและผ่านรายการลงเดบิต/เครดิตสมุดบัญชีทันทีเมื่อเหตุการณ์เกิดขึ้น
                     </p>
                   </div>
-                </label>
+                </div>
               </div>
             </div>
 
