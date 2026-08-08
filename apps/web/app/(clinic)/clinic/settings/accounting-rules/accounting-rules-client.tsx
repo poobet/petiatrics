@@ -275,6 +275,7 @@ export default function AccountingRulesClient() {
             placeholder="ค้นหาชื่อกฎ หรือคำอธิบาย..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
             className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>

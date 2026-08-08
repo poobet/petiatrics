@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -103,11 +103,16 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
   const [formExecutionMode, setFormExecutionMode] = useState<'MANUAL_REVIEW' | 'AUTO_POST'>('MANUAL_REVIEW');
   const [formIsActive, setFormIsActive] = useState(true);
 
+  // Use a ref to prevent double-fetch in React StrictMode (dev) and on spurious re-renders.
+  // Only [ruleId] as dep — isEditing is purely derived from ruleId so adding it would
+  // cause a second fire when the parent re-renders.
+  const hasFetchedRef = useRef(false);
   useEffect(() => {
-    if (isEditing && ruleId) {
+    if (ruleId && !hasFetchedRef.current) {
+      hasFetchedRef.current = true;
       fetchRuleData(ruleId);
     }
-  }, [ruleId, isEditing]);
+  }, [ruleId]);
 
   async function fetchRuleData(id: string) {
     setLoading(true);
@@ -197,9 +202,24 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
     }
   }
 
-  // EXPLICIT SAVE HANDLER — Only triggered when the user clicks the Save button at Step 3
-  async function handleSaveRule() {
-    if (currentStep !== 3) return;
+  // FORM AUTO-SUBMIT GUARD: Block Enter keypress on inputs
+  function handleKeyDownBlockEnter(e: React.KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }
+
+  // EXPLICIT SAVE HANDLER — Only triggered when the user clicks the Save button at Step 3.
+  // The `currentStep !== 3` guard is the primary firewall; the button itself is also
+  // conditionally rendered only on Step 3 and uses type="button" to bypass form submit.
+  async function handleSaveRule(e?: React.MouseEvent<HTMLButtonElement>) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    // Hard guard: reject any invocation that is NOT a deliberate Step-3 button click.
+    if (currentStep !== 3 || saving) return;
 
     setSaving(true);
     setError('');
@@ -393,8 +413,10 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
         </div>
       </div>
 
-      {/* ── WIZARD FORM CONTENT PANEL (DIV container - NO <form> element) ── */}
-      <div className="bg-white border rounded-2xl shadow-xs p-8 space-y-6">
+      {/* ── WIZARD CONTENT PANEL (NOT a <form> — prevents Edge/browser implicit form submission) ── */}
+      <div
+        className="bg-white border rounded-2xl shadow-xs p-8 space-y-6"
+      >
         {/* ── STEP 1: BASIC INFORMATION ── */}
         {currentStep === 1 && (
           <div className="space-y-5 animate-in fade-in duration-200">
@@ -410,9 +432,9 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
                 </label>
                 <input
                   type="text"
-                  required
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
+                  onKeyDown={handleKeyDownBlockEnter}
                   placeholder="เช่น Custom Variance Rule <= 500 THB"
                   className="w-full border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
@@ -423,10 +445,10 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
                 </label>
                 <input
                   type="number"
-                  required
                   min={0}
                   value={formPriority}
                   onChange={(e) => setFormPriority(Number(e.target.value))}
+                  onKeyDown={handleKeyDownBlockEnter}
                   className="w-full border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
                 <span className="text-[11px] text-gray-400 mt-1 block">ตัวเลขยิ่งมาก ยิ่งถูกประเมินก่อน (เช่น 20 &gt; 10)</span>
@@ -439,6 +461,7 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
                 type="text"
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
+                onKeyDown={handleKeyDownBlockEnter}
                 placeholder="เช่น ส่วนต่างเบิกจ่ายยืดหยุ่นไม่เกิน 500 บาทสำหรับสาขาใหญ่"
                 className="w-full border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
               />
@@ -505,9 +528,9 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
                     </label>
                     <input
                       type="text"
-                      required
                       value={formFactKey}
                       onChange={(e) => setFormFactKey(e.target.value)}
+                      onKeyDown={handleKeyDownBlockEnter}
                       placeholder="เช่น varianceAmountMinor, quantity..."
                       className="w-full border rounded-xl px-3.5 py-2.5 text-sm bg-white font-mono focus:ring-2 focus:ring-purple-500"
                     />
@@ -551,9 +574,9 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
                     <div className="space-y-1.5">
                       <input
                         type="text"
-                        required
                         value={formValue}
                         onChange={(e) => setFormValue(e.target.value)}
+                        onKeyDown={handleKeyDownBlockEnter}
                         placeholder="ใส่ค่าอิสระ เช่น 10000 (100 บาท), 50000 (500 บาท)..."
                         className="w-full border rounded-xl px-3.5 py-2.5 text-sm bg-white font-mono focus:ring-2 focus:ring-purple-500"
                       />
