@@ -96,6 +96,22 @@ describe('RuleEvaluatorService', () => {
       expect(result).toBe(true);
     });
 
+    it('should match standard Rule Engine spec ({ fact, operator, value }) format', () => {
+      const result = service.matchesConditions(
+        { fact: 'varianceAmountMinor', operator: 'lessThanInclusive', value: 10000 },
+        { varianceAmountMinor: 5000 },
+      );
+      expect(result).toBe(true);
+    });
+
+    it('should not match standard Rule Engine spec format when value exceeds threshold', () => {
+      const result = service.matchesConditions(
+        { fact: 'varianceAmountMinor', operator: 'lessThanInclusive', value: 10000 },
+        { varianceAmountMinor: 15000 },
+      );
+      expect(result).toBe(false);
+    });
+
     it('should match multiple conditions with AND logic', () => {
       const result = service.matchesConditions(
         { reasonCode: 'EXPIRED', referenceType: 'MANUAL' },

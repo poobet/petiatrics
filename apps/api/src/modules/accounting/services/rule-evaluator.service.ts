@@ -78,23 +78,38 @@ export class RuleEvaluatorService {
   }
 
   /**
-   * Check if all conditions match the payload (AND logic).
+   - Check if all conditions match the payload (AND logic).
+   - Supports both:
+   - 1) Key-object style: { "varianceAmountMinor": { "$lte": 10000 } } or { "reasonCode": "EXPIRED" }
+   - 2) Standard Rule Engine spec: { "fact": "varianceAmountMinor", "operator": "lessThanInclusive", "value": 10000 }
+   - 3) Array of conditions: [{ "fact": "varianceAmountMinor", "operator": "lessThanInclusive", "value": 10000 }]
    */
   matchesConditions(
-    conditions: Record<string, unknown>,
+    conditions: Record<string, unknown> | Array<Record<string, unknown>>,
     payload: Record<string, unknown>,
   ): boolean {
+    if (!conditions) return true;
+
+    // Handle Array format: [{ fact, operator, value }]
+    if (Array.isArray(conditions)) {
+      return conditions.every((cond) => this.matchesSingleConditionSpec(cond, payload));
+    }
+
+    // Handle single object standard Rule Engine spec: { fact, operator, value }
+    if ('fact' in conditions && 'operator' in conditions) {
+      return this.matchesSingleConditionSpec(conditions, payload);
+    }
+
+    // Handle key-value / operator dictionary format: { reasonCode: "EXPIRED", quantity: { $gt: 10 } }
     for (const [key, condition] of Object.entries(conditions)) {
       const payloadValue = payload[key];
 
       if (condition !== null && typeof condition === 'object' && !Array.isArray(condition)) {
-        // Operator-based condition: { "$eq": "EXPIRED" }
         const operators = condition as Record<string, unknown>;
         if (!this.matchesOperators(operators, payloadValue)) {
           return false;
         }
       } else {
-        // Simple equality: { "reasonCode": "EXPIRED" }
         if (payloadValue !== condition) {
           return false;
         }
@@ -103,31 +118,89 @@ export class RuleEvaluatorService {
     return true;
   }
 
+  private matchesSingleConditionSpec(
+    cond: Record<string, unknown>,
+    payload: Record<string, unknown>,
+  ): boolean {
+    const factKey = String(cond.fact);
+    const operator = String(cond.operator).toLowerCase();
+    const expectedValue = cond.value;
+    const actualValue = payload[factKey];
+
+    switch (operator) {
+      case 'equal':
+      case 'equals':
+      case 'eq':
+      case '$eq':
+        return actualValue === expectedValue;
+      case 'notequal':
+      case 'notequals':
+      case 'ne':
+      case '$ne':
+        return actualValue !== expectedValue;
+      case 'in':
+      case '$in':
+        return Array.isArray(expectedValue) && expectedValue.includes(actualValue);
+      case 'lessthaninclusive':
+      case 'lte':
+      case '$lte':
+        return typeof actualValue === 'number' && typeof expectedValue === 'number' && actualValue <= expectedValue;
+      case 'lessthan':
+      case 'lt':
+      case '$lt':
+        return typeof actualValue === 'number' && typeof expectedValue === 'number' && actualValue < expectedValue;
+      case 'greaterthaninclusive':
+      case 'gte':
+      case '$gte':
+        return typeof actualValue === 'number' && typeof expectedValue === 'number' && actualValue >= expectedValue;
+      case 'greaterthan':
+      case 'gt':
+      case '$gt':
+        return typeof actualValue === 'number' && typeof expectedValue === 'number' && actualValue > expectedValue;
+      default:
+        this.logger.warn(`Unknown rule engine spec operator: ${operator}`);
+        return false;
+    }
+  }
+
   private matchesOperators(
     operators: Record<string, unknown>,
     value: unknown,
   ): boolean {
     for (const [op, expected] of Object.entries(operators)) {
-      switch (op) {
+      switch (op.toLowerCase()) {
         case '$eq':
+        case 'eq':
+        case 'equal':
           if (value !== expected) return false;
           break;
         case '$ne':
+        case 'ne':
+        case 'notequal':
           if (value === expected) return false;
           break;
         case '$in':
+        case 'in':
           if (!Array.isArray(expected) || !expected.includes(value)) return false;
           break;
         case '$gt':
+        case 'gt':
+        case 'greaterthan':
           if (typeof value !== 'number' || typeof expected !== 'number' || value <= expected) return false;
           break;
         case '$lt':
+        case 'lt':
+        case 'lessthan':
           if (typeof value !== 'number' || typeof expected !== 'number' || value >= expected) return false;
           break;
         case '$gte':
+        case 'gte':
+        case 'greaterthaninclusive':
           if (typeof value !== 'number' || typeof expected !== 'number' || value < expected) return false;
           break;
         case '$lte':
+        case 'lte':
+        case 'lessthaninclusive':
           if (typeof value !== 'number' || typeof expected !== 'number' || value > expected) return false;
           break;
         default:
