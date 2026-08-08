@@ -49,8 +49,9 @@ export class StockController {
     @TenantId() clinicId: string,
     @ActiveBranch() branchId: string,
     @Query('productId') productId?: string,
+    @Query('locationId') locationId?: string,
   ) {
-    return this.stockService.getMovements(clinicId, branchId, productId);
+    return this.stockService.getMovements(clinicId, branchId, productId, locationId);
   }
 
   @Get('products/:productId/all-branch-balances')

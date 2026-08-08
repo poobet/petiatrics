@@ -69,7 +69,7 @@ import type { AuthProfile } from '@petiatrics/types';
 import { BranchSelector } from './branch-selector';
 import { useSessionStore } from '../../lib/session-store';
 
-type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'products' | 'stockLedger' | 'goodsReceipt' | 'goodsIssue' | 'adjustments' | 'billing' | 'billingSettings' | 'pos' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings' | 'settingsGeneral' | 'rolePermissions' | 'documentSequence' | 'accountingPeriods' | 'procurement' | 'purchaseOrders' | 'purchaseInvoices' | 'supplierPayments' | 'procurementSettings' | 'appointmentSettings' | 'commission' | 'commissionDashboard' | 'commissionRules' | 'commissionTransactions' | 'commissionPaymentRuns' | 'commissionWht' | 'accounting' | 'accountingJournal';
+type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'products' | 'stockLedger' | 'goodsReceipt' | 'goodsIssue' | 'adjustments' | 'inventorySettings' | 'billing' | 'billingSettings' | 'pos' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings' | 'settingsGeneral' | 'rolePermissions' | 'documentSequence' | 'accountingPeriods' | 'procurement' | 'purchaseOrders' | 'purchaseInvoices' | 'supplierPayments' | 'procurementSettings' | 'appointmentSettings' | 'commission' | 'commissionDashboard' | 'commissionRules' | 'commissionTransactions' | 'commissionPaymentRuns' | 'commissionWht' | 'accounting' | 'accountingJournal';
 
 interface SubNavItem {
   key: NavKey;
@@ -145,6 +145,7 @@ const NAV_GROUPS: NavGroup[] = [
         key: 'settings',
         icon: Settings,
         subItems: [
+          { key: 'inventorySettings', href: '/clinic/inventory/settings', icon: Package, requiredPermission: 'INVENTORY:VIEW' },
           { key: 'procurementSettings', href: '/clinic/procurement/settings', icon: ClipboardList, requiredPermission: 'SETTINGS:MANAGE' },
         ],
       },

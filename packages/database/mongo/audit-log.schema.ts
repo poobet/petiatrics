@@ -11,6 +11,7 @@ export type AuditOperation =
   | 'close'
   | 'reopen'
   | 'create_credit_note'
+  | 'create_debit_note'
   | 'create_adjustment';
 
 export interface IAuditLog extends mongoose.Document {
@@ -44,6 +45,7 @@ const AuditLogSchema = new mongoose.Schema<IAuditLog>(
         'close',
         'reopen',
         'create_credit_note',
+        'create_debit_note',
         'create_adjustment',
       ],
       required: true,

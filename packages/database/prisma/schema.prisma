@@ -204,6 +204,15 @@ enum DocumentType {
   DEBIT_NOTE
 }
 
+enum ReasonCodeType {
+  RETURN
+  SHRINKAGE
+  EXPIRED
+  DAMAGE
+  ADJUSTMENT
+  OTHER
+}
+
 enum DfTransactionType {
   NORMAL
   ADJUSTMENT_ADD
@@ -254,6 +263,8 @@ model Clinic {
   arOpenItems              ArOpenItem[]
   cashierSessions          CashierSession[]
   accountingPeriods        AccountingPeriod[]
+  inventoryLocations       InventoryLocation[]
+  reasonCodes              ReasonCode[]
 
   @@map("clinics")
 }
@@ -274,6 +285,8 @@ model Branch {
   stockMovements        StockMovement[]
   goodsReceiptLines     GoodsReceiptLine[]
   productBranchSettings ProductBranchSetting[]
+  inventoryLocations    InventoryLocation[]
+  reasonCodes           ReasonCode[]
 
   @@index([clinicId])
   @@map("branches")
@@ -696,6 +709,56 @@ model Product {
   @@map("products")
 }
 
+// ─── InventoryLocation (Bin / Sub-location within Branch) ───────────────────
+
+model InventoryLocation {
+  id          String   @id @default(uuid())
+  clinicId    String
+  branchId    String
+  code        String   // e.g., "MAIN_WH", "FRONT_STORE", "DEFECT_BIN"
+  name        String   // e.g., "Main Warehouse", "Front Store Display", "Defect / Damaged Bin"
+  description String?
+  isSellable  Boolean  @default(true) // true = good stock, false = defect/quarantine/damaged
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  clinic             Clinic               @relation(fields: [clinicId], references: [id])
+  branch             Branch               @relation(fields: [branchId], references: [id])
+  stockBalances      BranchStockBalance[]
+  stockMovements     StockMovement[]
+  defaultReasonCodes ReasonCode[]         @relation("DefaultLocationReasonCodes")
+
+  @@unique([clinicId, branchId, code])
+  @@index([clinicId, branchId])
+  @@map("inventory_locations")
+}
+
+// ─── ReasonCode (Automated Routing & Classification) ──────────────────────────
+
+model ReasonCode {
+  id                String         @id @default(uuid())
+  clinicId          String
+  branchId          String?        // null = clinic-wide reason code
+  code              String         // e.g., "RTN_DEFECT", "RTN_CUSTOMER", "EXPIRED_WRITE_OFF"
+  description       String
+  type              ReasonCodeType @default(RETURN)
+  defaultLocationId String?        // Automated return / adjustment location routing
+  isActive          Boolean        @default(true)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  clinic          Clinic             @relation(fields: [clinicId], references: [id])
+  branch          Branch?            @relation(fields: [branchId], references: [id])
+  defaultLocation InventoryLocation? @relation("DefaultLocationReasonCodes", fields: [defaultLocationId], references: [id], onDelete: SetNull)
+  stockMovements  StockMovement[]
+
+  @@unique([clinicId, code])
+  @@index([clinicId, branchId])
+  @@map("reason_codes")
+}
+
 // ─── BranchStockBalance ──────────────────────────────────────────────────────
 
 model BranchStockBalance {
@@ -703,6 +766,7 @@ model BranchStockBalance {
   clinicId   String
   branchId   String
   productId  String
+  locationId String?   // Linked to InventoryLocation
   lotNumber  String? // null = non-lot-tracked item
   expiryDate DateTime? // used for FEFO ordering
   quantity   Decimal   @default(0) @db.Decimal(10, 3)
@@ -710,12 +774,12 @@ model BranchStockBalance {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  clinic  Clinic  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  branch  Branch  @relation(fields: [branchId], references: [id])
-  product Product @relation(fields: [productId], references: [id])
+  clinic   Clinic             @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  branch   Branch             @relation(fields: [branchId], references: [id])
+  product  Product            @relation(fields: [productId], references: [id])
+  location InventoryLocation? @relation(fields: [locationId], references: [id])
 
-  // lotNumber included; null-lot uniqueness enforced via raw SQL partial unique index in migration
-  @@unique([clinicId, branchId, productId, lotNumber])
+  @@unique([clinicId, branchId, productId, locationId, lotNumber])
   @@index([clinicId, branchId])
   @@index([clinicId, productId])
   @@index([productId])
@@ -745,32 +809,36 @@ model ProductBranchSetting {
 // ─── StockMovement (Immutable Ledger) ────────────────────────────────────────
 
 model StockMovement {
-  id             String               @id @default(uuid())
-  clinicId       String
-  branchId       String?
-  productId      String
-  idempotencyKey String?
-  delta          Decimal              @db.Decimal(10, 3)
-  quantityBefore Decimal              @db.Decimal(10, 3)
-  quantityAfter  Decimal              @db.Decimal(10, 3)
-  reason         StockMovementReason
-  referenceType  StockMovementRefType
-  referenceId    String
-  actorId        String
+  id              String               @id @default(uuid())
+  clinicId        String
+  branchId        String?
+  productId       String
+  locationId      String?              // Linked to InventoryLocation
+  reasonCodeRefId String?              // Linked to ReasonCode
+  idempotencyKey  String?
+  delta           Decimal              @db.Decimal(10, 3)
+  quantityBefore  Decimal              @db.Decimal(10, 3)
+  quantityAfter   Decimal              @db.Decimal(10, 3)
+  reason          StockMovementReason
+  referenceType   StockMovementRefType
+  referenceId     String
+  actorId         String
   // Lot tracking (new)
-  lotNumber      String?
-  expiryDate     DateTime?
-  overrideReason String? // populated on FEFO/expiry override
-  reasonCode     String? // write-off classification: COUNT_DISCREPANCY, DAMAGED, EXPIRED
-  approverId     String? // populated when adjustment approved
-  status         StockMovementStatus  @default(COMMITTED)
-  createdAt      DateTime             @default(now())
+  lotNumber       String?
+  expiryDate      DateTime?
+  overrideReason  String? // populated on FEFO/expiry override
+  reasonCode      String? // write-off classification: COUNT_DISCREPANCY, DAMAGED, EXPIRED
+  approverId      String? // populated when adjustment approved
+  status          StockMovementStatus  @default(COMMITTED)
+  createdAt       DateTime             @default(now())
 
-  clinic   Clinic  @relation(fields: [clinicId], references: [id])
-  branch   Branch? @relation(fields: [branchId], references: [id])
-  product  Product @relation(fields: [productId], references: [id])
-  actor    User    @relation("StockMovementActor", fields: [actorId], references: [id])
-  approver User?   @relation("StockMovementApprover", fields: [approverId], references: [id])
+  clinic        Clinic             @relation(fields: [clinicId], references: [id])
+  branch        Branch?            @relation(fields: [branchId], references: [id])
+  product       Product            @relation(fields: [productId], references: [id])
+  location      InventoryLocation? @relation(fields: [locationId], references: [id])
+  reasonCodeRef ReasonCode?        @relation(fields: [reasonCodeRefId], references: [id])
+  actor         User               @relation("StockMovementActor", fields: [actorId], references: [id])
+  approver      User?              @relation("StockMovementApprover", fields: [approverId], references: [id])
 
   @@unique([clinicId, idempotencyKey])
   @@index([clinicId])
@@ -845,23 +913,28 @@ model Invoice {
 // ─── InvoiceLineItem ─────────────────────────────────────────────────────────
 
 model InvoiceLineItem {
-  id                String              @id @default(uuid())
-  invoiceId         String
-  itemType          InvoiceLineItemType
-  description       String
-  quantity          Decimal             @db.Decimal(10, 3)
-  unitPriceMinor    Int
-  subtotalMinor     Int
-  vatRateBps        Int                 @default(0) // basis points — context-driven (700=7%, 0=exempt)
-  vatTotalMinor     Int                 @default(0) // per-line VAT amount in minor units
-  sourceReferenceId String?
-  productId         String?
+  id                    String              @id @default(uuid())
+  invoiceId             String
+  originalInvoiceItemId String?
+  itemType              InvoiceLineItemType
+  description           String
+  quantity              Decimal             @db.Decimal(10, 3)
+  unitPriceMinor        Int
+  subtotalMinor         Int
+  vatRateBps            Int                 @default(0) // basis points — context-driven (700=7%, 0=exempt)
+  vatTotalMinor         Int                 @default(0) // per-line VAT amount in minor units
+  sourceReferenceId     String?
+  productId             String?
+  returnToStock         Boolean             @default(false)
 
-  invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  invoice             Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product             Product?          @relation(fields: [productId], references: [id], onDelete: SetNull)
+  originalInvoiceItem InvoiceLineItem?  @relation("LineItemAdjustments", fields: [originalInvoiceItemId], references: [id], onDelete: SetNull)
+  adjustmentItems     InvoiceLineItem[] @relation("LineItemAdjustments")
 
   @@index([invoiceId])
   @@index([productId])
+  @@index([originalInvoiceItemId])
   @@map("invoice_line_items")
 }
 

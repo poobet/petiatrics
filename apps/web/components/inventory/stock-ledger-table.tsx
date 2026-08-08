@@ -1,9 +1,16 @@
 'use client';
 
-import { Fragment } from 'react';
 import { useTranslations } from 'next-intl';
 import { format } from 'date-fns';
 import { Button } from '@petiatrics/ui';
+import { MapPin, AlertTriangle } from 'lucide-react';
+
+export interface InventoryLocationInfo {
+  id: string;
+  name: string;
+  code: string;
+  isSellable: boolean;
+}
 
 export interface StockBalance {
   id: string;
@@ -15,6 +22,7 @@ export interface StockBalance {
   reorderPoint: number;
   status: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' | 'EXPIRED';
   branchName?: string;
+  location?: InventoryLocationInfo | null;
 }
 
 export interface ProductSummaryRow {
@@ -37,6 +45,8 @@ export interface MovementHistoryRow {
   quantity?: number;
   actor?: { id: string; name: string } | null;
   status?: string;
+  location?: InventoryLocationInfo | null;
+  reasonCodeRef?: { id: string; code: string; description: string } | null;
 }
 
 interface Props {
@@ -64,10 +74,6 @@ const STATUS_BADGE: Record<string, string> = {
 export default function StockLedgerTable({
   rows = [],
   summaryRows,
-  detailRows = {},
-  expandedProductIds = [],
-  onToggleDetails,
-  detailLoadingProductId,
   loading,
   showBranchColumn = false,
   showStatusColumn = true,
@@ -93,7 +99,7 @@ export default function StockLedgerTable({
 
   if (summaryMode) {
     return (
-      <div className="overflow-x-auto rounded-lg border">
+      <div className="overflow-x-auto rounded-lg border bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr>
@@ -103,12 +109,14 @@ export default function StockLedgerTable({
               <th className="px-4 py-3 text-right font-medium">{t('columns.actions')}</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y">
             {summaryRows.map((summary) => (
               <tr key={summary.productId} className="border-t hover:bg-muted/30 transition-colors">
-                <td className="px-4 py-3 font-medium">{summary.productName}</td>
-                <td className="px-4 py-3 text-muted-foreground">{summary.sku ?? '—'}</td>
-                <td className="px-4 py-3 text-right font-mono">{summary.totalQuantity.toLocaleString()}</td>
+                <td className="px-4 py-3 font-medium text-gray-900">{summary.productName}</td>
+                <td className="px-4 py-3 text-muted-foreground font-mono">{summary.sku ?? '—'}</td>
+                <td className="px-4 py-3 text-right font-mono font-bold text-gray-900">
+                  {summary.totalQuantity.toLocaleString()}
+                </td>
                 <td className="px-4 py-3 text-right">
                   <Button size="sm" variant="outline" onClick={() => onViewDetails?.(summary)}>
                     {t('actions.viewDetails')}
@@ -123,7 +131,7 @@ export default function StockLedgerTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border">
+    <div className="overflow-x-auto rounded-lg border bg-white shadow-sm">
       <table className="w-full text-sm">
         <thead className="bg-muted/50">
           <tr>
@@ -133,6 +141,7 @@ export default function StockLedgerTable({
             {!hideItemColumn && (
               <th className="px-4 py-3 text-left font-medium">{t('columns.productName')}</th>
             )}
+            <th className="px-4 py-3 text-left font-medium">Location (คลัง/จุดจัดเก็บ)</th>
             <th className="px-4 py-3 text-left font-medium">{t('columns.lot')}</th>
             <th className="px-4 py-3 text-left font-medium">{t('columns.expiry')}</th>
             <th className="px-4 py-3 text-right font-medium">{t('columns.quantity')}</th>
@@ -141,7 +150,7 @@ export default function StockLedgerTable({
             )}
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y">
           {rows.map((row) => (
             <tr key={row.id} className="border-t hover:bg-muted/30 transition-colors">
               {showBranchColumn && (
@@ -149,15 +158,34 @@ export default function StockLedgerTable({
               )}
               {!hideItemColumn && (
                 <td className="px-4 py-3">
-                  <div className="font-medium">{row.productName}</div>
-                  {row.sku && <div className="text-xs text-muted-foreground">{row.sku}</div>}
+                  <div className="font-medium text-gray-900">{row.productName}</div>
+                  {row.sku && <div className="text-xs text-muted-foreground font-mono">{row.sku}</div>}
                 </td>
               )}
-              <td className="px-4 py-3 text-muted-foreground">{row.lotNumber ?? '—'}</td>
+              <td className="px-4 py-3 text-xs">
+                {row.location ? (
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-blue-500" />
+                    <span className="font-medium text-gray-800">{row.location.name}</span>
+                    {row.location.isSellable ? (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-green-100 text-green-700 font-medium">
+                        Sellable
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] bg-red-100 text-red-700 font-bold border border-red-200">
+                        <AlertTriangle className="w-2.5 h-2.5" /> Defect Bin
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-gray-400">—</span>
+                )}
+              </td>
+              <td className="px-4 py-3 text-muted-foreground font-mono">{row.lotNumber ?? '—'}</td>
               <td className="px-4 py-3 text-muted-foreground">
                 {row.expiryDate ? format(new Date(row.expiryDate), 'dd MMM yyyy') : '—'}
               </td>
-              <td className="px-4 py-3 text-right font-mono">{row.quantity.toLocaleString()}</td>
+              <td className="px-4 py-3 text-right font-mono font-bold text-gray-900">{row.quantity.toLocaleString()}</td>
               {showStatusColumn && (
                 <td className="px-4 py-3 text-center">
                   <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[row.status] ?? ''}`}>

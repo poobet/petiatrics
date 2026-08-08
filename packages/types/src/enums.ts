@@ -119,6 +119,7 @@ export enum AuditOperation {
   CLOSE = 'close',
   REOPEN = 'reopen',
   CREATE_CREDIT_NOTE = 'create_credit_note',
+  CREATE_DEBIT_NOTE = 'create_debit_note',
   CREATE_ADJUSTMENT = 'create_adjustment',
 }
 

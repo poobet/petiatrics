@@ -143,6 +143,39 @@ export class DocumentSequenceService {
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const dd = String(now.getDate()).padStart(2, '0');
 
+    const builtinDocTypes = [
+      { code: 'PURCHASE_ORDER', label: 'Purchase Order', defaultTemplate: 'PO{yyyy}-{number:4}', module: 'PROCUREMENT' },
+      { code: 'GOODS_RECEIPT', label: 'Goods Receipt', defaultTemplate: 'GR{yyyy}-{number:4}', module: 'PROCUREMENT' },
+      { code: 'PURCHASE_INVOICE', label: 'Purchase Invoice', defaultTemplate: 'PI{yyyy}-{number:4}', module: 'PROCUREMENT' },
+      { code: 'SUPPLIER_PAYMENT', label: 'Supplier Payment', defaultTemplate: 'SP{yyyy}-{number:4}', module: 'PROCUREMENT' },
+      { code: 'CUSTOMER_INVOICE', label: 'Customer Invoice', defaultTemplate: 'INV{yyyy}-{number:4}', module: 'BILLING' },
+      { code: 'CREDIT_NOTE', label: 'Credit Note (ใบลดหนี้)', defaultTemplate: 'CN{yyyy}-{number:4}', module: 'BILLING' },
+      { code: 'DEBIT_NOTE', label: 'Debit Note (ใบเพิ่มหนี้)', defaultTemplate: 'DN{yyyy}-{number:4}', module: 'BILLING' },
+      { code: 'APPOINTMENT', label: 'Appointment', defaultTemplate: 'APT{yyyy}-{number:4}', module: 'APPOINTMENT' },
+    ];
+
+    for (const dt of builtinDocTypes) {
+      try {
+        const existing = await this.prisma.documentTypeDefinition.findFirst({
+          where: { clinicId: null, code: dt.code },
+        });
+        if (!existing) {
+          await this.prisma.documentTypeDefinition.create({
+            data: {
+              clinicId: null,
+              code: dt.code,
+              label: dt.label,
+              defaultTemplate: dt.defaultTemplate,
+              isSystem: true,
+              module: dt.module as any,
+            },
+          });
+        }
+      } catch {
+        // Ignore duplicate key or seed race conditions
+      }
+    }
+
     // Fetch all active document type definitions visible to this clinic
     const typeFilter: any = {
       OR: [{ clinicId: null }, { clinicId }],

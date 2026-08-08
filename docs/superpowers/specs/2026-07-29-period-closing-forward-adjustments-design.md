@@ -117,79 +117,82 @@ Apply `PeriodClosingGuard` + `@CheckPeriodField` to:
 
 ## Phase 2: Forward-Only Business Features
 
-### 2.1 Credit Note / Debit Note
+### 2.1 Credit Note / Debit Note (Item-Level / Line-Item Adjustment)
 
-#### 2.1.1 Schema Changes (Invoice model)
+#### 2.1.1 Schema Changes (Invoice & InvoiceLineItem models)
 
-**New enum:** `DocumentType` — `INVOICE`, `CREDIT_NOTE`, `DEBIT_NOTE`
+**DocumentType enum:** `INVOICE`, `CREDIT_NOTE`, `DEBIT_NOTE`
 
-**New fields on Invoice:**
+**New fields on `InvoiceLineItem`:**
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `documentType` | DocumentType | Default: INVOICE |
-| `referenceInvoiceId` | String? | FK → Invoice (self-relation). Links CN/DN back to original invoice |
-| `reasonCode` | String? | Reason for CN/DN issuance (e.g. "DEFECTIVE", "WRONG_PRICE", "CUSTOMER_RETURN") |
+| `originalInvoiceItemId` | String? | FK → InvoiceLineItem (self-relation). Links CN/DN item directly to specific original invoice line item |
+| `returnToStock` | Boolean | Default: false. Indicates whether physical product item should be restocked to branch inventory |
 
-**Self-relation:**
+**Self-relation on `InvoiceLineItem`:**
+```prisma
+originalInvoiceItem InvoiceLineItem?  @relation("LineItemAdjustments", fields: [originalInvoiceItemId], references: [id], onDelete: SetNull)
+adjustmentItems     InvoiceLineItem[] @relation("LineItemAdjustments")
 ```
-referenceInvoice  Invoice?  @relation("CreditNoteReference", fields: [referenceInvoiceId], references: [id])
-creditNotes       Invoice[] @relation("CreditNoteReference")
-```
 
-**Invoice totals for CN:** `subtotalMinor`, `taxTotalMinor`, `totalMinor` will be **negative** (convention: CN has negative amounts, DN has positive amounts for additional charges).
+**Line item amounts:**
+- **Credit Note (CN):** `quantity`, `subtotalMinor`, `vatTotalMinor` are **negative** (credits revenue & AR).
+- **Debit Note (DN):** `quantity`, `subtotalMinor`, `vatTotalMinor` are **positive** (debits AR, credits revenue).
 
-#### 2.1.2 Backend: Credit Note Endpoint
+#### 2.1.2 Backend: Itemized Adjustment Endpoint & Business Logic
 
-**New endpoint:** `POST /billing/invoices/:id/credit-note`
+**Endpoint:** `POST /billing/invoices/:id/itemized-adjustment`
 
 **Logic:**
-1. Fetch original invoice (must be PAID status)
-2. Validate: original invoice's period MUST be CLOSED (CN is only needed when original period is locked; if period is still OPEN, void+re-issue is preferred)
-3. Create new Invoice record with:
-   - `documentType: CREDIT_NOTE`
-   - `referenceInvoiceId: originalInvoice.id`
-   - `reasonCode: dto.reasonCode`
-   - Line items copied from original (or subset), with **negative amounts**
-   - Transaction date = current date (forward-only, always in current OPEN period)
-4. Auto-generate document sequence code (new doc type: `CREDIT_NOTE`)
-5. Post reverse journal entry via `GLPostingService`
-6. Emit `CreditNoteCreatedEvent` for event listeners
+1. Fetch original invoice (must be `PAID` status and `INVOICE` document type).
+2. Validate requested items against remaining balances:
+   - `remainingQty = origItem.quantity - sum(existingAdjustmentItems.quantity)`
+   - `remainingAmount = origItem.subtotalMinor - sum(existingAdjustmentItems.subtotalMinor)`
+   - Throws `BadRequestException` if `adjustQty > remainingQty` or `adjustAmountMinor > remainingAmount`.
+3. **Per-Line VAT Calculation:** Calculates VAT specifically per line using the original item's `vatRateBps`:
+   - `vatTotalMinor = Math.round(adjustAmountMinor * (vatRateBps / 10000))`
+4. **Doctor Fee (DF) Adjustment Impact:**
+   - Automatically finds any `DfTransaction` associated with `originalInvoiceItemId`.
+   - Creates a new `DfTransaction` (`ADJUSTMENT_DEDUCT` for CN, `ADJUSTMENT_ADD` for DN) with a proportional DF adjustment amount.
+5. **Inventory Restocking (`returnToStock`):**
+   - If `returnToStock: true` and product is physical (`productId` present), creates a `StockMovement` (reason `REPLENISH`, referenceType `MANUAL`, referenceId `CN-...`, status `COMMITTED`) and increments `BranchStockBalance`.
+6. Create new Invoice record (`documentType: CREDIT_NOTE` or `DEBIT_NOTE`, `referenceInvoiceId: originalInvoice.id`, status `PAID`).
+7. Auto-generate running document code via sequence service (prefix `CN` or `DN`).
+8. Post GL journal entries (`GLPostingService`).
 
-**DTO:**
+**DTO (`CreateItemizedAdjustmentDto`):**
 ```typescript
-interface CreateCreditNoteDto {
-  reasonCode: string;
-  reason: string;
-  lineItems?: CreditNoteLineItemDto[]; // Optional partial CN
-  // If absent, full CN for all line items
+class ItemAdjustmentInputDto {
+  originalItemId: string;     // ID of original InvoiceLineItem
+  adjustQty: number;          // Quantity to adjust (e.g. 1)
+  adjustAmountMinor: number;  // Subtotal amount to adjust in satang
+  returnToStock?: boolean;    // Toggle restocking for physical products
+}
+
+class CreateItemizedAdjustmentDto {
+  type: 'CREDIT_NOTE' | 'DEBIT_NOTE';
+  reasonCode: string;         // e.g. "CUSTOMER_RETURN", "WRONG_PRICE", "UNDERCHARGED"
+  reason: string;             // Detailed explanation
+  items: ItemAdjustmentInputDto[];
 }
 ```
 
-#### 2.1.3 GL Reverse Journal Entry
+#### 2.1.3 GL Journal Entries for CN / DN
 
-When CN is created, `GLPostingService` posts a **reverse entry**:
-- Original SALES entry: DR Cash/AR, CR Revenue
-- Reverse for CN: DR Revenue, CR Cash/AR (refund liability)
+When CN/DN is created, `GLPostingService` posts balanced journal entries:
+- **Credit Note:** DR Revenue (`REV-001`), CR Accounts Receivable (`AR-001`)
+- **Debit Note:** DR Accounts Receivable (`AR-001`), CR Revenue (`REV-001`)
 
-New method: `GLPostingService.postReverseJournal(clinicId, originalJournalId, description)`
-
-#### 2.1.4 Frontend: Invoice Detail
+#### 2.1.4 Frontend: Itemized Adjustment UI Modal
 
 **File:** `apps/web/app/(clinic)/clinic/billing/[id]/invoice-detail-client.tsx`
 
-**Changes:**
-- Add "Issue Credit Note / Refund" button — visible when:
-  - Invoice status = PAID
-  - Invoice `documentType` = INVOICE (not CN/DN)
-  - Invoice's period is CLOSED
-- Button opens modal with:
-  - Reason code selector
-  - Reason text input
-  - Line items with checkboxes (partial CN support)
-  - Amount preview
-  - Confirm button
-- Display linked CN/DN documents on invoice detail page (if any exist)
+**Features:**
+- **Interactive Item Table:** Displays original invoice line items with selection checkboxes, quantity inputs (max = original item qty), amount inputs (auto-calculated from qty x unit price, but editable), and return-to-stock toggles for products.
+- **Dynamic Live Totals:** Live calculation of Subtotal, VAT (7%), and Grand Total as user alters item selections/quantities/amounts.
+- **Linked Documents Section:** Table displaying linked CN/DN documents with document type badges, reason codes, color-coded amounts, and clickable links to detail pages.
+- **Net Adjusted Balance:** Summary breakdown displaying original invoice total, accumulated CN/DN adjustments, and net balance.
 
 ### 2.2 Doctor Fee (DF) Adjustment
 

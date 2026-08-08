@@ -26,6 +26,8 @@ export class VerifyOverridePinDto {
 }
 
 import { CreateCreditNoteDto } from '../dto/create-credit-note.dto';
+import { CreateDebitNoteDto } from '../dto/create-debit-note.dto';
+import { CreateItemizedAdjustmentDto } from '../dto/create-itemized-adjustment.dto';
 
 @Controller('billing/invoices')
 export class InvoiceController {
@@ -109,6 +111,31 @@ export class InvoiceController {
     return this.invoiceService.createCreditNote(clinicId, id, dto);
   }
 
+  @Post(':id/debit-note')
+  @Roles(Role.CASHIER, Role.CLINIC_OWNER)
+  @Permissions('BILLING:EDIT')
+  @Audit({ entity: 'Invoice', operation: 'create_debit_note' })
+  createDebitNote(
+    @TenantId() clinicId: string,
+    @Param('id') id: string,
+    @Body() dto: CreateDebitNoteDto,
+  ) {
+    return this.invoiceService.createDebitNote(clinicId, id, dto);
+  }
+
+  @Post(':id/itemized-adjustment')
+  @Roles(Role.CASHIER, Role.CLINIC_OWNER)
+  @Permissions('BILLING:EDIT')
+  @Audit({ entity: 'Invoice', operation: 'create_adjustment' })
+  createItemizedAdjustment(
+    @TenantId() clinicId: string,
+    @CurrentUser() user: UserContext,
+    @Param('id') id: string,
+    @Body() dto: CreateItemizedAdjustmentDto,
+  ) {
+    return this.invoiceService.createItemizedAdjustment(clinicId, id, dto, user.userId);
+  }
+
   @Delete(':id')
   @Roles(Role.CLINIC_OWNER)
   @Permissions('BILLING:VOID')
@@ -122,3 +149,4 @@ export class InvoiceController {
     return this.invoiceService.voidInvoice(clinicId, id, user.userId, body.reason);
   }
 }
+

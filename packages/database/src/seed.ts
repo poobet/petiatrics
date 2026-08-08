@@ -76,6 +76,8 @@ async function main() {
     { code: 'PURCHASE_INVOICE', label: 'Purchase Invoice', defaultTemplate: 'PI{yyyy}-{number:4}', module: 'PROCUREMENT' },
     { code: 'SUPPLIER_PAYMENT', label: 'Supplier Payment', defaultTemplate: 'SP{yyyy}-{number:4}', module: 'PROCUREMENT' },
     { code: 'CUSTOMER_INVOICE', label: 'Customer Invoice', defaultTemplate: 'INV{yyyy}-{number:4}', module: 'BILLING' },
+    { code: 'CREDIT_NOTE', label: 'Credit Note (ใบลดหนี้)', defaultTemplate: 'CN{yyyy}-{number:4}', module: 'BILLING' },
+    { code: 'DEBIT_NOTE', label: 'Debit Note (ใบเพิ่มหนี้)', defaultTemplate: 'DN{yyyy}-{number:4}', module: 'BILLING' },
     { code: 'APPOINTMENT', label: 'Appointment', defaultTemplate: 'APT{yyyy}-{number:4}', module: 'APPOINTMENT' },
   ];
 

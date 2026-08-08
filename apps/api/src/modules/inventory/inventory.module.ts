@@ -19,10 +19,24 @@ import { StockAdjustmentController } from './controllers/stock-adjustment.contro
 import { StockAlertController } from './controllers/stock-alert.controller';
 import { BranchContextGuard } from '../../common/guards/branch-context.guard';
 import { StockAdjustmentService } from './services/stock-adjustment.service';
+import { InventoryLocationService } from './services/inventory-location.service';
+import { InventoryLocationController } from './controllers/inventory-location.controller';
+import { ReasonCodeService } from './services/reason-code.service';
+import { ReasonCodeController } from './controllers/reason-code.controller';
 
 @Module({
   imports: [MulterModule.register({ dest: '/tmp' })],
-  controllers: [ProductController, StockController, ReferenceController, BranchTestController, BulkImportController, StockAdjustmentController, StockAlertController],
+  controllers: [
+    ProductController,
+    StockController,
+    ReferenceController,
+    BranchTestController,
+    BulkImportController,
+    StockAdjustmentController,
+    StockAlertController,
+    InventoryLocationController,
+    ReasonCodeController,
+  ],
   providers: [
     { provide: PrismaClient, useFactory: () => new PrismaClient() },
     ProductService,
@@ -31,13 +45,24 @@ import { StockAdjustmentService } from './services/stock-adjustment.service';
     StockService,
     StockAlertService,
     StockAdjustmentService,
+    InventoryLocationService,
+    ReasonCodeService,
     ReferenceService,
     UnlinkedItemsService,
     InventoryWriteGuardService,
     BranchContextGuard,
     LowStockListener,
   ],
-  exports: [UnlinkedItemsService, ReferenceService, StockService, StockAlertService, InventoryWriteGuardService],
+  exports: [
+    UnlinkedItemsService,
+    ReferenceService,
+    StockService,
+    StockAlertService,
+    InventoryWriteGuardService,
+    InventoryLocationService,
+    ReasonCodeService,
+  ],
 })
 export class InventoryModule {}
+
 

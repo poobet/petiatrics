@@ -33,7 +33,7 @@ export default function InventoryClient({ categories }: Props) {
   const [lowStockItems, setLowStockItems] = useState<ItemSummaryResponse[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
   const [filters, setFilters] = useState<ItemFilters>(DEFAULT_FILTERS);
-  const [activeTab, setActiveTab] = useState<'items' | 'movements'>('items');
+  const [activeTab, setActiveTab] = useState<'items' | 'movements' | 'locations' | 'reason-codes'>('items');
   const [movements, setMovements] = useState<unknown[]>([]);
   const [loadingMovements, setLoadingMovements] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -72,7 +72,6 @@ export default function InventoryClient({ categories }: Props) {
     }
   }, [activeBranch]);
 
-  // Reload items + low-stock whenever the active branch changes
   useEffect(() => {
     setItems([]);
     setLowStockItems([]);
@@ -101,7 +100,7 @@ export default function InventoryClient({ categories }: Props) {
     }
   }
 
-  function handleTabChange(tab: 'items' | 'movements') {
+  function handleTabChange(tab: 'items' | 'movements' | 'locations' | 'reason-codes') {
     setActiveTab(tab);
     if (tab === 'movements') void loadMovements();
   }
@@ -132,6 +131,12 @@ export default function InventoryClient({ categories }: Props) {
           )}
         </div>
         <div className="flex gap-2">
+          <Link
+            href="/clinic/inventory/settings"
+            className="px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50 flex items-center gap-1.5 font-medium text-gray-700"
+          >
+            ⚙️ Inventory Settings
+          </Link>
           {canAddInventory && (
             <Link
               href="/clinic/inventory/replenish"
@@ -167,47 +172,69 @@ export default function InventoryClient({ categories }: Props) {
 
       {/* Tabs */}
       <div className="border-b mb-4 flex gap-6">
-        {(['items', 'movements'] as const).map((tab) => (
+        {[
+          { key: 'items', label: 'Items (สินค้า & บริการ)' },
+          { key: 'movements', label: 'Stock Movements (ประวัติสินค้า)' },
+        ].map((tab) => (
           <button
-            key={tab}
-            className={`pb-2 text-sm font-medium border-b-2 transition-colors capitalize ${
-              activeTab === tab
+            key={tab.key}
+            className={`pb-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === tab.key
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
-            onClick={() => handleTabChange(tab)}
+            onClick={() => handleTabChange(tab.key as any)}
           >
-            {tab === 'items' ? 'Items' : 'Stock Movements'}
+            {tab.label}
           </button>
         ))}
       </div>
 
       {activeTab === 'items' && (
         <>
-          {loadingItems && <p className="text-sm text-gray-500 py-4">Loading…</p>}
-          {!loadingItems && (
-            <>
-              <ItemFilterBar filters={filters} categories={categories} onChange={setFilters} />
-              <ItemTable
-                items={filteredItems}
-                lowStockIds={lowStockIds}
-                onDeactivate={handleDeactivate}
-              />
-              <p className="text-xs text-gray-400 mt-2">{filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''} shown</p>
-            </>
-          )}
+          <ItemFilterBar
+            filters={filters}
+            categories={categories}
+            onChange={setFilters}
+          />
+          <div className="mt-4">
+            <ItemTable
+              items={filteredItems}
+              lowStockIds={lowStockIds}
+              onDeactivate={handleDeactivate}
+            />
+          </div>
         </>
       )}
 
       {activeTab === 'movements' && (
-        <div>
-          {loadingMovements && <p className="text-sm text-gray-500">Loading…</p>}
-          {!loadingMovements && movements.length === 0 && (
-            <p className="text-sm text-gray-400 py-8 text-center">No stock movements found.</p>
+        <div className="mt-4">
+          {loadingMovements ? (
+            <div className="text-gray-500 text-sm py-4">Loading movements…</div>
+          ) : (
+            <div className="border rounded-md divide-y text-sm">
+              {movements.length === 0 ? (
+                <div className="p-4 text-gray-400">No stock movements recorded yet.</div>
+              ) : (
+                movements.map((m: any) => (
+                  <div key={m.id} className="p-3 flex justify-between items-center">
+                    <div>
+                      <span className="font-semibold text-gray-800">{m.product?.name ?? m.productId}</span>
+                      <span className="ml-2 text-xs text-gray-400">{m.reason}</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className={`font-mono font-bold ${Number(m.delta) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {Number(m.delta) >= 0 ? `+${m.delta}` : m.delta}
+                      </span>
+                      <span className="text-xs text-gray-400">{new Date(m.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           )}
         </div>
       )}
     </div>
   );
 }
-

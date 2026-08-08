@@ -118,6 +118,7 @@
     "purchaseInvoices": "ใบแจ้งหนี้ผู้ขาย",
     "supplierPayments": "การชำระเงินผู้ขาย",
     "procurementSettings": "ตั้งค่าจัดซื้อ",
+    "inventorySettings": "ตั้งค่าคลังสินค้า",
     "billing": "การเงิน",
     "billingSettings": "ตั้งค่าการเงิน",
     "appointmentSettings": "ตั้งค่านัดหมาย",

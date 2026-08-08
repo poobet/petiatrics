@@ -179,13 +179,26 @@ export class StockService {
     });
   }
 
-  async getMovements(clinicId: string, branchId: string, productId?: string) {
+  async getMovements(clinicId: string, branchId: string, productId?: string, locationId?: string) {
     const db = scopedPrisma(this.prisma, clinicId);
     return db.stockMovement.findMany({
-      where: { branchId, ...(productId ? { productId } : {}) },
+      where: {
+        branchId,
+        ...(productId ? { productId } : {}),
+        ...(locationId ? { locationId } : {}),
+      },
       orderBy: { createdAt: 'desc' },
       take: 100,
       include: {
+        product: {
+          select: { id: true, name: true, sku: true },
+        },
+        location: {
+          select: { id: true, name: true, code: true, isSellable: true },
+        },
+        reasonCodeRef: {
+          select: { id: true, code: true, description: true },
+        },
         actor: {
           select: { id: true, name: true },
         },
