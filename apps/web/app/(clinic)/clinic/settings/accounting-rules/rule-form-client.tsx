@@ -7,7 +7,6 @@ import {
   ArrowRight,
   Save,
   Sliders,
-  Tag,
   BookOpen,
   CheckCircle2,
   AlertCircle,
@@ -168,8 +167,7 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
     }
   }
 
-  function handleNextStep(e?: React.MouseEvent) {
-    if (e) e.preventDefault();
+  function handleNextStep() {
     setError('');
     if (currentStep === 1) {
       if (!formName.trim()) {
@@ -192,26 +190,16 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
     }
   }
 
-  function handlePrevStep(e?: React.MouseEvent) {
-    if (e) e.preventDefault();
+  function handlePrevStep() {
     setError('');
     if (currentStep > 1) {
       setCurrentStep((prev) => prev - 1);
     }
   }
 
-  function preventEnterSubmit(e: React.KeyboardEvent) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-    }
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    // Block submission if not on final step 3
-    if (currentStep !== 3) {
-      return;
-    }
+  // EXPLICIT SAVE HANDLER — Only triggered when the user clicks the Save button at Step 3
+  async function handleSaveRule() {
+    if (currentStep !== 3) return;
 
     setSaving(true);
     setError('');
@@ -405,8 +393,8 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
         </div>
       </div>
 
-      {/* ── WIZARD FORM CONTENT STEP PANELS ── */}
-      <form onSubmit={handleSubmit} onKeyDown={preventEnterSubmit} className="bg-white border rounded-2xl shadow-xs p-8 space-y-6">
+      {/* ── WIZARD FORM CONTENT PANEL (DIV container - NO <form> element) ── */}
+      <div className="bg-white border rounded-2xl shadow-xs p-8 space-y-6">
         {/* ── STEP 1: BASIC INFORMATION ── */}
         {currentStep === 1 && (
           <div className="space-y-5 animate-in fade-in duration-200">
@@ -736,9 +724,9 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
                 id="isActiveWizardCheck"
                 checked={formIsActive}
                 onChange={(e) => setFormIsActive(e.target.checked)}
-                className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
               />
-              <label htmlFor="isActiveWizardCheck" className="text-sm font-medium text-gray-800">
+              <label htmlFor="isActiveWizardCheck" className="text-sm font-medium text-gray-800 cursor-pointer">
                 เปิดใช้งานกฎนี้ทันที (Active Rule)
               </label>
             </div>
@@ -812,7 +800,8 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
             </button>
           ) : (
             <button
-              type="submit"
+              type="button"
+              onClick={handleSaveRule}
               disabled={saving}
               className="inline-flex items-center space-x-2 px-7 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium shadow-md transition-all disabled:opacity-50 cursor-pointer"
             >
@@ -821,7 +810,7 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
             </button>
           )}
         </div>
-      </form>
+      </div>
     </div>
   );
 }
