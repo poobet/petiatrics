@@ -52,6 +52,7 @@ const STANDARD_GL_ACCOUNTS = [
 const EVENT_TYPES = [
   { label: 'Goods Issued (ตัดจ่ายสินค้าออก)', value: 'inventory.goods_issued' },
   { label: 'Goods Receipt Completed (รับสินค้าเข้าสต็อก)', value: 'inventory.goods_receipt_completed' },
+  { label: '3-Way Matching Variance (ส่วนต่างจับคู่เบิกจ่าย PO/GR/Invoice)', value: 'procurement.three_way_matching' },
 ];
 
 const REASON_CODE_OPTIONS = [
@@ -60,6 +61,8 @@ const REASON_CODE_OPTIONS = [
   { label: 'DEFECTIVE (สินค้ามีตำหนิ/คืนซัพพลายเออร์)', value: 'DEFECTIVE' },
   { label: 'RETURN (รับคืนจากลูกค้า/ส่งคืน)', value: 'RETURN' },
   { label: 'ADJUSTMENT (ปรับปรุงสต็อกทั่วไป)', value: 'ADJUSTMENT' },
+  { label: 'VARIANCE_LE_100 (ส่วนต่าง variance <= 100 บาท -> Auto PASS)', value: 'VARIANCE_LE_100' },
+  { label: 'VARIANCE_GT_100 (ส่วนต่าง variance > 100 บาท -> PENDING_REVIEW)', value: 'VARIANCE_GT_100' },
 ];
 
 export default function AccountingRulesPage() {
@@ -163,7 +166,11 @@ export default function AccountingRulesPage() {
 
     // Build conditions object
     let conditionsPayload: Record<string, any> = {};
-    if (formOperator === 'EQ') {
+    if (formReasonCode === 'VARIANCE_LE_100') {
+      conditionsPayload = { varianceAmountMinor: { $lte: 10000 } };
+    } else if (formReasonCode === 'VARIANCE_GT_100') {
+      conditionsPayload = { varianceAmountMinor: { $gt: 10000 } };
+    } else if (formOperator === 'EQ') {
       conditionsPayload = { reasonCode: formReasonCode };
     } else if (formOperator === 'NE') {
       conditionsPayload = { reasonCode: { $ne: formReasonCode } };
