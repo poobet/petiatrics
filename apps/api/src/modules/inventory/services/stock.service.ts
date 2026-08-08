@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, Inject, Injectable, NotFoundExc
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaClient } from '@prisma/client';
 import { scopedPrisma } from '@petiatrics/database';
-import { LowStockEvent } from '../../../common/events/domain-events';
+import { LowStockEvent, GoodsReceiptCompletedEvent, GoodsIssuedEvent } from '../../../common/events/domain-events';
 import { InventoryWriteGuardService } from './inventory-write-guard.service';
 import { StockAlertService } from './stock-alert.service';
 import { GoodsReceiptDto } from '../dto/goods-receipt.dto';
@@ -230,7 +230,7 @@ export class StockService {
     }
     const expiryDate = dto.expiryDate ? new Date(dto.expiryDate) : null;
 
-    return this.prisma.$transaction(async (tx: any) => {
+    const result = await this.prisma.$transaction(async (tx: any) => {
       // Upsert the balance row (lot-aware)
       const existing = await tx.branchStockBalance.findFirst({
         where: {
@@ -294,7 +294,26 @@ export class StockService {
 
       return { id: movement.id, status: 'COMMITTED', newBalance: qAfter };
     });
+
+    // Emit event after transaction commits for GL integration
+    const unitCostMinor = Math.round(Number(product.standardCost) * 100);
+    this.events.emit(
+      'inventory.goods_receipt_completed',
+      new GoodsReceiptCompletedEvent(
+        clinicId,
+        branchId,
+        dto.productId,
+        dto.quantity,
+        unitCostMinor,
+        null,
+        dto.referenceId ?? 'MANUAL',
+        'REPLENISHMENT',
+      ),
+    );
+
+    return result;
   }
+
 
   // ─── Get Issuable Lots (US2 — FEFO ordered) ─────────────────────────────────
 
@@ -355,9 +374,9 @@ export class StockService {
       );
     }
 
-    return this.prisma.$transaction(async (tx: any) => {
+    const txResult = await this.prisma.$transaction(async (tx: any) => {
       // Optimistic lock: update only if version matches
-      const result = await tx.branchStockBalance.updateMany({
+      const updateResult = await tx.branchStockBalance.updateMany({
         where: { id: balance.id, version: balance.version },
         data: {
           quantity: { decrement: dto.quantity },
@@ -365,7 +384,7 @@ export class StockService {
         },
       });
 
-      if (result.count === 0) {
+      if (updateResult.count === 0) {
         throw new ConflictException('Stock was modified concurrently; please retry.');
       }
 
@@ -404,7 +423,28 @@ export class StockService {
 
       return { id: movement.id, status: 'COMMITTED', newBalance: qAfter };
     });
+
+    // Emit event after transaction commits for GL integration
+    // Determine reasonCode: expired lot or dto override reason
+    const issueReasonCode = isExpiredLot ? 'EXPIRED' : null;
+    const unitCostMinor = Math.round(Number(product.standardCost) * 100);
+    this.events.emit(
+      'inventory.goods_issued',
+      new GoodsIssuedEvent(
+        clinicId,
+        branchId,
+        dto.productId,
+        dto.quantity,
+        unitCostMinor,
+        issueReasonCode,
+        dto.referenceId ?? 'MANUAL',
+        'MANUAL',
+      ),
+    );
+
+    return txResult;
   }
+
 
   // ─── List stock balances (US1/US4) ──────────────────────────────────────────
 

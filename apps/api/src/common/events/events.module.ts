@@ -6,7 +6,7 @@
 import { Module } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 
-export { VisitFinalizedEvent, LowStockEvent, InvoiceCreatedEvent, InvoicePaidEvent } from './domain-events';
+export { VisitFinalizedEvent, LowStockEvent, InvoiceCreatedEvent, InvoicePaidEvent, GoodsReceiptCompletedEvent, GoodsIssuedEvent } from './domain-events';
 
 @Module({
   imports: [EventEmitterModule],

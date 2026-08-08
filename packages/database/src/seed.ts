@@ -975,6 +975,24 @@ async function main() {
   }
   console.log(`  ✓ Migrated ${migratedCount}/${allUsers.length} users to ClinicRole`);
 
+  // ─── GL Accounts (global reference data for perpetual inventory) ──────────
+  const glAccounts = [
+    { code: '1310', name: 'Inventory Asset', type: 'ASSET' as const },
+    { code: '2110', name: 'Accounts Payable', type: 'LIABILITY' as const },
+    { code: '2170', name: 'Output VAT', type: 'LIABILITY' as const },
+    { code: '4110', name: 'Revenue', type: 'REVENUE' as const },
+    { code: '5110', name: 'Cost of Goods Sold', type: 'COGS' as const },
+    { code: '5290', name: 'Write-down Loss (LCNRV)', type: 'EXPENSE' as const },
+  ];
+  for (const gl of glAccounts) {
+    await prisma.gLAccount.upsert({
+      where: { code: gl.code },
+      update: { name: gl.name, type: gl.type },
+      create: { code: gl.code, name: gl.name, type: gl.type },
+    });
+  }
+  console.log(`  ✓ Seeded ${glAccounts.length} GL accounts`);
+
   console.log('\n🎉 Seed complete!\n');
 
   console.log('Login credentials (002 roles):');

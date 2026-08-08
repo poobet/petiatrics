@@ -1,19 +1,22 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaClient, GoodsReceiptStatus, PurchaseOrderStatus, StockMovementReason, StockMovementRefType, StockMovementStatus } from '@prisma/client';
 import { CreateGoodsReceiptDto } from '../dtos/create-goods-receipt.dto';
 import { DocumentSequenceService, DOC_TYPE } from '../../document-sequence/services/document-sequence.service';
+import { GoodsReceiptCompletedEvent } from '../../../common/events/domain-events';
 
 @Injectable()
 export class GoodsReceiptService {
   constructor(
     private readonly prisma: PrismaClient,
     private readonly sequenceService: DocumentSequenceService,
+    private readonly events: EventEmitter2,
   ) {}
 
   async createAndCommit(clinicId: string, userId: string, branchId: string, dto: CreateGoodsReceiptDto) {
     const code = await this.sequenceService.generate(clinicId, DOC_TYPE.GOODS_RECEIPT, new Date(), branchId);
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // 1. Validation loop
       for (const line of dto.lines) {
         const product = await tx.product.findFirst({
@@ -190,6 +193,27 @@ export class GoodsReceiptService {
 
       return gr;
     });
+
+    // Emit events after transaction commits for GL integration (one per line)
+    for (const line of result.lines) {
+      const product = line.product as any;
+      const unitCostMinor = Math.round(Number(product?.standardCost ?? 0) * 100);
+      this.events.emit(
+        'inventory.goods_receipt_completed',
+        new GoodsReceiptCompletedEvent(
+          clinicId,
+          line.branchId,
+          line.productId,
+          Number(line.quantityReceived),
+          unitCostMinor,
+          null,
+          result.id,
+          'REPLENISHMENT',
+        ),
+      );
+    }
+
+    return result;
   }
 
   async findOne(clinicId: string, id: string) {
