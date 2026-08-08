@@ -187,38 +187,51 @@ async function main() {
 
   // ── 1b. GLAccount — global chart of accounts (006-item-master ERP) ─────────
   const glAccounts = [
+    // Asset accounts (System Control Accounts)
+    { code: '1010', name: 'Cash on Hand & Bank', type: 'ASSET' as const, isSystem: true },
+    { code: '1100', name: 'Inventory Asset (Legacy)', type: 'ASSET' as const, isSystem: false },
+    { code: '1110', name: 'Accounts Receivable', type: 'ASSET' as const, isSystem: true },
+    { code: '1310', name: 'Inventory Asset', type: 'ASSET' as const, isSystem: true },
+    { code: '1320', name: 'Goods in Transit', type: 'ASSET' as const, isSystem: true },
+    { code: '1390', name: 'Allowance for Inventory Write-down', type: 'ASSET' as const, isSystem: true },
+
+    // Liability accounts (System Control Accounts)
+    { code: '2110', name: 'Accounts Payable', type: 'LIABILITY' as const, isSystem: true },
+    { code: '2170', name: 'Output VAT Payable', type: 'LIABILITY' as const, isSystem: true },
+    { code: '2180', name: 'Withholding Tax (WHT) Payable', type: 'LIABILITY' as const, isSystem: true },
+
+    // Equity accounts
+    { code: '3010', name: 'Retained Earnings', type: 'EQUITY' as const, isSystem: true },
+
     // Revenue accounts
-    { code: '4000', name: 'Medicine Revenue', type: 'REVENUE' as const },
-    { code: '4001', name: 'Retail Revenue', type: 'REVENUE' as const },
-    { code: '4002', name: 'Service Revenue', type: 'REVENUE' as const },
-    { code: '4003', name: 'Laboratory Revenue', type: 'REVENUE' as const },
-    { code: '4004', name: 'Procedure Revenue', type: 'REVENUE' as const },
-    { code: '4005', name: 'Consultation Revenue', type: 'REVENUE' as const },
-    { code: '4110', name: 'Revenue', type: 'REVENUE' as const },
-    // COGS accounts
-    { code: '5000', name: 'Medicine COGS', type: 'COGS' as const },
-    { code: '5001', name: 'Retail COGS', type: 'COGS' as const },
-    { code: '5110', name: 'Cost of Goods Sold', type: 'COGS' as const },
-    // Asset accounts
-    { code: '1100', name: 'Inventory Asset (Legacy)', type: 'ASSET' as const },
-    { code: '1310', name: 'Inventory Asset', type: 'ASSET' as const },
-    // Liability accounts
-    { code: '2110', name: 'Accounts Payable', type: 'LIABILITY' as const },
-    { code: '2170', name: 'Output VAT', type: 'LIABILITY' as const },
-    // Expense accounts
-    { code: '5290', name: 'Write-down Loss (LCNRV)', type: 'EXPENSE' as const },
-    { code: '6000', name: 'General Operating Expense', type: 'EXPENSE' as const },
+    { code: '4000', name: 'Medicine Revenue', type: 'REVENUE' as const, isSystem: false },
+    { code: '4001', name: 'Retail Revenue', type: 'REVENUE' as const, isSystem: false },
+    { code: '4002', name: 'Medical Service Revenue', type: 'REVENUE' as const, isSystem: true },
+    { code: '4003', name: 'Laboratory Revenue', type: 'REVENUE' as const, isSystem: false },
+    { code: '4004', name: 'Procedure Revenue', type: 'REVENUE' as const, isSystem: false },
+    { code: '4005', name: 'Consultation Revenue', type: 'REVENUE' as const, isSystem: false },
+    { code: '4110', name: 'Retail Sales Revenue', type: 'REVENUE' as const, isSystem: true },
+
+    // COGS & Expense accounts
+    { code: '5000', name: 'Medicine COGS', type: 'COGS' as const, isSystem: false },
+    { code: '5001', name: 'Retail COGS', type: 'COGS' as const, isSystem: false },
+    { code: '5110', name: 'Cost of Goods Sold (COGS)', type: 'COGS' as const, isSystem: true },
+    { code: '5120', name: 'Cost of Services', type: 'EXPENSE' as const, isSystem: true },
+    { code: '5290', name: 'Write-down Loss (LCNRV)', type: 'EXPENSE' as const, isSystem: true },
+    { code: '5291', name: 'Damaged Inventory & Shrinkage Expense', type: 'EXPENSE' as const, isSystem: true },
+    { code: '5310', name: 'Doctor Fee Expense', type: 'EXPENSE' as const, isSystem: true },
+    { code: '6000', name: 'General Operating Expense', type: 'EXPENSE' as const, isSystem: false },
   ];
 
   const glIds: Record<string, string> = {};
   for (const gl of glAccounts) {
     const record = await prisma.gLAccount.upsert({
       where: { code: gl.code },
-      update: { name: gl.name, type: gl.type, isActive: true },
-      create: { code: gl.code, name: gl.name, type: gl.type, isActive: true },
+      update: { name: gl.name, type: gl.type, isSystem: gl.isSystem, isActive: true },
+      create: { code: gl.code, name: gl.name, type: gl.type, isSystem: gl.isSystem, isActive: true },
     });
     glIds[gl.code] = record.id;
-    console.log(`✓ GLAccount: ${gl.code} (${gl.name})`);
+    console.log(`✓ GLAccount: ${gl.code} (${gl.name}) [isSystem: ${gl.isSystem}]`);
   }
 
   // ── 1c. ItemCategory — global reference, no clinicId (006-item-master) ──

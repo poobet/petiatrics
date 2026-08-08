@@ -571,6 +571,7 @@ model GLAccount {
   code      String        @unique
   name      String
   type      GLAccountType
+  isSystem  Boolean       @default(false)
   isActive  Boolean       @default(true)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt

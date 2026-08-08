@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { BillingModule } from '../billing/billing.module';
 import { SystemRuleService } from './services/system-rule.service';
 import { RuleEvaluatorService } from './services/rule-evaluator.service';
+import { GlAccountService } from './services/gl-account.service';
 import { InventoryGlListener } from './listeners/inventory-gl.listener';
 import { SystemRuleController } from './controllers/system-rule.controller';
 
@@ -12,6 +13,7 @@ import { SystemRuleController } from './controllers/system-rule.controller';
  * Owns:
  * - SystemRule CRUD (dynamic GL mapping rules)
  * - RuleEvaluatorService (JSON condition matching engine)
+ * - GlAccountService (Chart of Accounts & System Account Protection)
  * - InventoryGlListener (event handlers → GL journal posting)
  *
  * Reuses GLPostingService from BillingModule for balanced journal entry creation.
@@ -23,8 +25,9 @@ import { SystemRuleController } from './controllers/system-rule.controller';
     { provide: PrismaClient, useFactory: () => new PrismaClient() },
     SystemRuleService,
     RuleEvaluatorService,
+    GlAccountService,
     InventoryGlListener,
   ],
-  exports: [RuleEvaluatorService, SystemRuleService],
+  exports: [RuleEvaluatorService, SystemRuleService, GlAccountService],
 })
 export class AccountingModule {}
