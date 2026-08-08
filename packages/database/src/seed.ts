@@ -194,12 +194,19 @@ async function main() {
     { code: '4003', name: 'Laboratory Revenue', type: 'REVENUE' as const },
     { code: '4004', name: 'Procedure Revenue', type: 'REVENUE' as const },
     { code: '4005', name: 'Consultation Revenue', type: 'REVENUE' as const },
+    { code: '4110', name: 'Revenue', type: 'REVENUE' as const },
     // COGS accounts
     { code: '5000', name: 'Medicine COGS', type: 'COGS' as const },
     { code: '5001', name: 'Retail COGS', type: 'COGS' as const },
+    { code: '5110', name: 'Cost of Goods Sold', type: 'COGS' as const },
     // Asset accounts
-    { code: '1100', name: 'Inventory Asset', type: 'ASSET' as const },
+    { code: '1100', name: 'Inventory Asset (Legacy)', type: 'ASSET' as const },
+    { code: '1310', name: 'Inventory Asset', type: 'ASSET' as const },
+    // Liability accounts
+    { code: '2110', name: 'Accounts Payable', type: 'LIABILITY' as const },
+    { code: '2170', name: 'Output VAT', type: 'LIABILITY' as const },
     // Expense accounts
+    { code: '5290', name: 'Write-down Loss (LCNRV)', type: 'EXPENSE' as const },
     { code: '6000', name: 'General Operating Expense', type: 'EXPENSE' as const },
   ];
 
@@ -975,23 +982,6 @@ async function main() {
   }
   console.log(`  ✓ Migrated ${migratedCount}/${allUsers.length} users to ClinicRole`);
 
-  // ─── GL Accounts (global reference data for perpetual inventory) ──────────
-  const glAccounts = [
-    { code: '1310', name: 'Inventory Asset', type: 'ASSET' as const },
-    { code: '2110', name: 'Accounts Payable', type: 'LIABILITY' as const },
-    { code: '2170', name: 'Output VAT', type: 'LIABILITY' as const },
-    { code: '4110', name: 'Revenue', type: 'REVENUE' as const },
-    { code: '5110', name: 'Cost of Goods Sold', type: 'COGS' as const },
-    { code: '5290', name: 'Write-down Loss (LCNRV)', type: 'EXPENSE' as const },
-  ];
-  for (const gl of glAccounts) {
-    await prisma.gLAccount.upsert({
-      where: { code: gl.code },
-      update: { name: gl.name, type: gl.type },
-      create: { code: gl.code, name: gl.name, type: gl.type },
-    });
-  }
-  console.log(`  ✓ Seeded ${glAccounts.length} GL accounts`);
 
   console.log('\n🎉 Seed complete!\n');
 
