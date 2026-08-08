@@ -31,6 +31,7 @@ import {
   Receipt,
   Coins,
   BookOpen,
+  SlidersHorizontal,
 } from 'lucide-react';
 import {
   Avatar,
@@ -171,6 +172,7 @@ const NAV_GROUPS: NavGroup[] = [
         icon: BookOpen,
         subItems: [
           { key: 'accountingJournal', href: '/clinic/accounting/journal', icon: BookOpen, requiredPermission: 'BILLING:VIEW' },
+          { key: 'accountingRules', href: '/clinic/settings/accounting-rules', icon: SlidersHorizontal, requiredPermission: 'SETTINGS:MANAGE' },
         ],
       },
       {
@@ -179,6 +181,7 @@ const NAV_GROUPS: NavGroup[] = [
         subItems: [
           { key: 'billingSettings', href: '/clinic/billing/settings', icon: CreditCard, requiredPermission: 'SETTINGS:MANAGE' },
           { key: 'accountingPeriods', href: '/clinic/settings/accounting-periods', icon: Calendar, requiredPermission: 'SETTINGS:MANAGE' },
+          { key: 'accountingRules', href: '/clinic/settings/accounting-rules', icon: SlidersHorizontal, requiredPermission: 'SETTINGS:MANAGE' },
         ],
       },
     ],
