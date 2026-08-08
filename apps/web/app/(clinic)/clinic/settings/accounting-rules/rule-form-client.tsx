@@ -15,8 +15,10 @@ import {
   RefreshCw,
   Check,
   FileText,
-  Layers,
   Sparkles,
+  ShieldCheck,
+  ZapOff,
+  Zap,
 } from 'lucide-react';
 
 interface RuleFormClientProps {
@@ -94,9 +96,12 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
   const [formValue, setFormValue] = useState<string>('10000');
   const [formValueType, setFormValueType] = useState<'NUMBER' | 'STRING'>('NUMBER');
 
-  // Step 3: GL Action Accounts
+  // Step 3: GL Action Accounts & Execution Control Mode
   const [formDebitCode, setFormDebitCode] = useState('5290');
   const [formCreditCode, setFormCreditCode] = useState('1310');
+  
+  // Execution Control: MANUAL_REVIEW (Default - ไม่ลงอัตโนมัติ) vs AUTO_POST (ลงอัตโนมัติ)
+  const [formExecutionMode, setFormExecutionMode] = useState<'MANUAL_REVIEW' | 'AUTO_POST'>('MANUAL_REVIEW');
   const [formIsActive, setFormIsActive] = useState(true);
 
   useEffect(() => {
@@ -121,6 +126,12 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
       setFormDebitCode(rule.action?.debitAccountCode || '5290');
       setFormCreditCode(rule.action?.creditAccountCode || '1310');
       setFormIsActive(rule.isActive !== undefined ? rule.isActive : true);
+
+      if (rule.action?.autoPost === true && rule.action?.requireApproval === false) {
+        setFormExecutionMode('AUTO_POST');
+      } else {
+        setFormExecutionMode('MANUAL_REVIEW');
+      }
 
       const cond = rule.conditions || {};
       if (cond.fact && cond.operator !== undefined && cond.value !== undefined) {
@@ -220,6 +231,9 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
       action: {
         debitAccountCode: formDebitCode,
         creditAccountCode: formCreditCode,
+        autoPost: formExecutionMode === 'AUTO_POST',
+        requireApproval: formExecutionMode === 'MANUAL_REVIEW',
+        status: formExecutionMode === 'MANUAL_REVIEW' ? 'PENDING_REVIEW' : 'MATCHED',
       },
       isActive: formIsActive,
     };
@@ -260,9 +274,6 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
       </div>
     );
   }
-
-  const debitAcc = STANDARD_GL_ACCOUNTS.find((g) => g.code === formDebitCode);
-  const creditAcc = STANDARD_GL_ACCOUNTS.find((g) => g.code === formCreditCode);
 
   return (
     <div className="p-6 w-full max-w-4xl mx-auto space-y-6">
@@ -605,7 +616,7 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
           <div className="space-y-5 animate-in fade-in duration-200">
             <div className="flex items-center space-x-2 border-b pb-3 text-emerald-900">
               <BookOpen className="w-5 h-5 text-emerald-600" />
-              <h3 className="text-base font-bold">3. การผูกผังบัญชีและตรวจสอบก่อนบันทึก (GL Action & Review)</h3>
+              <h3 className="text-base font-bold">3. การผูกผังบัญชีและโหมดการบันทึก (GL Action & Execution Control)</h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -643,6 +654,68 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
               </div>
             </div>
 
+            {/* Action Execution Mode (Manual Review vs Auto Post) */}
+            <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-5 space-y-3">
+              <div className="flex items-center space-x-2 text-amber-950 font-bold text-sm">
+                <ShieldCheck className="w-5 h-5 text-amber-700" />
+                <span>โหมดการดำเนินการเมื่อตรงตามเงื่อนไข (Action Execution Mode)</span>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <label
+                  onClick={() => setFormExecutionMode('MANUAL_REVIEW')}
+                  className={`flex items-start space-x-3 p-4 border rounded-xl cursor-pointer transition-all ${
+                    formExecutionMode === 'MANUAL_REVIEW'
+                      ? 'bg-amber-100/90 border-amber-400 ring-2 ring-amber-400'
+                      : 'bg-white border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="executionModeRadio"
+                    checked={formExecutionMode === 'MANUAL_REVIEW'}
+                    onChange={() => setFormExecutionMode('MANUAL_REVIEW')}
+                    className="mt-1 text-amber-600 focus:ring-amber-500"
+                  />
+                  <div>
+                    <div className="flex items-center space-x-1.5 font-bold text-sm text-amber-950">
+                      <ZapOff className="w-4 h-4 text-amber-700" />
+                      <span>ไม่บันทึกอัตโนมัติ (Require Manual Review)</span>
+                    </div>
+                    <p className="text-xs text-amber-800/90 mt-1 leading-relaxed">
+                      เมื่อตรงเงื่อนไข ระบบจะไม่อนุมัติหรือลงบัญชีทันที แต่จะตั้งสถานะเป็น <strong className="text-amber-950 font-mono">PENDING_REVIEW</strong> เพื่อให้ผู้บริหารคลินิกตรวจสอบและอนุมัติด้วยตนเอง
+                    </p>
+                  </div>
+                </label>
+
+                <label
+                  onClick={() => setFormExecutionMode('AUTO_POST')}
+                  className={`flex items-start space-x-3 p-4 border rounded-xl cursor-pointer transition-all ${
+                    formExecutionMode === 'AUTO_POST'
+                      ? 'bg-emerald-100/90 border-emerald-400 ring-2 ring-emerald-400'
+                      : 'bg-white border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="executionModeRadio"
+                    checked={formExecutionMode === 'AUTO_POST'}
+                    onChange={() => setFormExecutionMode('AUTO_POST')}
+                    className="mt-1 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <div>
+                    <div className="flex items-center space-x-1.5 font-bold text-sm text-emerald-950">
+                      <Zap className="w-4 h-4 text-emerald-700" />
+                      <span>บันทึกอัตโนมัติทันที (Auto Immediate Post)</span>
+                    </div>
+                    <p className="text-xs text-emerald-800/90 mt-1 leading-relaxed">
+                      ระบบจะอนุมัติและผ่านรายการลงเดบิต/เครดิตสมุดบัญชีทันทีเมื่อเหตุการณ์เกิดขึ้น
+                    </p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
             <div className="flex items-center space-x-2.5 pt-2">
               <input
                 type="checkbox"
@@ -676,6 +749,14 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
                   <span className="bg-blue-100 text-blue-800 font-mono px-2 py-0.5 rounded">{formEventType}</span>
                 </div>
                 <div>
+                  <span className="text-slate-500">การดำเนินการ:</span>{' '}
+                  {formExecutionMode === 'MANUAL_REVIEW' ? (
+                    <span className="bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded">🛡️ ไม่ลงอัตโนมัติ (ติด PENDING_REVIEW รออนุมัติ)</span>
+                  ) : (
+                    <span className="bg-emerald-100 text-emerald-900 font-bold px-2 py-0.5 rounded">⚡ ลงบัญชีอัตโนมัติทันที</span>
+                  )}
+                </div>
+                <div className="md:col-span-2">
                   <span className="text-slate-500">GL Action:</span>{' '}
                   <span className="text-emerald-700 font-mono font-bold">Dr. {formDebitCode}</span> ➔{' '}
                   <span className="text-rose-700 font-mono font-bold">Cr. {formCreditCode}</span>

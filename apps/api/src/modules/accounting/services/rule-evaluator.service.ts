@@ -2,8 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
 export interface RuleAction {
-  debitAccountCode: string;
-  creditAccountCode: string;
+  debitAccountCode?: string;
+  creditAccountCode?: string;
+  autoPost?: boolean;
+  requireApproval?: boolean;
+  status?: string;
 }
 
 export interface EvaluationResult {

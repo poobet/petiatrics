@@ -57,6 +57,14 @@ export class InventoryGlListener {
       const debitCode = ruleResult.action?.debitAccountCode ?? GL_DEFAULTS.INVENTORY_ASSET;
       const creditCode = ruleResult.action?.creditAccountCode ?? GL_DEFAULTS.ACCOUNTS_PAYABLE;
 
+      // Check if rule requires manual review before auto-posting
+      if (ruleResult.matched && (ruleResult.action?.autoPost === false || ruleResult.action?.requireApproval === true)) {
+        this.logger.log(
+          `GL posting requires manual review [Rule: ${ruleResult.ruleName}]. Held in PENDING_REVIEW for ref=${event.referenceId}`,
+        );
+        return;
+      }
+
       const debitAccount = await this.resolveGlAccount(debitCode);
       const creditAccount = await this.resolveGlAccount(creditCode);
 
@@ -118,6 +126,14 @@ export class InventoryGlListener {
           payload,
           event.clinicId,
         );
+
+        // Check if rule requires manual review before auto-posting
+        if (ruleResult.matched && (ruleResult.action?.autoPost === false || ruleResult.action?.requireApproval === true)) {
+          this.logger.log(
+            `GL posting requires manual review [Rule: ${ruleResult.ruleName}]. Held in PENDING_REVIEW for ref=${event.referenceId}`,
+          );
+          return;
+        }
 
         debitCode = ruleResult.action?.debitAccountCode ?? GL_DEFAULTS.COGS;
         creditCode = ruleResult.action?.creditAccountCode ?? GL_DEFAULTS.INVENTORY_ASSET;
