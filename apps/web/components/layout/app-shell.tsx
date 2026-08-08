@@ -181,7 +181,6 @@ const NAV_GROUPS: NavGroup[] = [
         subItems: [
           { key: 'billingSettings', href: '/clinic/billing/settings', icon: CreditCard, requiredPermission: 'SETTINGS:MANAGE' },
           { key: 'accountingPeriods', href: '/clinic/settings/accounting-periods', icon: Calendar, requiredPermission: 'SETTINGS:MANAGE' },
-          { key: 'accountingRules', href: '/clinic/settings/accounting-rules', icon: SlidersHorizontal, requiredPermission: 'SETTINGS:MANAGE' },
         ],
       },
     ],

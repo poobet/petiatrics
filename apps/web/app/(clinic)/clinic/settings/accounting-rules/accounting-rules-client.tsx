@@ -79,18 +79,6 @@ const BUILTIN_SYSTEM_RULES: SystemRule[] = [
     isBuiltIn: true,
     ruleCategory: 'SYSTEM_DEFAULT',
   },
-  {
-    id: 'system-default-tolerance-pass',
-    name: '3-Way Matching Auto-Pass (ส่วนต่างเบิกจ่าย <= 100 บาท)',
-    description: 'ส่วนต่างใบแจ้งหนี้ผู้ขายกับ PO/GR ไม่เกิน 100 บาท ระบบอนุมัติผ่านเงื่อนไข (PASS) ให้ตั้งฎีกาเบิกจ่ายอัตโนมัติ',
-    eventType: 'procurement.three_way_matching',
-    priority: 0,
-    conditions: { fact: 'varianceAmountMinor', operator: 'lessThanInclusive', value: 10000 },
-    action: { debitAccountCode: 'AUTO_PASS', creditAccountCode: 'DISBURSEMENT_OK' },
-    isActive: true,
-    isBuiltIn: true,
-    ruleCategory: 'SYSTEM_DEFAULT',
-  },
 ];
 
 // Predefined GL Accounts for easy selection in dropdowns

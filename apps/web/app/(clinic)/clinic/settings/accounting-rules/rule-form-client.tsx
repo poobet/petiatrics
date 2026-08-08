@@ -432,6 +432,7 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
                 </label>
                 <input
                   type="text"
+                  autoComplete="off"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   onKeyDown={handleKeyDownBlockEnter}
@@ -459,6 +460,7 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
               <label className="block text-xs font-semibold text-gray-700 mb-1">คำอธิบายเพิ่มเติม (Description)</label>
               <input
                 type="text"
+                autoComplete="off"
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
                 onKeyDown={handleKeyDownBlockEnter}
@@ -528,6 +530,7 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
                     </label>
                     <input
                       type="text"
+                      autoComplete="off"
                       value={formFactKey}
                       onChange={(e) => setFormFactKey(e.target.value)}
                       onKeyDown={handleKeyDownBlockEnter}
@@ -574,6 +577,7 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
                     <div className="space-y-1.5">
                       <input
                         type="text"
+                        autoComplete="off"
                         value={formValue}
                         onChange={(e) => setFormValue(e.target.value)}
                         onKeyDown={handleKeyDownBlockEnter}
