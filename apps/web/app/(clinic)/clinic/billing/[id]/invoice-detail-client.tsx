@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { formatMinor } from '@/lib/currency';
+import { formatMinor, thaiBahtText } from '@/lib/currency';
 
 interface LineItem {
   id: string;
@@ -444,6 +444,9 @@ export default function InvoiceDetailClient({ invoice: initialInvoice }: { invoi
         <div className="flex gap-8 font-bold text-base border-t pt-1 mt-1">
           <span>Total</span>
           <span>{formatMinor(invoice.totalMinor)}</span>
+        </div>
+        <div className="text-xs font-medium text-gray-600 bg-gray-50 px-2.5 py-1 rounded-md border mt-0.5">
+          ({thaiBahtText(invoice.totalMinor)})
         </div>
         {linkedDocuments.length > 0 && (
           <div className="w-full flex flex-col items-end gap-1 mt-2 pt-2 border-t border-dashed border-gray-300">

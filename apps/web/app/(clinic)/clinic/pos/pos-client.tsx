@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Search, Trash2, ShoppingCart, AlertTriangle, Lock, CheckCircle, X, Loader2, CreditCard } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { useSessionStore } from '@/lib/session-store';
-import { formatMinor } from '@/lib/currency';
+import { formatMinor, thaiBahtText } from '@/lib/currency';
 import { cn } from '@petiatrics/ui';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -504,6 +504,9 @@ export function PosWorkspaceClient() {
               <div className="flex justify-between text-base font-bold text-gray-900">
                 <span>Total</span>
                 <span>{formatMinor(totals.total)}</span>
+              </div>
+              <div className="text-right text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-1 rounded-md mt-1">
+                💬 {thaiBahtText(totals.total)}
               </div>
             </div>
 
