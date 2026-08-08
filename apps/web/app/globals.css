@@ -48,8 +48,7 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
-/* Dark mode — supports both .dark class and system preference */
-.dark,
+/* Dark mode — system preference fallback */
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
     --background: oklch(0.145 0 0);
