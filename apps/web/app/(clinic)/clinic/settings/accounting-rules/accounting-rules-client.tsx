@@ -19,6 +19,8 @@ import {
   Lock,
   Cog,
   UserCheck,
+  Zap,
+  Sliders,
 } from 'lucide-react';
 
 interface SystemRule {
@@ -48,7 +50,7 @@ const BUILTIN_SYSTEM_RULES: SystemRule[] = [
     description: 'ตามประมวลรัษฎากร (VAT & CIT) สินค้าขาดหายไม่มีเหตุผล (SHRINKAGE) ถูกถือเป็นการขาย บังคับลง Dr. 4110 / Cr. 1310 ในระดับ Domain Layer เสมอ',
     eventType: 'inventory.goods_issued',
     priority: 999,
-    conditions: { reasonCode: 'SHRINKAGE' },
+    conditions: { fact: 'reasonCode', operator: 'equal', value: 'SHRINKAGE' },
     action: { debitAccountCode: '4110', creditAccountCode: '1310' },
     isActive: true,
     isBuiltIn: true,
@@ -60,7 +62,7 @@ const BUILTIN_SYSTEM_RULES: SystemRule[] = [
     description: 'การตั้งหนี้เจ้าหนี้การค้าและบันทึกมูลค่าสินค้ารวมคลังจากการรับสินค้าเข้าสต็อก',
     eventType: 'inventory.goods_receipt_completed',
     priority: 0,
-    conditions: { reasonCode: 'DEFAULT (รับสินค้าเข้าสต็อก)' },
+    conditions: { fact: 'reasonCode', operator: 'equal', value: 'DEFAULT' },
     action: { debitAccountCode: '1310', creditAccountCode: '2110' },
     isActive: true,
     isBuiltIn: true,
@@ -72,7 +74,7 @@ const BUILTIN_SYSTEM_RULES: SystemRule[] = [
     description: 'บันทึกต้นทุนขายสินค้า (COGS) และลดมูลค่าสินค้าคงเหลือจากการเบิกจ่ายสินค้าใช้งานปกติ',
     eventType: 'inventory.goods_issued',
     priority: 0,
-    conditions: { reasonCode: 'DEFAULT (เบิกจ่ายสินค้า)' },
+    conditions: { fact: 'reasonCode', operator: 'equal', value: 'DEFAULT' },
     action: { debitAccountCode: '5110', creditAccountCode: '1310' },
     isActive: true,
     isBuiltIn: true,
@@ -84,7 +86,7 @@ const BUILTIN_SYSTEM_RULES: SystemRule[] = [
     description: 'ส่วนต่างใบแจ้งหนี้ผู้ขายกับ PO/GR ไม่เกิน 100 บาท ระบบอนุมัติผ่านเงื่อนไข (PASS) ให้ตั้งฎีกาเบิกจ่ายอัตโนมัติ',
     eventType: 'procurement.three_way_matching',
     priority: 0,
-    conditions: { varianceAmountMinor: { $lte: 10000 } },
+    conditions: { fact: 'varianceAmountMinor', operator: 'lessThanInclusive', value: 10000 },
     action: { debitAccountCode: 'AUTO_PASS', creditAccountCode: 'DISBURSEMENT_OK' },
     isActive: true,
     isBuiltIn: true,
@@ -120,6 +122,24 @@ const REASON_CODE_OPTIONS = [
   { label: 'VARIANCE_GT_100 (ส่วนต่าง variance > 100 บาท -> PENDING_REVIEW)', value: 'VARIANCE_GT_100' },
 ];
 
+const DYNAMIC_FACT_SUGGESTIONS = [
+  { label: 'varianceAmountMinor (ส่วนต่างยอดเงิน - สตางค์)', value: 'varianceAmountMinor' },
+  { label: 'reasonCode (รหัสเหตุผลตัดจ่าย/รับสินค้า)', value: 'reasonCode' },
+  { label: 'quantity (จำนวนสินค้า)', value: 'quantity' },
+  { label: 'totalAmountMinor (มูลค่ารวม - สตางค์)', value: 'totalAmountMinor' },
+  { label: 'unitPriceMinor (ราคาต่อหน่วย - สตางค์)', value: 'unitPriceMinor' },
+];
+
+const OPERATOR_OPTIONS = [
+  { label: '<= lessThanInclusive (น้อยกว่าหรือเท่ากับ)', value: 'lessThanInclusive' },
+  { label: '> greaterThan (มากกว่า)', value: 'greaterThan' },
+  { label: '>= greaterThanInclusive (มากกว่าหรือเท่ากับ)', value: 'greaterThanInclusive' },
+  { label: '< lessThan (น้อยกว่า)', value: 'lessThan' },
+  { label: '== equal (เท่ากับ)', value: 'equal' },
+  { label: '!= notEqual (ไม่เท่ากับ)', value: 'notEqual' },
+  { label: 'IN in (อยู่ในกลุ่ม array)', value: 'in' },
+];
+
 export default function AccountingRulesClient() {
   const [customRules, setCustomRules] = useState<SystemRule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -142,8 +162,20 @@ export default function AccountingRulesClient() {
   const [formDescription, setFormDescription] = useState('');
   const [formEventType, setFormEventType] = useState('inventory.goods_issued');
   const [formPriority, setFormPriority] = useState(10);
+  
+  // Condition Mode: PRESET vs DYNAMIC
+  const [conditionMode, setConditionMode] = useState<'PRESET' | 'DYNAMIC'>('DYNAMIC');
+  
+  // Preset Mode
   const [formReasonCode, setFormReasonCode] = useState('EXPIRED');
-  const [formOperator, setFormOperator] = useState('EQ'); // EQ, NE, IN
+  
+  // Dynamic Rule Builder Mode
+  const [formFactKey, setFormFactKey] = useState('varianceAmountMinor');
+  const [formOperator, setFormOperator] = useState('lessThanInclusive');
+  const [formValue, setFormValue] = useState<string>('10000');
+  const [formValueType, setFormValueType] = useState<'NUMBER' | 'STRING'>('NUMBER');
+
+  // GL Action Accounts
   const [formDebitCode, setFormDebitCode] = useState('5290');
   const [formCreditCode, setFormCreditCode] = useState('1310');
   const [formIsActive, setFormIsActive] = useState(true);
@@ -177,8 +209,12 @@ export default function AccountingRulesClient() {
     setFormDescription('');
     setFormEventType('inventory.goods_issued');
     setFormPriority(10);
+    setConditionMode('DYNAMIC');
     setFormReasonCode('EXPIRED');
-    setFormOperator('EQ');
+    setFormFactKey('varianceAmountMinor');
+    setFormOperator('lessThanInclusive');
+    setFormValue('10000');
+    setFormValueType('NUMBER');
     setFormDebitCode('5290');
     setFormCreditCode('1310');
     setFormIsActive(true);
@@ -197,26 +233,32 @@ export default function AccountingRulesClient() {
     setFormIsActive(rule.isActive);
 
     const cond = rule.conditions || {};
-    if (cond.varianceAmountMinor) {
+    if (cond.fact && cond.operator !== undefined && cond.value !== undefined) {
+      setConditionMode('DYNAMIC');
+      setFormFactKey(String(cond.fact));
+      setFormOperator(String(cond.operator));
+      setFormValue(String(cond.value));
+      setFormValueType(typeof cond.value === 'number' ? 'NUMBER' : 'STRING');
+    } else if (cond.varianceAmountMinor) {
+      setConditionMode('DYNAMIC');
+      setFormFactKey('varianceAmountMinor');
       if (cond.varianceAmountMinor.$lte) {
-        setFormReasonCode('VARIANCE_LE_100');
-      } else {
-        setFormReasonCode('VARIANCE_GT_100');
+        setFormOperator('lessThanInclusive');
+        setFormValue(String(cond.varianceAmountMinor.$lte));
+      } else if (cond.varianceAmountMinor.$gt) {
+        setFormOperator('greaterThan');
+        setFormValue(String(cond.varianceAmountMinor.$gt));
       }
+      setFormValueType('NUMBER');
     } else if (cond.reasonCode) {
-      if (typeof cond.reasonCode === 'object' && cond.reasonCode.$in) {
-        setFormOperator('IN');
-        setFormReasonCode(cond.reasonCode.$in[0] || 'EXPIRED');
-      } else if (typeof cond.reasonCode === 'object' && cond.reasonCode.$ne) {
-        setFormOperator('NE');
-        setFormReasonCode(cond.reasonCode.$ne || 'EXPIRED');
-      } else {
-        setFormOperator('EQ');
-        setFormReasonCode(typeof cond.reasonCode === 'string' ? cond.reasonCode : 'EXPIRED');
-      }
+      setConditionMode('PRESET');
+      setFormReasonCode(typeof cond.reasonCode === 'string' ? cond.reasonCode : 'EXPIRED');
     } else {
-      setFormOperator('EQ');
-      setFormReasonCode('EXPIRED');
+      setConditionMode('DYNAMIC');
+      setFormFactKey('reasonCode');
+      setFormOperator('equal');
+      setFormValue('EXPIRED');
+      setFormValueType('STRING');
     }
 
     setShowModal(true);
@@ -228,16 +270,22 @@ export default function AccountingRulesClient() {
     setError('');
 
     let conditionsPayload: Record<string, any> = {};
-    if (formReasonCode === 'VARIANCE_LE_100') {
-      conditionsPayload = { varianceAmountMinor: { $lte: 10000 } };
-    } else if (formReasonCode === 'VARIANCE_GT_100') {
-      conditionsPayload = { varianceAmountMinor: { $gt: 10000 } };
-    } else if (formOperator === 'EQ') {
-      conditionsPayload = { reasonCode: formReasonCode };
-    } else if (formOperator === 'NE') {
-      conditionsPayload = { reasonCode: { $ne: formReasonCode } };
-    } else if (formOperator === 'IN') {
-      conditionsPayload = { reasonCode: { $in: [formReasonCode] } };
+
+    if (conditionMode === 'DYNAMIC') {
+      const parsedValue = formValueType === 'NUMBER' ? Number(formValue) : formValue;
+      conditionsPayload = {
+        fact: formFactKey,
+        operator: formOperator,
+        value: parsedValue,
+      };
+    } else {
+      if (formReasonCode === 'VARIANCE_LE_100') {
+        conditionsPayload = { fact: 'varianceAmountMinor', operator: 'lessThanInclusive', value: 10000 };
+      } else if (formReasonCode === 'VARIANCE_GT_100') {
+        conditionsPayload = { fact: 'varianceAmountMinor', operator: 'greaterThan', value: 10000 };
+      } else {
+        conditionsPayload = { fact: 'reasonCode', operator: 'equal', value: formReasonCode };
+      }
     }
 
     const payload = {
@@ -345,7 +393,7 @@ export default function AccountingRulesClient() {
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Dynamic Accounting Rules (กฎบันทึกบัญชีอัตโนมัติ)</h1>
               <p className="text-sm text-gray-500 mt-0.5">
-                แสดงกฎมาตรฐานของระบบ (System Rules) และกฎที่ปรับแต่งโดยผู้บริหารคลินิก (Custom Rules) สำหรับผังบัญชีอัตโนมัติ
+                กำหนดและจัดการกฎ Dynamic Rule Engine (Fact / Operator / Value) สำหรับประเมินและผูกผังบัญชีเดบิต-เครดิตอัตโนมัติ
               </p>
             </div>
           </div>
@@ -355,7 +403,7 @@ export default function AccountingRulesClient() {
           className="inline-flex items-center justify-center px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-sm transition-all duration-150 space-x-2"
         >
           <Plus className="w-4 h-4" />
-          <span>สร้างกฎใหม่ (Create Custom Rule)</span>
+          <span>สร้างกฎใหม่ (Create Custom Dynamic Rule)</span>
         </button>
       </div>
 
@@ -463,7 +511,7 @@ export default function AccountingRulesClient() {
                   <th className="py-3.5 px-4 w-20 text-center">Priority</th>
                   <th className="py-3.5 px-4">ชื่อกฎ & คำอธิบาย</th>
                   <th className="py-3.5 px-4">เหตุการณ์ (Event)</th>
-                  <th className="py-3.5 px-4">เงื่อนไข (Condition)</th>
+                  <th className="py-3.5 px-4">เงื่อนไข (Dynamic Conditions Spec)</th>
                   <th className="py-3.5 px-4">การแมปบัญชี (GL Action)</th>
                   <th className="py-3.5 px-4 text-center">สถานะ</th>
                   <th className="py-3.5 px-4 text-right">การจัดการ</th>
@@ -543,12 +591,20 @@ export default function AccountingRulesClient() {
                         </span>
                       </td>
 
-                      {/* Conditions */}
+                      {/* Dynamic Conditions Spec Display */}
                       <td className="py-3.5 px-4 font-mono text-xs">
-                        <span className="inline-flex items-center px-2 py-1 bg-purple-50 text-purple-700 rounded-md border border-purple-200/60 space-x-1">
-                          <Tag className="w-3 h-3 text-purple-500" />
-                          <span>{condStr}</span>
-                        </span>
+                        {rule.conditions?.fact ? (
+                          <div className="inline-flex items-center space-x-1 px-2.5 py-1 bg-purple-50 text-purple-900 rounded-md border border-purple-200">
+                            <span className="font-bold text-purple-700">{rule.conditions.fact}</span>
+                            <span className="text-purple-500 font-semibold">{rule.conditions.operator}</span>
+                            <span className="font-bold text-emerald-700">{JSON.stringify(rule.conditions.value)}</span>
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 bg-purple-50 text-purple-700 rounded-md border border-purple-200/60 space-x-1">
+                            <Tag className="w-3 h-3 text-purple-500" />
+                            <span>{condStr}</span>
+                          </span>
+                        )}
                       </td>
 
                       {/* Action Account Mapping */}
@@ -630,13 +686,13 @@ export default function AccountingRulesClient() {
         )}
       </div>
 
-      {/* Modal: Create / Edit Rule */}
+      {/* Modal: Create / Edit Dynamic Rule */}
       {showModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white border rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="p-5 border-b flex justify-between items-center bg-gray-50">
               <h3 className="font-bold text-gray-900 text-lg">
-                {editingRule ? 'แก้ไขกฎการลงบัญชี (Edit Rule)' : 'สร้างกฎการลงบัญชีใหม่ (New Rule)'}
+                {editingRule ? 'แก้ไขกฎ Dynamic Rule (Edit Rule)' : 'สร้างกฎ Dynamic Rule ใหม่ (Create Dynamic Rule)'}
               </h3>
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-5 h-5" />
@@ -654,7 +710,7 @@ export default function AccountingRulesClient() {
                     required
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
-                    placeholder="เช่น Expired Inventory Loss Rule"
+                    placeholder="เช่น Custom Variance Rule <= 500 THB"
                     className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
@@ -680,7 +736,7 @@ export default function AccountingRulesClient() {
                   type="text"
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder="เช่น ลงบัญชีขาดทุนกรณีสินค้าหมดอายุตัดทิ้ง"
+                  placeholder="เช่น ส่วนต่างเบิกจ่ายยืดหยุ่นไม่เกิน 500 บาทสำหรับสาขาใหญ่"
                   className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
@@ -700,27 +756,143 @@ export default function AccountingRulesClient() {
                 </select>
               </div>
 
-              {/* Condition Section */}
-              <div className="bg-purple-50/60 border border-purple-200/80 rounded-xl p-4 space-y-3">
-                <h4 className="font-semibold text-xs text-purple-900 uppercase tracking-wider flex items-center space-x-1.5">
-                  <Tag className="w-3.5 h-3.5 text-purple-600" />
-                  <span>เงื่อนไขการตรวจจับ (Condition Settings)</span>
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">เงื่อนไข Operator</label>
-                    <select
-                      value={formOperator}
-                      onChange={(e) => setFormOperator(e.target.value)}
-                      className="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-purple-500"
+              {/* Dynamic Condition Builder Section */}
+              <div className="bg-purple-50/60 border border-purple-200/80 rounded-xl p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-xs text-purple-900 uppercase tracking-wider flex items-center space-x-1.5">
+                    <Sliders className="w-4 h-4 text-purple-600" />
+                    <span>ตัวสร้างเงื่อนไขกฎแบบ Dynamic Rule Engine (Condition Spec)</span>
+                  </h4>
+                  <div className="flex items-center bg-purple-100/80 p-0.5 rounded-lg border border-purple-200 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setConditionMode('DYNAMIC')}
+                      className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
+                        conditionMode === 'DYNAMIC'
+                          ? 'bg-purple-600 text-white shadow-2xs'
+                          : 'text-purple-800 hover:text-purple-950'
+                      }`}
                     >
-                      <option value="EQ">Equals ($eq - เท่ากับ)</option>
-                      <option value="NE">Not Equals ($ne - ไม่เท่ากับ)</option>
-                      <option value="IN">In Array ($in - ตรงกับกลุ่ม)</option>
-                    </select>
+                      ⚙️ Dynamic Builder
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConditionMode('PRESET')}
+                      className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
+                        conditionMode === 'PRESET'
+                          ? 'bg-purple-600 text-white shadow-2xs'
+                          : 'text-purple-800 hover:text-purple-950'
+                      }`}
+                    >
+                      ⚡ Preset เหตุผล
+                    </button>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">เหตุผลสินค้า / ส่วนต่าง</label>
+                </div>
+
+                {conditionMode === 'DYNAMIC' ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {/* Fact Key Input */}
+                      <div>
+                        <label className="block text-xs font-semibold text-purple-900 mb-1">
+                          1. ฟิลด์ที่ต้องการตรวจจับ (Fact Key)
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={formFactKey}
+                          onChange={(e) => setFormFactKey(e.target.value)}
+                          placeholder="เช่น varianceAmountMinor, quantity..."
+                          className="w-full border rounded-lg px-3 py-2 text-sm bg-white font-mono focus:ring-2 focus:ring-purple-500"
+                        />
+                        <div className="mt-1">
+                          <select
+                            onChange={(e) => {
+                              if (e.target.value) setFormFactKey(e.target.value);
+                            }}
+                            defaultValue=""
+                            className="w-full text-[11px] text-purple-700 bg-purple-100/50 border border-purple-200 rounded px-1.5 py-1"
+                          >
+                            <option value="" disabled>-- หรือเลือกจากฟิลด์แนะนำ --</option>
+                            {DYNAMIC_FACT_SUGGESTIONS.map((fact) => (
+                              <option key={fact.value} value={fact.value}>{fact.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Operator Input */}
+                      <div>
+                        <label className="block text-xs font-semibold text-purple-900 mb-1">
+                          2. เงื่อนไขเปรียบเทียบ (Operator)
+                        </label>
+                        <select
+                          value={formOperator}
+                          onChange={(e) => setFormOperator(e.target.value)}
+                          className="w-full border rounded-lg px-3 py-2 text-sm bg-white font-mono focus:ring-2 focus:ring-purple-500"
+                        >
+                          {OPERATOR_OPTIONS.map((op) => (
+                            <option key={op.value} value={op.value}>{op.label}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Value Input */}
+                      <div>
+                        <label className="block text-xs font-semibold text-purple-900 mb-1">
+                          3. ค่าที่ต้องการเปรียบเทียบ (Value)
+                        </label>
+                        <div className="space-y-1">
+                          <input
+                            type="text"
+                            required
+                            value={formValue}
+                            onChange={(e) => setFormValue(e.target.value)}
+                            placeholder="ใส่ค่าอิสระ เช่น 10000 (100 บาท), 50000 (500 บาท)..."
+                            className="w-full border rounded-lg px-3 py-2 text-sm bg-white font-mono focus:ring-2 focus:ring-purple-500"
+                          />
+                          <div className="flex items-center justify-between text-[11px] text-purple-800">
+                            <span>ประเภทข้อมูล:</span>
+                            <div className="space-x-2">
+                              <label className="inline-flex items-center space-x-1">
+                                <input
+                                  type="radio"
+                                  name="valType"
+                                  checked={formValueType === 'NUMBER'}
+                                  onChange={() => setFormValueType('NUMBER')}
+                                />
+                                <span>ตัวเลข (Number)</span>
+                              </label>
+                              <label className="inline-flex items-center space-x-1">
+                                <input
+                                  type="radio"
+                                  name="valType"
+                                  checked={formValueType === 'STRING'}
+                                  onChange={() => setFormValueType('STRING')}
+                                />
+                                <span>ข้อความ (String)</span>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Preview JSON Spec */}
+                    <div className="bg-purple-900 text-purple-100 rounded-lg p-2.5 text-xs font-mono flex items-center justify-between">
+                      <span>JSON Condition Spec ที่ถูกสร้าง:</span>
+                      <code className="text-amber-300 font-bold">
+                        {JSON.stringify({
+                          fact: formFactKey,
+                          operator: formOperator,
+                          value: formValueType === 'NUMBER' ? Number(formValue) : formValue,
+                        })}
+                      </code>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <label className="block text-xs font-medium text-purple-900">เลือกเหตุผลสินค้ามาตรฐาน</label>
                     <select
                       value={formReasonCode}
                       onChange={(e) => setFormReasonCode(e.target.value)}
@@ -731,7 +903,7 @@ export default function AccountingRulesClient() {
                       ))}
                     </select>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Action Accounts Section */}
