@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
+  ArrowRight,
   Save,
   Sliders,
   Tag,
@@ -12,6 +13,10 @@ import {
   AlertCircle,
   X,
   RefreshCw,
+  Check,
+  FileText,
+  Layers,
+  Sparkles,
 } from 'lucide-react';
 
 interface RuleFormClientProps {
@@ -67,30 +72,29 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
   const router = useRouter();
   const isEditing = Boolean(ruleId);
 
+  // Wizard Step State (1: Basic Info, 2: Condition Builder, 3: GL Mapping & Review)
+  const [currentStep, setCurrentStep] = useState<number>(1);
+
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Form State
+  // Step 1: Basic Info Form State
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formEventType, setFormEventType] = useState('inventory.goods_issued');
   const [formPriority, setFormPriority] = useState(10);
 
-  // Condition Mode: PRESET vs DYNAMIC
+  // Step 2: Condition Mode (PRESET vs DYNAMIC)
   const [conditionMode, setConditionMode] = useState<'PRESET' | 'DYNAMIC'>('DYNAMIC');
-
-  // Preset Mode
   const [formReasonCode, setFormReasonCode] = useState('EXPIRED');
-
-  // Dynamic Rule Builder Mode
   const [formFactKey, setFormFactKey] = useState('varianceAmountMinor');
   const [formOperator, setFormOperator] = useState('lessThanInclusive');
   const [formValue, setFormValue] = useState<string>('10000');
   const [formValueType, setFormValueType] = useState<'NUMBER' | 'STRING'>('NUMBER');
 
-  // GL Action Accounts
+  // Step 3: GL Action Accounts
   const [formDebitCode, setFormDebitCode] = useState('5290');
   const [formCreditCode, setFormCreditCode] = useState('1310');
   const [formIsActive, setFormIsActive] = useState(true);
@@ -150,6 +154,36 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
       setError(err.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล');
     } finally {
       setLoading(false);
+    }
+  }
+
+  function handleNextStep() {
+    setError('');
+    if (currentStep === 1) {
+      if (!formName.trim()) {
+        setError('กรุณากรอกชื่อกฎ (Rule Name)');
+        return;
+      }
+      setCurrentStep(2);
+    } else if (currentStep === 2) {
+      if (conditionMode === 'DYNAMIC') {
+        if (!formFactKey.trim()) {
+          setError('กรุณาระบุฟิลด์ที่ต้องการตรวจจับ (Fact Key)');
+          return;
+        }
+        if (!formValue.trim()) {
+          setError('กรุณาระบุค่าที่ต้องการเปรียบเทียบ (Value)');
+          return;
+        }
+      }
+      setCurrentStep(3);
+    }
+  }
+
+  function handlePrevStep() {
+    setError('');
+    if (currentStep > 1) {
+      setCurrentStep((prev) => prev - 1);
     }
   }
 
@@ -227,15 +261,18 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
     );
   }
 
+  const debitAcc = STANDARD_GL_ACCOUNTS.find((g) => g.code === formDebitCode);
+  const creditAcc = STANDARD_GL_ACCOUNTS.find((g) => g.code === formCreditCode);
+
   return (
-    <div className="p-6 w-full max-w-5xl mx-auto space-y-6">
+    <div className="p-6 w-full max-w-4xl mx-auto space-y-6">
       {/* Header & Back Button */}
       <div className="flex items-center justify-between border-b pb-5">
         <div className="flex items-center space-x-4">
           <button
             onClick={() => router.push('/clinic/settings/accounting-rules')}
-            className="p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors"
-            title="ย้อนกลับ"
+            className="p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors cursor-pointer"
+            title="ย้อนกลับไปหน้ารายการกฎ"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -245,10 +282,10 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
               <span>/</span>
               <span>Accounting Rules</span>
               <span>/</span>
-              <span className="text-gray-900">{isEditing ? 'Edit Rule' : 'New Rule'}</span>
+              <span className="text-gray-900">{isEditing ? 'Edit Rule Wizard' : 'Create Rule Wizard'}</span>
             </div>
             <h1 className="text-2xl font-bold text-gray-900">
-              {isEditing ? 'แก้ไขกฎ Dynamic Accounting Rule' : 'สร้างกฎ Dynamic Accounting Rule ใหม่'}
+              {isEditing ? 'แก้ไขกฎ Dynamic Accounting Rule (Step-by-Step Wizard)' : 'สร้างกฎ Dynamic Accounting Rule ใหม่ (Step-by-Step Wizard)'}
             </h1>
           </div>
         </div>
@@ -273,293 +310,421 @@ export default function RuleFormClient({ ruleId }: RuleFormClientProps) {
         </div>
       )}
 
-      {/* Form Container */}
-      <form onSubmit={handleSubmit} className="bg-white border rounded-2xl shadow-xs p-8 space-y-6">
-        {/* Basic Information */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b pb-2">
-            1. ข้อมูลพื้นฐานกฎ (Basic Information)
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
-                ชื่อกฎ (Rule Name) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                placeholder="เช่น Custom Variance Rule <= 500 THB"
-                className="w-full border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
-                ลำดับความสำคัญ (Priority) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                required
-                min={0}
-                value={formPriority}
-                onChange={(e) => setFormPriority(Number(e.target.value))}
-                className="w-full border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              />
-              <span className="text-[11px] text-gray-400 mt-1 block">ตัวเลขยิ่งมาก ยิ่งถูกประเมินก่อน (เช่น 20 &gt; 10)</span>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">คำอธิบายเพิ่มเติม (Description)</label>
-            <input
-              type="text"
-              value={formDescription}
-              onChange={(e) => setFormDescription(e.target.value)}
-              placeholder="เช่น ส่วนต่างเบิกจ่ายยืดหยุ่นไม่เกิน 500 บาทสำหรับสาขาใหญ่"
-              className="w-full border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">
-              ประเภทเหตุการณ์ (Event Type) <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={formEventType}
-              onChange={(e) => setFormEventType(e.target.value)}
-              className="w-full border rounded-xl px-4 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+      {/* ── 3-STEP WIZARD STEPPER BAR ── */}
+      <div className="bg-white border rounded-2xl p-6 shadow-xs">
+        <div className="flex items-center justify-between relative">
+          {/* Step 1 Indicator */}
+          <div className="flex items-center space-x-3 z-10">
+            <div
+              className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
+                currentStep === 1
+                  ? 'bg-blue-600 text-white shadow-md ring-4 ring-blue-100'
+                  : currentStep > 1
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-gray-100 text-gray-400'
+              }`}
             >
-              {EVENT_TYPES.map((ev) => (
-                <option key={ev.value} value={ev.value}>{ev.label}</option>
-              ))}
-            </select>
+              {currentStep > 1 ? <Check className="w-5 h-5" /> : '1'}
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Step 1</div>
+              <div className={`text-sm font-bold ${currentStep === 1 ? 'text-blue-600' : 'text-gray-900'}`}>
+                ข้อมูลพื้นฐานกฎ
+              </div>
+            </div>
+          </div>
+
+          <div className={`flex-1 h-1 mx-4 rounded-full transition-all ${currentStep > 1 ? 'bg-emerald-500' : 'bg-gray-200'}`} />
+
+          {/* Step 2 Indicator */}
+          <div className="flex items-center space-x-3 z-10">
+            <div
+              className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
+                currentStep === 2
+                  ? 'bg-purple-600 text-white shadow-md ring-4 ring-purple-100'
+                  : currentStep > 2
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-gray-100 text-gray-400'
+              }`}
+            >
+              {currentStep > 2 ? <Check className="w-5 h-5" /> : '2'}
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Step 2</div>
+              <div className={`text-sm font-bold ${currentStep === 2 ? 'text-purple-600' : 'text-gray-900'}`}>
+                Dynamic Rule Spec
+              </div>
+            </div>
+          </div>
+
+          <div className={`flex-1 h-1 mx-4 rounded-full transition-all ${currentStep > 2 ? 'bg-emerald-500' : 'bg-gray-200'}`} />
+
+          {/* Step 3 Indicator */}
+          <div className="flex items-center space-x-3 z-10">
+            <div
+              className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
+                currentStep === 3
+                  ? 'bg-emerald-600 text-white shadow-md ring-4 ring-emerald-100'
+                  : 'bg-gray-100 text-gray-400'
+              }`}
+            >
+              3
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Step 3</div>
+              <div className={`text-sm font-bold ${currentStep === 3 ? 'text-emerald-600' : 'text-gray-900'}`}>
+                GL Action & Review
+              </div>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Dynamic Condition Builder */}
-        <div className="bg-purple-50/60 border border-purple-200/80 rounded-2xl p-6 space-y-5">
-          <div className="flex items-center justify-between border-b border-purple-200/60 pb-3">
-            <h3 className="font-bold text-sm text-purple-900 uppercase tracking-wider flex items-center space-x-2">
-              <Sliders className="w-4 h-4 text-purple-600" />
-              <span>2. ตัวสร้างเงื่อนไขแบบ Dynamic Rule Engine (Condition Spec)</span>
-            </h3>
-            <div className="flex items-center bg-purple-100/80 p-1 rounded-xl border border-purple-200 text-xs">
-              <button
-                type="button"
-                onClick={() => setConditionMode('DYNAMIC')}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-                  conditionMode === 'DYNAMIC'
-                    ? 'bg-purple-600 text-white shadow-xs'
-                    : 'text-purple-800 hover:text-purple-950'
-                }`}
+      {/* ── WIZARD FORM CONTENT STEP PANELS ── */}
+      <form onSubmit={handleSubmit} className="bg-white border rounded-2xl shadow-xs p-8 space-y-6">
+        {/* ── STEP 1: BASIC INFORMATION ── */}
+        {currentStep === 1 && (
+          <div className="space-y-5 animate-in fade-in duration-200">
+            <div className="flex items-center space-x-2 border-b pb-3 text-blue-900">
+              <FileText className="w-5 h-5 text-blue-600" />
+              <h3 className="text-base font-bold">1. ข้อมูลพื้นฐานกฎ (Basic Rule Profile)</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  ชื่อกฎ (Rule Name) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  placeholder="เช่น Custom Variance Rule <= 500 THB"
+                  className="w-full border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  ลำดับความสำคัญ (Priority) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  required
+                  min={0}
+                  value={formPriority}
+                  onChange={(e) => setFormPriority(Number(e.target.value))}
+                  className="w-full border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+                <span className="text-[11px] text-gray-400 mt-1 block">ตัวเลขยิ่งมาก ยิ่งถูกประเมินก่อน (เช่น 20 &gt; 10)</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">คำอธิบายเพิ่มเติม (Description)</label>
+              <input
+                type="text"
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value)}
+                placeholder="เช่น ส่วนต่างเบิกจ่ายยืดหยุ่นไม่เกิน 500 บาทสำหรับสาขาใหญ่"
+                className="w-full border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                ประเภทเหตุการณ์ (Event Context) <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={formEventType}
+                onChange={(e) => setFormEventType(e.target.value)}
+                className="w-full border rounded-xl px-4 py-2.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
               >
-                ⚙️ Dynamic Builder
-              </button>
-              <button
-                type="button"
-                onClick={() => setConditionMode('PRESET')}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-                  conditionMode === 'PRESET'
-                    ? 'bg-purple-600 text-white shadow-xs'
-                    : 'text-purple-800 hover:text-purple-950'
-                }`}
-              >
-                ⚡ Preset เหตุผล
-              </button>
+                {EVENT_TYPES.map((ev) => (
+                  <option key={ev.value} value={ev.value}>{ev.label}</option>
+                ))}
+              </select>
             </div>
           </div>
+        )}
 
-          {conditionMode === 'DYNAMIC' ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Fact Key Input */}
-                <div>
-                  <label className="block text-xs font-semibold text-purple-900 mb-1">
-                    1. ฟิลด์ที่ต้องการตรวจจับ (Fact Key)
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formFactKey}
-                    onChange={(e) => setFormFactKey(e.target.value)}
-                    placeholder="เช่น varianceAmountMinor, quantity..."
-                    className="w-full border rounded-xl px-3.5 py-2.5 text-sm bg-white font-mono focus:ring-2 focus:ring-purple-500"
-                  />
-                  <div className="mt-1.5">
-                    <select
-                      onChange={(e) => {
-                        if (e.target.value) setFormFactKey(e.target.value);
-                      }}
-                      defaultValue=""
-                      className="w-full text-xs text-purple-700 bg-purple-100/60 border border-purple-200 rounded-lg px-2 py-1.5"
-                    >
-                      <option value="" disabled>-- เลือกจากฟิลด์แนะนำ --</option>
-                      {DYNAMIC_FACT_SUGGESTIONS.map((fact) => (
-                        <option key={fact.value} value={fact.value}>{fact.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+        {/* ── STEP 2: DYNAMIC CONDITION BUILDER ── */}
+        {currentStep === 2 && (
+          <div className="space-y-5 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center space-x-2 text-purple-900">
+                <Sliders className="w-5 h-5 text-purple-600" />
+                <h3 className="text-base font-bold">2. ตัวสร้างเงื่อนไขกฎ (Dynamic Condition Builder)</h3>
+              </div>
+              <div className="flex items-center bg-purple-100/80 p-1 rounded-xl border border-purple-200 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setConditionMode('DYNAMIC')}
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
+                    conditionMode === 'DYNAMIC'
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'text-purple-800 hover:text-purple-950'
+                  }`}
+                >
+                  ⚙️ Dynamic Builder
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConditionMode('PRESET')}
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
+                    conditionMode === 'PRESET'
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'text-purple-800 hover:text-purple-950'
+                  }`}
+                >
+                  ⚡ Preset เหตุผล
+                </button>
+              </div>
+            </div>
 
-                {/* Operator Input */}
-                <div>
-                  <label className="block text-xs font-semibold text-purple-900 mb-1">
-                    2. เงื่อนไขเปรียบเทียบ (Operator)
-                  </label>
-                  <select
-                    value={formOperator}
-                    onChange={(e) => setFormOperator(e.target.value)}
-                    className="w-full border rounded-xl px-3.5 py-2.5 text-sm bg-white font-mono focus:ring-2 focus:ring-purple-500"
-                  >
-                    {OPERATOR_OPTIONS.map((op) => (
-                      <option key={op.value} value={op.value}>{op.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Value Input */}
-                <div>
-                  <label className="block text-xs font-semibold text-purple-900 mb-1">
-                    3. ค่าที่ต้องการเปรียบเทียบ (Value)
-                  </label>
-                  <div className="space-y-1.5">
+            {conditionMode === 'DYNAMIC' ? (
+              <div className="bg-purple-50/60 border border-purple-200/80 rounded-2xl p-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Fact Key Input */}
+                  <div>
+                    <label className="block text-xs font-semibold text-purple-900 mb-1">
+                      1. ฟิลด์ที่ต้องการตรวจจับ (Fact Key)
+                    </label>
                     <input
                       type="text"
                       required
-                      value={formValue}
-                      onChange={(e) => setFormValue(e.target.value)}
-                      placeholder="ใส่ค่าอิสระ เช่น 10000 (100 บาท), 50000 (500 บาท)..."
+                      value={formFactKey}
+                      onChange={(e) => setFormFactKey(e.target.value)}
+                      placeholder="เช่น varianceAmountMinor, quantity..."
                       className="w-full border rounded-xl px-3.5 py-2.5 text-sm bg-white font-mono focus:ring-2 focus:ring-purple-500"
                     />
-                    <div className="flex items-center justify-between text-xs text-purple-900">
-                      <span>ประเภทข้อมูล:</span>
-                      <div className="space-x-3">
-                        <label className="inline-flex items-center space-x-1 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="valTypeForm"
-                            checked={formValueType === 'NUMBER'}
-                            onChange={() => setFormValueType('NUMBER')}
-                          />
-                          <span>ตัวเลข (Number)</span>
-                        </label>
-                        <label className="inline-flex items-center space-x-1 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="valTypeForm"
-                            checked={formValueType === 'STRING'}
-                            onChange={() => setFormValueType('STRING')}
-                          />
-                          <span>ข้อความ (String)</span>
-                        </label>
+                    <div className="mt-1.5">
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) setFormFactKey(e.target.value);
+                        }}
+                        defaultValue=""
+                        className="w-full text-xs text-purple-700 bg-purple-100/60 border border-purple-200 rounded-lg px-2 py-1.5"
+                      >
+                        <option value="" disabled>-- เลือกจากฟิลด์แนะนำ --</option>
+                        {DYNAMIC_FACT_SUGGESTIONS.map((fact) => (
+                          <option key={fact.value} value={fact.value}>{fact.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Operator Input */}
+                  <div>
+                    <label className="block text-xs font-semibold text-purple-900 mb-1">
+                      2. เงื่อนไขเปรียบเทียบ (Operator)
+                    </label>
+                    <select
+                      value={formOperator}
+                      onChange={(e) => setFormOperator(e.target.value)}
+                      className="w-full border rounded-xl px-3.5 py-2.5 text-sm bg-white font-mono focus:ring-2 focus:ring-purple-500"
+                    >
+                      {OPERATOR_OPTIONS.map((op) => (
+                        <option key={op.value} value={op.value}>{op.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Value Input */}
+                  <div>
+                    <label className="block text-xs font-semibold text-purple-900 mb-1">
+                      3. ค่าที่ต้องการเปรียบเทียบ (Value)
+                    </label>
+                    <div className="space-y-1.5">
+                      <input
+                        type="text"
+                        required
+                        value={formValue}
+                        onChange={(e) => setFormValue(e.target.value)}
+                        placeholder="ใส่ค่าอิสระ เช่น 10000 (100 บาท), 50000 (500 บาท)..."
+                        className="w-full border rounded-xl px-3.5 py-2.5 text-sm bg-white font-mono focus:ring-2 focus:ring-purple-500"
+                      />
+                      <div className="flex items-center justify-between text-xs text-purple-900">
+                        <span>ประเภทข้อมูล:</span>
+                        <div className="space-x-3">
+                          <label className="inline-flex items-center space-x-1 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="valTypeWizard"
+                              checked={formValueType === 'NUMBER'}
+                              onChange={() => setFormValueType('NUMBER')}
+                            />
+                            <span>ตัวเลข (Number)</span>
+                          </label>
+                          <label className="inline-flex items-center space-x-1 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="valTypeWizard"
+                              checked={formValueType === 'STRING'}
+                              onChange={() => setFormValueType('STRING')}
+                            />
+                            <span>ข้อความ (String)</span>
+                          </label>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Preview JSON Spec */}
-              <div className="bg-purple-950 text-purple-100 rounded-xl p-3.5 text-xs font-mono flex items-center justify-between">
-                <span>JSON Condition Spec ที่ถูกสร้าง:</span>
-                <code className="text-amber-300 font-bold text-sm">
-                  {JSON.stringify({
-                    fact: formFactKey,
-                    operator: formOperator,
-                    value: formValueType === 'NUMBER' ? Number(formValue) : formValue,
-                  })}
-                </code>
+                {/* Preview JSON Spec */}
+                <div className="bg-purple-950 text-purple-100 rounded-xl p-4 text-xs font-mono flex items-center justify-between">
+                  <span>JSON Condition Spec ที่ถูกสร้าง:</span>
+                  <code className="text-amber-300 font-bold text-sm">
+                    {JSON.stringify({
+                      fact: formFactKey,
+                      operator: formOperator,
+                      value: formValueType === 'NUMBER' ? Number(formValue) : formValue,
+                    })}
+                  </code>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-purple-50/60 border border-purple-200/80 rounded-2xl p-6 space-y-2">
+                <label className="block text-xs font-semibold text-purple-900 mb-1">เลือกเหตุผลสินค้ามาตรฐาน</label>
+                <select
+                  value={formReasonCode}
+                  onChange={(e) => setFormReasonCode(e.target.value)}
+                  className="w-full border rounded-xl px-4 py-2.5 text-sm bg-white focus:ring-2 focus:ring-purple-500 font-mono"
+                >
+                  {REASON_CODE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── STEP 3: GL MAPPING & REVIEW SUMMARY ── */}
+        {currentStep === 3 && (
+          <div className="space-y-5 animate-in fade-in duration-200">
+            <div className="flex items-center space-x-2 border-b pb-3 text-emerald-900">
+              <BookOpen className="w-5 h-5 text-emerald-600" />
+              <h3 className="text-base font-bold">3. การผูกผังบัญชีและตรวจสอบก่อนบันทึก (GL Action & Review)</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-xs font-semibold text-emerald-900 mb-1">
+                  Debit Account (Dr. ฝั่งเดบิต) <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formDebitCode}
+                  onChange={(e) => setFormDebitCode(e.target.value)}
+                  className="w-full border border-emerald-300 rounded-xl px-4 py-2.5 text-sm bg-white focus:ring-2 focus:ring-emerald-500 font-mono"
+                >
+                  {STANDARD_GL_ACCOUNTS.map((acc) => (
+                    <option key={acc.code} value={acc.code}>
+                      {acc.code} - {acc.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-rose-900 mb-1">
+                  Credit Account (Cr. ฝั่งเครดิต) <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formCreditCode}
+                  onChange={(e) => setFormCreditCode(e.target.value)}
+                  className="w-full border border-rose-300 rounded-xl px-4 py-2.5 text-sm bg-white focus:ring-2 focus:ring-rose-500 font-mono"
+                >
+                  {STANDARD_GL_ACCOUNTS.map((acc) => (
+                    <option key={acc.code} value={acc.code}>
+                      {acc.code} - {acc.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
-          ) : (
-            <div className="space-y-2">
-              <label className="block text-xs font-medium text-purple-900">เลือกเหตุผลสินค้ามาตรฐาน</label>
-              <select
-                value={formReasonCode}
-                onChange={(e) => setFormReasonCode(e.target.value)}
-                className="w-full border rounded-xl px-4 py-2.5 text-sm bg-white focus:ring-2 focus:ring-purple-500 font-mono"
-              >
-                {REASON_CODE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
 
-        {/* Action Accounts Section */}
-        <div className="bg-blue-50/60 border border-blue-200/80 rounded-2xl p-6 space-y-4">
-          <h3 className="font-bold text-sm text-blue-900 uppercase tracking-wider flex items-center space-x-2 border-b border-blue-200/60 pb-2">
-            <BookOpen className="w-4 h-4 text-blue-600" />
-            <span>3. ผังบัญชีเป้าหมาย (GL Action Mapping)</span>
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div>
-              <label className="block text-xs font-semibold text-emerald-900 mb-1">
-                Debit Account (Dr. ฝั่งเดบิต) <span className="text-red-500">*</span>
+            <div className="flex items-center space-x-2.5 pt-2">
+              <input
+                type="checkbox"
+                id="isActiveWizardCheck"
+                checked={formIsActive}
+                onChange={(e) => setFormIsActive(e.target.checked)}
+                className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+              />
+              <label htmlFor="isActiveWizardCheck" className="text-sm font-medium text-gray-800">
+                เปิดใช้งานกฎนี้ทันที (Active Rule)
               </label>
-              <select
-                value={formDebitCode}
-                onChange={(e) => setFormDebitCode(e.target.value)}
-                className="w-full border border-emerald-300 rounded-xl px-4 py-2.5 text-sm bg-white focus:ring-2 focus:ring-emerald-500 font-mono"
-              >
-                {STANDARD_GL_ACCOUNTS.map((acc) => (
-                  <option key={acc.code} value={acc.code}>
-                    {acc.code} - {acc.name}
-                  </option>
-                ))}
-              </select>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-rose-900 mb-1">
-                Credit Account (Cr. ฝั่งเครดิต) <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={formCreditCode}
-                onChange={(e) => setFormCreditCode(e.target.value)}
-                className="w-full border border-rose-300 rounded-xl px-4 py-2.5 text-sm bg-white focus:ring-2 focus:ring-rose-500 font-mono"
-              >
-                {STANDARD_GL_ACCOUNTS.map((acc) => (
-                  <option key={acc.code} value={acc.code}>
-                    {acc.code} - {acc.name}
-                  </option>
-                ))}
-              </select>
+
+            {/* Final Rule Summary Review Card */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-3">
+              <div className="flex items-center space-x-2 text-slate-900 font-bold text-sm border-b border-slate-200 pb-2">
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                <span>สรุปข้อมูลกฎการลงบัญชีที่กำลังจะบันทึก (Rule Summary)</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div>
+                  <span className="text-slate-500">ชื่อกฎ:</span>{' '}
+                  <strong className="text-slate-900">{formName}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-500">Priority:</span>{' '}
+                  <strong className="text-slate-900">#{formPriority}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-500">Event Context:</span>{' '}
+                  <span className="bg-blue-100 text-blue-800 font-mono px-2 py-0.5 rounded">{formEventType}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">GL Action:</span>{' '}
+                  <span className="text-emerald-700 font-mono font-bold">Dr. {formDebitCode}</span> ➔{' '}
+                  <span className="text-rose-700 font-mono font-bold">Cr. {formCreditCode}</span>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Status Checkbox */}
-        <div className="flex items-center space-x-2.5 pt-2">
-          <input
-            type="checkbox"
-            id="isActiveFormCheck"
-            checked={formIsActive}
-            onChange={(e) => setFormIsActive(e.target.checked)}
-            className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
-          />
-          <label htmlFor="isActiveFormCheck" className="text-sm font-medium text-gray-800">
-            เปิดใช้งานกฎนี้ทันที (Active Rule)
-          </label>
-        </div>
+        {/* ── WIZARD STEPPER NAVIGATION BUTTONS ── */}
+        <div className="flex items-center justify-between pt-6 border-t">
+          {currentStep > 1 ? (
+            <button
+              type="button"
+              onClick={handlePrevStep}
+              className="inline-flex items-center space-x-2 px-5 py-2.5 border rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>ย้อนกลับ (Previous Step)</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => router.push('/clinic/settings/accounting-rules')}
+              className="px-5 py-2.5 border rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
+            >
+              ยกเลิก
+            </button>
+          )}
 
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end space-x-4 pt-6 border-t">
-          <button
-            type="button"
-            onClick={() => router.push('/clinic/settings/accounting-rules')}
-            className="px-5 py-2.5 border rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            ยกเลิก
-          </button>
-          <button
-            type="submit"
-            disabled={saving}
-            className="inline-flex items-center space-x-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium shadow-sm transition-all disabled:opacity-50"
-          >
-            <Save className="w-4 h-4" />
-            <span>{saving ? 'กำลังบันทึก...' : isEditing ? 'บันทึกการแก้ไข' : 'สร้างกฎใหม่'}</span>
-          </button>
+          {currentStep < 3 ? (
+            <button
+              type="button"
+              onClick={handleNextStep}
+              className="inline-flex items-center space-x-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium shadow-sm transition-all cursor-pointer"
+            >
+              <span>ถัดไป (Next Step)</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center space-x-2 px-7 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium shadow-md transition-all disabled:opacity-50 cursor-pointer"
+            >
+              <Save className="w-4 h-4" />
+              <span>{saving ? 'กำลังบันทึก...' : isEditing ? 'บันทึกการแก้ไขกฎ' : 'ยืนยันสร้างกฎใหม่'}</span>
+            </button>
+          )}
         </div>
       </form>
     </div>
