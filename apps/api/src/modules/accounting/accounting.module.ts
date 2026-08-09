@@ -8,6 +8,7 @@ import { JournalService } from './services/journal.service';
 import { InventoryGlListener } from './listeners/inventory-gl.listener';
 import { SystemRuleController } from './controllers/system-rule.controller';
 import { GlAccountController } from './controllers/gl-account.controller';
+import { JournalController } from './controllers/journal.controller';
 
 /**
  * AccountingModule — Phase 1: Perpetual Inventory & GL Integration
@@ -21,7 +22,7 @@ import { GlAccountController } from './controllers/gl-account.controller';
  */
 @Module({
   imports: [BillingModule],
-  controllers: [SystemRuleController, GlAccountController],
+  controllers: [SystemRuleController, GlAccountController, JournalController],
   providers: [
     { provide: PrismaClient, useFactory: () => new PrismaClient() },
     SystemRuleService,
