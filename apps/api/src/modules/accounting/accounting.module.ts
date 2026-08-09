@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { BillingModule } from '../billing/billing.module';
+import { DocumentSequenceModule } from '../document-sequence/document-sequence.module';
 import { SystemRuleService } from './services/system-rule.service';
 import { RuleEvaluatorService } from './services/rule-evaluator.service';
 import { GlAccountService } from './services/gl-account.service';
@@ -21,7 +22,7 @@ import { JournalController } from './controllers/journal.controller';
  * - InventoryGlListener (event handlers → GL journal posting)
  */
 @Module({
-  imports: [BillingModule],
+  imports: [BillingModule, DocumentSequenceModule],
   controllers: [SystemRuleController, GlAccountController, JournalController],
   providers: [
     { provide: PrismaClient, useFactory: () => new PrismaClient() },

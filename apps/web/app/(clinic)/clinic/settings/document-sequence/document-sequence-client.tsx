@@ -54,7 +54,7 @@ interface DocumentTypeDefinition {
   clinicId: string | null;
   code: string;
   label: string;
-  module: 'PROCUREMENT' | 'BILLING' | 'APPOINTMENT' | 'INVENTORY' | 'CLINICAL' | 'GENERAL';
+  module: 'PROCUREMENT' | 'BILLING' | 'APPOINTMENT' | 'INVENTORY' | 'CLINICAL' | 'ACCOUNTING' | 'GENERAL';
   defaultTemplate: string;
   defaultResetInterval: 'YEARLY' | 'MONTHLY' | 'DAILY' | 'NEVER';
   scope: 'CLINIC' | 'BRANCH';
@@ -96,7 +96,7 @@ export default function DocumentSequenceClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [activeModule, setActiveModule] = useState<'ALL' | 'PROCUREMENT' | 'BILLING' | 'APPOINTMENT' | 'INVENTORY' | 'CLINICAL' | 'CUSTOM'>('ALL');
+  const [activeModule, setActiveModule] = useState<'ALL' | 'PROCUREMENT' | 'BILLING' | 'APPOINTMENT' | 'INVENTORY' | 'CLINICAL' | 'ACCOUNTING' | 'CUSTOM'>('ALL');
 
   // Slide-over state for Document Type
   const [isTypeOpen, setIsTypeOpen] = useState(false);
@@ -107,7 +107,7 @@ export default function DocumentSequenceClient() {
     defaultTemplate: '',
     defaultResetInterval: 'YEARLY' as 'YEARLY' | 'MONTHLY' | 'DAILY' | 'NEVER',
     scope: 'CLINIC' as 'CLINIC' | 'BRANCH',
-    module: 'GENERAL' as 'PROCUREMENT' | 'BILLING' | 'APPOINTMENT' | 'INVENTORY' | 'CLINICAL' | 'GENERAL',
+    module: 'GENERAL' as 'PROCUREMENT' | 'BILLING' | 'APPOINTMENT' | 'INVENTORY' | 'CLINICAL' | 'ACCOUNTING' | 'GENERAL',
   });
 
   // Modal state for Config overrides
@@ -350,6 +350,7 @@ export default function DocumentSequenceClient() {
           { key: 'APPOINTMENT', label: '📅 นัดหมาย' },
           { key: 'INVENTORY', label: '🏪 คลังสินค้า' },
           { key: 'CLINICAL', label: '🩺 เวชระเบียน' },
+          { key: 'ACCOUNTING', label: '📊 ระบบบัญชี (GL)' },
           { key: 'CUSTOM', label: '✨ กำหนดเอง' },
         ] as const;
         return (
@@ -416,6 +417,7 @@ export default function DocumentSequenceClient() {
                     APPOINTMENT: 'bg-violet-100 text-violet-800 border-violet-200',
                     INVENTORY: 'bg-sky-100 text-sky-800 border-sky-200',
                     CLINICAL: 'bg-pink-100 text-pink-800 border-pink-200',
+                    ACCOUNTING: 'bg-blue-100 text-blue-800 border-blue-200',
                     GENERAL: 'bg-gray-100 text-gray-600 border-gray-200',
                   };
 
@@ -534,6 +536,7 @@ export default function DocumentSequenceClient() {
                       APPOINTMENT: 'bg-violet-100 text-violet-800',
                       INVENTORY: 'bg-sky-100 text-sky-800',
                       CLINICAL: 'bg-pink-100 text-pink-800',
+                      ACCOUNTING: 'bg-blue-100 text-blue-800',
                       GENERAL: 'bg-gray-100 text-gray-600',
                     };
                     return (
@@ -696,6 +699,7 @@ export default function DocumentSequenceClient() {
                   <SelectItem value="APPOINTMENT">นัดหมาย (Appointment)</SelectItem>
                   <SelectItem value="INVENTORY">คลังสินค้า (Inventory)</SelectItem>
                   <SelectItem value="CLINICAL">เวชระเบียน (Clinical)</SelectItem>
+                  <SelectItem value="ACCOUNTING">ระบบบัญชี (GL)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

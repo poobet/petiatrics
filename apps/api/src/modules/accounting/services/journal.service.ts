@@ -1,5 +1,6 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Optional, Inject } from '@nestjs/common';
 import { PrismaClient, JournalType, JournalStatus } from '@prisma/client';
+import { DocumentSequenceService, DOC_TYPE } from '../../document-sequence/services/document-sequence.service';
 
 export interface CreateJournalLinePayload {
   glAccountId: string;
@@ -10,7 +11,7 @@ export interface CreateJournalLinePayload {
 
 export interface CreateJournalEntryPayload {
   clinicId: string;
-  entryNo: string;
+  entryNo?: string;
   type?: JournalType;
   description: string;
   sourceRefType?: string;
@@ -21,7 +22,10 @@ export interface CreateJournalEntryPayload {
 
 @Injectable()
 export class JournalService {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(
+    private readonly prisma: PrismaClient,
+    private readonly sequenceService: DocumentSequenceService,
+  ) {}
 
   /**
    * Creates a double-entry Journal Entry with strict balanced debit/credit validation.
@@ -37,6 +41,11 @@ export class JournalService {
     if (!payload.lines || payload.lines.length < 2) {
       throw new BadRequestException('A valid double-entry journal entry must contain at least 2 lines.');
     }
+
+    // Auto-generate system document sequence entryNo (e.g. JV2026-0001)
+    const entryNo =
+      payload.entryNo?.trim() ||
+      (await this.sequenceService.generate(payload.clinicId, DOC_TYPE.JOURNAL_ENTRY));
 
     // Calculate total debits and credits
     let totalDebit = 0;
@@ -61,10 +70,14 @@ export class JournalService {
       throw new BadRequestException('Journal Entry total amount must be greater than 0.');
     }
 
-    // Validate GL Accounts exist
+    // Validate GL Accounts exist and belong to system or active clinic
     const glAccountIds = Array.from(new Set(payload.lines.map((l) => l.glAccountId)));
     const accounts = await this.prisma.gLAccount.findMany({
-      where: { id: { in: glAccountIds }, isActive: true },
+      where: {
+        id: { in: glAccountIds },
+        isActive: true,
+        OR: [{ clinicId: null }, { clinicId: payload.clinicId }],
+      },
     });
 
     if (accounts.length !== glAccountIds.length) {
@@ -76,7 +89,7 @@ export class JournalService {
       const entry = await tx.journalEntry.create({
         data: {
           clinicId: payload.clinicId,
-          entryNo: payload.entryNo,
+          entryNo: entryNo,
           type: payload.type ?? JournalType.GENERAL,
           description: payload.description,
           sourceRefType: payload.sourceRefType,

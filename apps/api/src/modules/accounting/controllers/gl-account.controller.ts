@@ -6,63 +6,43 @@ import {
   Body,
   Param,
   Query,
-  ConflictException,
 } from '@nestjs/common';
-import { PrismaClient, GLAccountType } from '@prisma/client';
+import { GLAccountType } from '@prisma/client';
+import { TenantId } from '../../../common/decorators/tenant.decorator';
 import { GlAccountService } from '../services/gl-account.service';
 import { CreateGlAccountDto } from '../dto/create-gl-account.dto';
 
 @Controller('accounting/gl-accounts')
 export class GlAccountController {
-  constructor(
-    private readonly prisma: PrismaClient,
-    private readonly glAccountService: GlAccountService,
-  ) {}
+  constructor(private readonly glAccountService: GlAccountService) {}
 
   @Get()
   async findAll(
+    @TenantId() clinicId: string,
     @Query('type') type?: GLAccountType,
     @Query('isActive') isActive?: string,
     @Query('search') search?: string,
   ) {
-    const where: any = {};
-    if (type) where.type = type;
-    if (isActive !== undefined) where.isActive = isActive === 'true';
-    if (search) {
-      where.OR = [
-        { code: { contains: search, mode: 'insensitive' } },
-        { name: { contains: search, mode: 'insensitive' } },
-      ];
-    }
-
-    return this.prisma.gLAccount.findMany({
-      where,
-      orderBy: { code: 'asc' },
+    return this.glAccountService.getAccounts(clinicId, {
+      type,
+      isActive: isActive !== undefined ? isActive === 'true' : undefined,
+      search,
     });
   }
 
   @Post()
-  async create(@Body() dto: CreateGlAccountDto) {
-    const existing = await this.prisma.gLAccount.findUnique({
-      where: { code: dto.code },
-    });
-    if (existing) {
-      throw new ConflictException(`GL Account code "${dto.code}" already exists.`);
-    }
-
-    return this.prisma.gLAccount.create({
-      data: {
-        code: dto.code,
-        name: dto.name,
-        type: dto.type,
-        isSystem: false,
-        isActive: true,
-      },
-    });
+  async create(
+    @TenantId() clinicId: string,
+    @Body() dto: CreateGlAccountDto,
+  ) {
+    return this.glAccountService.createAccount(clinicId, dto);
   }
 
   @Delete(':id')
-  async deactivate(@Param('id') id: string) {
-    return this.glAccountService.deactivateAccount(id);
+  async deactivate(
+    @TenantId() clinicId: string,
+    @Param('id') id: string,
+  ) {
+    return this.glAccountService.deactivateAccount(clinicId, id);
   }
 }

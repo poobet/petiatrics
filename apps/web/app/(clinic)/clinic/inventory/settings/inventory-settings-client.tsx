@@ -5,11 +5,13 @@ import Link from 'next/link';
 import { useSessionStore } from '@/lib/session-store';
 import InventoryLocationsClient from '@/components/inventory/inventory-locations-client';
 import ReasonCodesClient from '@/components/inventory/reason-codes-client';
-import { Settings, MapPin, Tag } from 'lucide-react';
+import ItemCategorySettingsClient from '@/components/inventory/item-category-settings-client';
+import ModuleDocumentSequenceConfig from '@/components/document-sequence/module-sequence-config';
+import { Settings, MapPin, Tag, FileText, Layers } from 'lucide-react';
 
 export default function InventorySettingsClient() {
   const activeBranch = useSessionStore((s) => s.activeBranch);
-  const [activeTab, setActiveTab] = useState<'locations' | 'reason-codes'>('locations');
+  const [activeTab, setActiveTab] = useState<'locations' | 'reason-codes' | 'categories' | 'sequence'>('locations');
 
   if (!activeBranch) {
     return (
@@ -35,13 +37,13 @@ export default function InventorySettingsClient() {
             Inventory Settings (ตั้งค่าระบบคลังสินค้า)
           </h1>
           <p className="text-xs text-gray-500 mt-0.5">
-            จัดการคลังจัดเก็บ (Locations) และ รหัสเหตุผลการคืน/ปรับปรุง (Reason Codes) ประจำสาขา: {activeBranch.name}
+            จัดการคลังจัดเก็บ (Locations), รหัสเหตุผล (Reason Codes), หมวดหมู่สินค้า & GL และรหัสเอกสารคลังสินค้า ประจำสาขา: {activeBranch.name}
           </p>
         </div>
       </div>
 
       {/* Settings Navigation Tabs */}
-      <div className="border-b mb-6 flex gap-6">
+      <div className="border-b mb-6 flex flex-wrap gap-6">
         <button
           className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
             activeTab === 'locations'
@@ -62,12 +64,42 @@ export default function InventorySettingsClient() {
           onClick={() => setActiveTab('reason-codes')}
         >
           <Tag className="w-4 h-4" />
-          Reason Codes (รหัสเหตุผล & เส้นทางคืนสินค้า)
+          Reason Codes (รหัสเหตุผล)
+        </button>
+        <button
+          className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+            activeTab === 'categories'
+              ? 'border-indigo-600 text-indigo-600 font-bold'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+          onClick={() => setActiveTab('categories')}
+        >
+          <Layers className="w-4 h-4" />
+          Item Categories & GL (หมวดหมู่สินค้า & ผูกบัญชี GL)
+        </button>
+        <button
+          className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+            activeTab === 'sequence'
+              ? 'border-emerald-600 text-emerald-600 font-bold'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+          onClick={() => setActiveTab('sequence')}
+        >
+          <FileText className="w-4 h-4" />
+          Document Sequencing (รหัสเอกสาร)
         </button>
       </div>
 
       {activeTab === 'locations' && <InventoryLocationsClient />}
       {activeTab === 'reason-codes' && <ReasonCodesClient />}
+      {activeTab === 'categories' && <ItemCategorySettingsClient />}
+      {activeTab === 'sequence' && (
+        <ModuleDocumentSequenceConfig
+          module="INVENTORY"
+          title="รหัสเอกสารคลังสินค้า"
+          description="กำหนดรูปแบบรหัสเอกสารการรับเข้า/เบิกจ่าย/ปรับสมดุลสินค้าคงคลัง"
+        />
+      )}
     </div>
   );
 }

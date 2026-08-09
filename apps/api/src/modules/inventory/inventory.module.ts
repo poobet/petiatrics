@@ -23,6 +23,8 @@ import { InventoryLocationService } from './services/inventory-location.service'
 import { InventoryLocationController } from './controllers/inventory-location.controller';
 import { ReasonCodeService } from './services/reason-code.service';
 import { ReasonCodeController } from './controllers/reason-code.controller';
+import { ItemCategoryService } from './services/item-category.service';
+import { ItemCategoryController } from './controllers/item-category.controller';
 
 @Module({
   imports: [MulterModule.register({ dest: '/tmp' })],
@@ -36,6 +38,7 @@ import { ReasonCodeController } from './controllers/reason-code.controller';
     StockAlertController,
     InventoryLocationController,
     ReasonCodeController,
+    ItemCategoryController,
   ],
   providers: [
     { provide: PrismaClient, useFactory: () => new PrismaClient() },
@@ -47,6 +50,7 @@ import { ReasonCodeController } from './controllers/reason-code.controller';
     StockAdjustmentService,
     InventoryLocationService,
     ReasonCodeService,
+    ItemCategoryService,
     ReferenceService,
     UnlinkedItemsService,
     InventoryWriteGuardService,
@@ -61,6 +65,7 @@ import { ReasonCodeController } from './controllers/reason-code.controller';
     InventoryWriteGuardService,
     InventoryLocationService,
     ReasonCodeService,
+    ItemCategoryService,
   ],
 })
 export class InventoryModule {}

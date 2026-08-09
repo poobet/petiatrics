@@ -5,6 +5,7 @@ import { JournalType, JournalStatus } from '@prisma/client';
 describe('JournalService', () => {
   let service: JournalService;
   let prismaMock: any;
+  let sequenceServiceMock: any;
 
   beforeEach(() => {
     prismaMock = {
@@ -18,7 +19,11 @@ describe('JournalService', () => {
       $transaction: jest.fn((cb) => cb(prismaMock)),
     };
 
-    service = new JournalService(prismaMock);
+    sequenceServiceMock = {
+      generate: jest.fn().mockResolvedValue('JV2026-0001'),
+    };
+
+    service = new JournalService(prismaMock, sequenceServiceMock);
   });
 
   describe('createJournalEntry', () => {

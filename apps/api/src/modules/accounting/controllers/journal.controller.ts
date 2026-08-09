@@ -1,14 +1,38 @@
-import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, Optional, Inject } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { JournalService, CreateJournalEntryPayload } from '../services/journal.service';
-import { TenantId } from '../../../common/decorators/tenant-id.decorator';
+import { DocumentSequenceService, DOC_TYPE } from '../../document-sequence/services/document-sequence.service';
+import { TenantId } from '../../../common/decorators/tenant.decorator';
 
 @Controller('accounting')
 export class JournalController {
   constructor(
     private readonly prisma: PrismaClient,
     private readonly journalService: JournalService,
+    private readonly sequenceService: DocumentSequenceService,
   ) {}
+
+  /**
+   * Returns next system running entry number preview for manual journal entries.
+   */
+  @Get('journal-entries/next-number')
+  async getNextEntryNumber(
+    @TenantId() tenantId: string | undefined,
+    @Query('clinicId') queryClinicId: string | undefined,
+  ) {
+    const clinicId = tenantId || queryClinicId || 'clinic-1';
+    if (this.sequenceService) {
+      const seqs = await this.sequenceService.getCurrentSequences(clinicId, 'ACCOUNTING');
+      const jeSeq = seqs.find((s) => s.documentType === DOC_TYPE.JOURNAL_ENTRY);
+      if (jeSeq) {
+        return { nextEntryNo: jeSeq.nextPreview };
+      }
+    }
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    return { nextEntryNo: `JV${yyyy}${mm}-0001` };
+  }
 
   /**
    * Retrieves Trial Balance report with aggregated debit, credit, and balance per GL Account.
@@ -21,7 +45,10 @@ export class JournalController {
     const clinicId = tenantId || queryClinicId || 'clinic-1';
 
     const accounts = await this.prisma.gLAccount.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        ...(clinicId ? { OR: [{ clinicId: null }, { clinicId }] } : {}),
+      },
       orderBy: { code: 'asc' },
     });
 

@@ -17,6 +17,8 @@ describe('GlAccountController', () => {
   };
 
   const mockGlAccountService = {
+    getAccounts: jest.fn(),
+    createAccount: jest.fn(),
     deactivateAccount: jest.fn(),
   };
 
@@ -24,10 +26,6 @@ describe('GlAccountController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [GlAccountController],
       providers: [
-        {
-          provide: PrismaClient,
-          useValue: mockPrismaClient,
-        },
         {
           provide: GlAccountService,
           useValue: mockGlAccountService,
@@ -50,64 +48,54 @@ describe('GlAccountController', () => {
         { id: '1', code: '1010', name: 'Cash', type: 'ASSET', isSystem: true, isActive: true },
         { id: '2', code: '1310', name: 'Inventory Asset', type: 'ASSET', isSystem: true, isActive: true },
       ];
-      mockPrismaClient.gLAccount.findMany.mockResolvedValue(mockAccounts);
+      mockGlAccountService.getAccounts.mockResolvedValue(mockAccounts);
 
-      const result = await controller.findAll('ASSET' as GLAccountType, 'true');
+      const result = await controller.findAll('clinic-1', 'ASSET' as GLAccountType, 'true');
 
-      expect(mockPrismaClient.gLAccount.findMany).toHaveBeenCalledWith({
-        where: { type: 'ASSET', isActive: true },
-        orderBy: { code: 'asc' },
+      expect(mockGlAccountService.getAccounts).toHaveBeenCalledWith('clinic-1', {
+        type: 'ASSET',
+        isActive: true,
+        search: undefined,
       });
       expect(result).toEqual(mockAccounts);
     });
   });
 
   describe('create', () => {
-    it('should throw ConflictException if code already exists', async () => {
-      mockPrismaClient.gLAccount.findUnique.mockResolvedValue({ id: '1', code: '6090' });
-
-      await expect(
-        controller.create({ code: '6090', name: 'Snacks Expense', type: 'EXPENSE' as GLAccountType })
-      ).rejects.toThrow(ConflictException);
-    });
-
-    it('should create user-defined sub-account with isSystem: false', async () => {
-      mockPrismaClient.gLAccount.findUnique.mockResolvedValue(null);
-      mockPrismaClient.gLAccount.create.mockResolvedValue({
+    it('should create user-defined sub-account with clinicId scope', async () => {
+      const createdAcc = {
         id: 'new-id',
+        clinicId: 'clinic-1',
         code: '6090',
         name: 'Snacks Expense',
         type: 'EXPENSE',
         isSystem: false,
         isActive: true,
-      });
+      };
+      mockGlAccountService.createAccount.mockResolvedValue(createdAcc);
 
-      const result = await controller.create({
+      const result = await controller.create('clinic-1', {
         code: '6090',
         name: 'Snacks Expense',
         type: 'EXPENSE' as GLAccountType,
       });
 
-      expect(mockPrismaClient.gLAccount.create).toHaveBeenCalledWith({
-        data: {
-          code: '6090',
-          name: 'Snacks Expense',
-          type: 'EXPENSE',
-          isSystem: false,
-          isActive: true,
-        },
+      expect(mockGlAccountService.createAccount).toHaveBeenCalledWith('clinic-1', {
+        code: '6090',
+        name: 'Snacks Expense',
+        type: 'EXPENSE',
       });
       expect(result.isSystem).toBe(false);
     });
   });
 
   describe('deactivate', () => {
-    it('should delegate to GlAccountService.deactivateAccount', async () => {
+    it('should delegate to GlAccountService.deactivateAccount with clinicId', async () => {
       mockGlAccountService.deactivateAccount.mockResolvedValue({ id: 'user-acc-1', isActive: false });
 
-      const result = await controller.deactivate('user-acc-1');
+      const result = await controller.deactivate('clinic-1', 'user-acc-1');
 
-      expect(mockGlAccountService.deactivateAccount).toHaveBeenCalledWith('user-acc-1');
+      expect(mockGlAccountService.deactivateAccount).toHaveBeenCalledWith('clinic-1', 'user-acc-1');
       expect(result.isActive).toBe(false);
     });
   });

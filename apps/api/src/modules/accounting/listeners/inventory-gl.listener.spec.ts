@@ -34,6 +34,9 @@ describe('InventoryGlListener', () => {
 
     prismaMock = {
       gLAccount: {
+        findFirst: jest.fn().mockImplementation(({ where: { code } }) => {
+          return Promise.resolve(mockAccounts[code] ?? null);
+        }),
         findUnique: jest.fn().mockImplementation(({ where: { code } }) => {
           return Promise.resolve(mockAccounts[code] ?? null);
         }),

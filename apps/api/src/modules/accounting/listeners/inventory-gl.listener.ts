@@ -184,9 +184,12 @@ export class InventoryGlListener {
     };
   }
 
-  private async resolveGlAccount(code: string) {
-    const account = await this.prisma.gLAccount.findUnique({
-      where: { code },
+  private async resolveGlAccount(code: string, clinicId?: string) {
+    const account = await this.prisma.gLAccount.findFirst({
+      where: {
+        code,
+        ...(clinicId ? { OR: [{ clinicId: null }, { clinicId }] } : {}),
+      },
     });
     if (!account) {
       throw new Error(`GL Account with code "${code}" not found. Ensure seed data is loaded.`);

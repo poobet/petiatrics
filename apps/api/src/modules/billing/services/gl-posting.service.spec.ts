@@ -6,7 +6,7 @@ describe('GLPostingService', () => {
   let service: GLPostingService;
 
   beforeEach(() => {
-    service = new GLPostingService({} as any);
+    service = new GLPostingService({} as any, { generate: jest.fn().mockResolvedValue('JV2026-0001') } as any);
   });
 
   it('should throw if debits do not equal credits', () => {

@@ -267,6 +267,9 @@ model Clinic {
   inventoryLocations       InventoryLocation[]
   reasonCodes              ReasonCode[]
   systemRules              SystemRule[]
+  glAccounts               GLAccount[]
+  itemCategories           ItemCategory[]
+  itemCategoryConfigs      ItemCategoryConfig[]
 
   @@map("clinics")
 }
@@ -568,7 +571,8 @@ model Appointment {
 
 model GLAccount {
   id        String        @id @default(uuid())
-  code      String        @unique
+  clinicId  String? // null = system control account, non-null = clinic-specific GL account
+  code      String
   name      String
   type      GLAccountType
   isSystem  Boolean       @default(false)
@@ -576,15 +580,21 @@ model GLAccount {
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
+  clinic Clinic? @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
   // GL account relations for this model
-  revenueForCategories   ItemCategory[] @relation("RevenueGLAccount")
-  expenseForCategories   ItemCategory[] @relation("ExpenseGLAccount")
+  revenueForCategories          ItemCategory[]       @relation("RevenueGLAccount")
+  expenseForCategories          ItemCategory[]       @relation("ExpenseGLAccount")
+  revenueForCategoryConfigs     ItemCategoryConfig[] @relation("CategoryConfigRevenueGLAccount")
+  expenseForCategoryConfigs     ItemCategoryConfig[] @relation("CategoryConfigExpenseGLAccount")
   // Product-level GL relations
   revenueProducts        Product[]      @relation("ProductRevenueAccount")
   cogsProducts           Product[]      @relation("ProductCogsAccount")
   inventoryAssetProducts Product[]      @relation("ProductInventoryAssetAccount")
   journalLines           JournalLine[]
 
+  @@unique([clinicId, code])
+  @@index([clinicId])
   @@map("gl_accounts")
 }
 
@@ -592,20 +602,47 @@ model GLAccount {
 
 model ItemCategory {
   id                 String   @id @default(uuid())
-  name               String   @unique
-  code               String   @unique
+  clinicId           String? // null = system default category, non-null = clinic-specific category
+  name               String
+  code               String
   revenueGlAccountId String?
   expenseGlAccountId String?
+  isSystem           Boolean  @default(false)
   isActive           Boolean  @default(true)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
+  clinic                   Clinic?                   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   products                 Product[]
   revenueGlAccount         GLAccount?                @relation("RevenueGLAccount", fields: [revenueGlAccountId], references: [id])
   expenseGlAccount         GLAccount?                @relation("ExpenseGLAccount", fields: [expenseGlAccountId], references: [id])
   matchingToleranceConfigs MatchingToleranceConfig[]
+  categoryConfigs          ItemCategoryConfig[]
 
+  @@unique([clinicId, code])
+  @@unique([clinicId, name])
+  @@index([clinicId])
   @@map("item_categories")
+}
+
+model ItemCategoryConfig {
+  id                 String   @id @default(uuid())
+  clinicId           String
+  itemCategoryId     String
+  customName         String?
+  revenueGlAccountId String?
+  expenseGlAccountId String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  clinic           Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  itemCategory     ItemCategory @relation(fields: [itemCategoryId], references: [id], onDelete: Cascade)
+  revenueGlAccount GLAccount?   @relation("CategoryConfigRevenueGLAccount", fields: [revenueGlAccountId], references: [id])
+  expenseGlAccount GLAccount?   @relation("CategoryConfigExpenseGLAccount", fields: [expenseGlAccountId], references: [id])
+
+  @@unique([clinicId, itemCategoryId])
+  @@index([clinicId])
+  @@map("item_category_configs")
 }
 
 // ─── UnitOfMeasure (globally seeded reference — no clinicId) ─────────────────
@@ -1315,6 +1352,7 @@ enum DocumentModule {
   APPOINTMENT
   INVENTORY
   CLINICAL
+  ACCOUNTING
   GENERAL
 }
 

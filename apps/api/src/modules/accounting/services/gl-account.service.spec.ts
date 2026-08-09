@@ -9,6 +9,7 @@ describe('GlAccountService - Chart of Accounts (COA) Protected System Deletion R
 
   const mockPrismaClient = {
     gLAccount: {
+      findFirst: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
     },
@@ -36,9 +37,9 @@ describe('GlAccountService - Chart of Accounts (COA) Protected System Deletion R
 
   describe('deactivateAccount / deleteAccount', () => {
     it('should throw NotFoundException if account does not exist', async () => {
-      mockPrismaClient.gLAccount.findUnique.mockResolvedValue(null);
+      mockPrismaClient.gLAccount.findFirst.mockResolvedValue(null);
 
-      await expect(service.deactivateAccount('non-existent-id')).rejects.toThrow(
+      await expect(service.deactivateAccount('clinic-1', 'non-existent-id')).rejects.toThrow(
         NotFoundException
       );
     });
@@ -46,6 +47,7 @@ describe('GlAccountService - Chart of Accounts (COA) Protected System Deletion R
     it('should throw ForbiddenException if account is a Protected System Account (isSystem: true)', async () => {
       const systemAccount = {
         id: 'sys-acc-1',
+        clinicId: null,
         code: '1310',
         name: 'Inventory Asset',
         type: 'ASSET',
@@ -53,9 +55,9 @@ describe('GlAccountService - Chart of Accounts (COA) Protected System Deletion R
         isActive: true,
       };
 
-      mockPrismaClient.gLAccount.findUnique.mockResolvedValue(systemAccount);
+      mockPrismaClient.gLAccount.findFirst.mockResolvedValue(systemAccount);
 
-      await expect(service.deactivateAccount('sys-acc-1')).rejects.toThrow(
+      await expect(service.deactivateAccount('clinic-1', 'sys-acc-1')).rejects.toThrow(
         ForbiddenException
       );
 
@@ -65,6 +67,7 @@ describe('GlAccountService - Chart of Accounts (COA) Protected System Deletion R
     it('should soft-delete (set isActive: false) if account is user-defined (isSystem: false)', async () => {
       const userAccount = {
         id: 'user-acc-1',
+        clinicId: 'clinic-1',
         code: '6090',
         name: 'Custom Office Snacks Expense',
         type: 'EXPENSE',
@@ -72,13 +75,13 @@ describe('GlAccountService - Chart of Accounts (COA) Protected System Deletion R
         isActive: true,
       };
 
-      mockPrismaClient.gLAccount.findUnique.mockResolvedValue(userAccount);
+      mockPrismaClient.gLAccount.findFirst.mockResolvedValue(userAccount);
       mockPrismaClient.gLAccount.update.mockResolvedValue({
         ...userAccount,
         isActive: false,
       });
 
-      const result = await service.deactivateAccount('user-acc-1');
+      const result = await service.deactivateAccount('clinic-1', 'user-acc-1');
 
       expect(mockPrismaClient.gLAccount.update).toHaveBeenCalledWith({
         where: { id: 'user-acc-1' },

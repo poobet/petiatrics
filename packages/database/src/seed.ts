@@ -225,11 +225,20 @@ async function main() {
 
   const glIds: Record<string, string> = {};
   for (const gl of glAccounts) {
-    const record = await prisma.gLAccount.upsert({
-      where: { code: gl.code },
-      update: { name: gl.name, type: gl.type, isSystem: gl.isSystem, isActive: true },
-      create: { code: gl.code, name: gl.name, type: gl.type, isSystem: gl.isSystem, isActive: true },
+    const existing = await prisma.gLAccount.findFirst({
+      where: { clinicId: null, code: gl.code },
     });
+    let record;
+    if (existing) {
+      record = await prisma.gLAccount.update({
+        where: { id: existing.id },
+        data: { name: gl.name, type: gl.type, isSystem: gl.isSystem, isActive: true },
+      });
+    } else {
+      record = await prisma.gLAccount.create({
+        data: { clinicId: null, code: gl.code, name: gl.name, type: gl.type, isSystem: gl.isSystem, isActive: true },
+      });
+    }
     glIds[gl.code] = record.id;
     console.log(`✓ GLAccount: ${gl.code} (${gl.name}) [isSystem: ${gl.isSystem}]`);
   }
@@ -246,24 +255,36 @@ async function main() {
 
   const categoryIds: Record<string, string> = {};
   for (const cat of itemCategories) {
-    const record = await prisma.itemCategory.upsert({
-      where: { code: cat.code },
-      update: {
-        name: cat.name,
-        isActive: true,
-        revenueGlAccountId: cat.revenueGlCode ? glIds[cat.revenueGlCode] : null,
-        expenseGlAccountId: cat.expenseGlCode ? glIds[cat.expenseGlCode] : null,
-      },
-      create: {
-        code: cat.code,
-        name: cat.name,
-        isActive: true,
-        revenueGlAccountId: cat.revenueGlCode ? glIds[cat.revenueGlCode] : null,
-        expenseGlAccountId: cat.expenseGlCode ? glIds[cat.expenseGlCode] : null,
-      },
+    const existing = await prisma.itemCategory.findFirst({
+      where: { clinicId: null, code: cat.code },
     });
+    let record;
+    if (existing) {
+      record = await prisma.itemCategory.update({
+        where: { id: existing.id },
+        data: {
+          name: cat.name,
+          isSystem: true,
+          isActive: true,
+          revenueGlAccountId: cat.revenueGlCode ? glIds[cat.revenueGlCode] : null,
+          expenseGlAccountId: cat.expenseGlCode ? glIds[cat.expenseGlCode] : null,
+        },
+      });
+    } else {
+      record = await prisma.itemCategory.create({
+        data: {
+          clinicId: null,
+          code: cat.code,
+          name: cat.name,
+          isSystem: true,
+          isActive: true,
+          revenueGlAccountId: cat.revenueGlCode ? glIds[cat.revenueGlCode] : null,
+          expenseGlAccountId: cat.expenseGlCode ? glIds[cat.expenseGlCode] : null,
+        },
+      });
+    }
     categoryIds[cat.code] = record.id;
-    console.log(`✓ ItemCategory: ${cat.code} → ${record.id}`);
+    console.log(`✓ ItemCategory: ${cat.code} [isSystem: true] → ${record.id}`);
   }
 
   // ── 1c. UnitOfMeasure — global reference, no clinicId (006-item-master) ──

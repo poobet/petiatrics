@@ -11,9 +11,41 @@ export const DOC_TYPE = {
   CREDIT_NOTE: 'CREDIT_NOTE',
   DEBIT_NOTE: 'DEBIT_NOTE',
   APPOINTMENT: 'APPOINTMENT',
+  JOURNAL_ENTRY: 'JOURNAL_ENTRY',
 } as const;
 
 export type DocTypeCode = typeof DOC_TYPE[keyof typeof DOC_TYPE] | string;
+
+/**
+ * Single Source of Truth — Module-Bound Document Sequence Types
+ * Usage: import { MODULE_DOC_TYPES } from '...';
+ * e.g., MODULE_DOC_TYPES.BILLING.INVOICE (INV), MODULE_DOC_TYPES.BILLING.JOURNAL_ENTRY (JV)
+ */
+export const MODULE_DOC_TYPES = {
+  BILLING: {
+    INVOICE: DOC_TYPE.CUSTOMER_INVOICE,   // INV{yyyy}-{number:4}
+    CREDIT_NOTE: DOC_TYPE.CREDIT_NOTE,     // CN{yyyy}-{number:4}
+    DEBIT_NOTE: DOC_TYPE.DEBIT_NOTE,       // DN{yyyy}-{number:4}
+    JOURNAL_ENTRY: DOC_TYPE.JOURNAL_ENTRY, // JV{yyyy}-{number:4} (GL Posting)
+  },
+  PROCUREMENT: {
+    PURCHASE_ORDER: DOC_TYPE.PURCHASE_ORDER,   // PO{yyyy}-{number:4}
+    GOODS_RECEIPT: DOC_TYPE.GOODS_RECEIPT,     // GR{yyyy}-{number:4}
+    PURCHASE_INVOICE: DOC_TYPE.PURCHASE_INVOICE, // PI{yyyy}-{number:4}
+    SUPPLIER_PAYMENT: DOC_TYPE.SUPPLIER_PAYMENT, // SP{yyyy}-{number:4}
+    JOURNAL_ENTRY: DOC_TYPE.JOURNAL_ENTRY,     // JV{yyyy}-{number:4} (GL Posting)
+  },
+  INVENTORY: {
+    GOODS_RECEIPT: DOC_TYPE.GOODS_RECEIPT, // GR{yyyy}-{number:4}
+    JOURNAL_ENTRY: DOC_TYPE.JOURNAL_ENTRY, // JV{yyyy}-{number:4} (GL Posting)
+  },
+  APPOINTMENT: {
+    APPOINTMENT: DOC_TYPE.APPOINTMENT, // APT{yyyy}-{number:4}
+  },
+  ACCOUNTING: {
+    JOURNAL_ENTRY: DOC_TYPE.JOURNAL_ENTRY, // JV{yyyy}-{number:4}
+  },
+} as const;
 
 // System fallback defaults used when no DocumentTypeDefinition or DocumentSequenceConfig is found
 const SYSTEM_DEFAULTS: Record<string, { template: string; resetInterval: ResetInterval }> = {
@@ -25,6 +57,7 @@ const SYSTEM_DEFAULTS: Record<string, { template: string; resetInterval: ResetIn
   CREDIT_NOTE: { template: 'CN{yyyy}-{number:4}', resetInterval: ResetInterval.YEARLY },
   DEBIT_NOTE: { template: 'DN{yyyy}-{number:4}', resetInterval: ResetInterval.YEARLY },
   APPOINTMENT: { template: 'APT{yyyy}-{number:4}', resetInterval: ResetInterval.YEARLY },
+  JOURNAL_ENTRY: { template: 'JV{yyyy}-{number:4}', resetInterval: ResetInterval.YEARLY },
 };
 
 @Injectable()
@@ -152,6 +185,7 @@ export class DocumentSequenceService {
       { code: 'CREDIT_NOTE', label: 'Credit Note (ใบลดหนี้)', defaultTemplate: 'CN{yyyy}-{number:4}', module: 'BILLING' },
       { code: 'DEBIT_NOTE', label: 'Debit Note (ใบเพิ่มหนี้)', defaultTemplate: 'DN{yyyy}-{number:4}', module: 'BILLING' },
       { code: 'APPOINTMENT', label: 'Appointment', defaultTemplate: 'APT{yyyy}-{number:4}', module: 'APPOINTMENT' },
+      { code: 'JOURNAL_ENTRY', label: 'Journal Entry (สมุดรายวัน)', defaultTemplate: 'JV{yyyy}-{number:4}', module: 'ACCOUNTING' },
     ];
 
     for (const dt of builtinDocTypes) {

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { JournalType, PrismaClient } from '@prisma/client';
 import { scopedPrisma } from '@petiatrics/database';
+import { DocumentSequenceService, DOC_TYPE } from '../../document-sequence/services/document-sequence.service';
 
 export interface CreateJournalLineDto {
   glAccountId: string;
@@ -9,6 +10,7 @@ export interface CreateJournalLineDto {
 }
 
 export interface CreateJournalEntryDto {
+  entryNo?: string;
   type?: JournalType;
   description: string;
   sourceRefType?: string;
@@ -18,7 +20,10 @@ export interface CreateJournalEntryDto {
 
 @Injectable()
 export class GLPostingService {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(
+    private readonly prisma: PrismaClient,
+    private readonly sequenceService: DocumentSequenceService,
+  ) {}
 
   assertBalancedJournal(lines: CreateJournalLineDto[]): void {
     const totalDebit = lines.reduce((sum, l) => sum + (l.debitMinor || 0), 0);
@@ -35,7 +40,8 @@ export class GLPostingService {
     this.assertBalancedJournal(dto.lines);
     const db = scopedPrisma(this.prisma, clinicId);
 
-    const entryNo = `JV-${Date.now()}`;
+    const entryNo =
+      dto.entryNo?.trim() || (await this.sequenceService.generate(clinicId, DOC_TYPE.JOURNAL_ENTRY));
 
     return db.journalEntry.create({
       data: {
@@ -59,8 +65,13 @@ export class GLPostingService {
   }
 
   async getTrialBalance(clinicId: string) {
+    const accounts = await this.prisma.gLAccount.findMany({
+      where: {
+        isActive: true,
+        OR: [{ clinicId: null }, { clinicId }],
+      },
+    });
     const db = scopedPrisma(this.prisma, clinicId);
-    const accounts = await db.gLAccount.findMany({ where: { isActive: true } });
 
     const report = [];
     for (const acc of accounts) {

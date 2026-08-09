@@ -121,7 +121,7 @@ export default function ClinicSettingsPage() {
           </section>
 
           <section className="bg-white border rounded-lg p-5 space-y-4">
-            <h2 className="font-semibold text-gray-800">Financial & Accounting Setup</h2>
+            <h2 className="font-semibold text-gray-800">Financial & Document Setup</h2>
             <div className="grid grid-cols-2 gap-4">
               <a
                 href="/clinic/settings/chart-of-accounts"
@@ -132,6 +132,30 @@ export default function ClinicSettingsPage() {
                 </div>
                 <div className="text-xs text-slate-500 mt-1">
                   Manage 5 category accounts, protected system accounts & user sub-accounts
+                </div>
+              </a>
+
+              <a
+                href="/clinic/settings/document-sequence"
+                className="p-4 border rounded-xl hover:border-indigo-500 hover:shadow-sm transition-all group block"
+              >
+                <div className="font-bold text-sm text-slate-900 group-hover:text-indigo-600 flex items-center gap-2">
+                  <span>🔢</span> Document Sequencing Center
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  Configure sequence rules & custom types across all clinic modules
+                </div>
+              </a>
+
+              <a
+                href="/clinic/settings/item-categories"
+                className="p-4 border rounded-xl hover:border-indigo-500 hover:shadow-sm transition-all group block"
+              >
+                <div className="font-bold text-sm text-slate-900 group-hover:text-indigo-600 flex items-center gap-2">
+                  <span>🏷️</span> Item Categories & GL Mapping
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  Manage clinic item categories & default revenue/expense GL accounts
                 </div>
               </a>
 

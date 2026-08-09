@@ -13,11 +13,14 @@ export class GlAccountService {
   constructor(private readonly prisma: PrismaClient) {}
 
   /**
-   * Creates a new user-defined GL account (isSystem is forced to false).
+   * Creates a new user-defined GL account scoped to the clinic (isSystem is forced to false).
    */
-  async createAccount(dto: CreateGlAccountDto) {
-    const existing = await this.prisma.gLAccount.findUnique({
-      where: { code: dto.code },
+  async createAccount(clinicId: string, dto: CreateGlAccountDto) {
+    const existing = await this.prisma.gLAccount.findFirst({
+      where: {
+        code: dto.code,
+        OR: [{ clinicId: null }, { clinicId }],
+      },
     });
 
     if (existing) {
@@ -26,6 +29,7 @@ export class GlAccountService {
 
     return this.prisma.gLAccount.create({
       data: {
+        clinicId,
         code: dto.code,
         name: dto.name,
         type: dto.type,
@@ -36,25 +40,35 @@ export class GlAccountService {
   }
 
   /**
-   * Lists GL accounts with optional category, status, and search filters.
+   * Lists GL accounts visible to a clinic (global system control accounts + clinic-specific accounts).
    */
-  async getAccounts(filter?: GetGlAccountsFilter) {
-    const where: any = {};
+  async getAccounts(clinicId?: string, filter?: GetGlAccountsFilter) {
+    const andConditions: any[] = [];
+
+    if (clinicId) {
+      andConditions.push({
+        OR: [{ clinicId: null }, { clinicId }],
+      });
+    }
 
     if (filter?.type) {
-      where.type = filter.type;
+      andConditions.push({ type: filter.type });
     }
 
     if (filter?.isActive !== undefined) {
-      where.isActive = filter.isActive;
+      andConditions.push({ isActive: filter.isActive });
     }
 
     if (filter?.search) {
-      where.OR = [
-        { code: { contains: filter.search, mode: 'insensitive' } },
-        { name: { contains: filter.search, mode: 'insensitive' } },
-      ];
+      andConditions.push({
+        OR: [
+          { code: { contains: filter.search, mode: 'insensitive' } },
+          { name: { contains: filter.search, mode: 'insensitive' } },
+        ],
+      });
     }
+
+    const where = andConditions.length > 0 ? { AND: andConditions } : {};
 
     return this.prisma.gLAccount.findMany({
       where,
@@ -70,9 +84,12 @@ export class GlAccountService {
    * 2. If isSystem === true (Protected System Account): Cannot be deleted or deactivated under any circumstances. Throws ForbiddenException.
    * 3. If isSystem === false (User-Defined Account): Soft-deleted by updating isActive = false (preserving audit trail).
    */
-  async deactivateAccount(id: string) {
-    const account = await this.prisma.gLAccount.findUnique({
-      where: { id },
+  async deactivateAccount(clinicId: string, id: string) {
+    const account = await this.prisma.gLAccount.findFirst({
+      where: {
+        id,
+        OR: [{ clinicId: null }, { clinicId }],
+      },
     });
 
     if (!account) {
@@ -94,7 +111,7 @@ export class GlAccountService {
   /**
    * Alias for deactivateAccount to handle DELETE endpoints while preventing hard-deletion.
    */
-  async deleteAccount(id: string) {
-    return this.deactivateAccount(id);
+  async deleteAccount(clinicId: string, id: string) {
+    return this.deactivateAccount(clinicId, id);
   }
 }

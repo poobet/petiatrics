@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Settings2, Edit2, CheckCircle, AlertCircle, Info, RefreshCw } from 'lucide-react';
+import { Settings2, Edit2, Plus, Trash2, CheckCircle, AlertCircle, Info, RefreshCw, Link as LinkIcon, Download } from 'lucide-react';
 import {
   Button,
   Input,
@@ -29,6 +29,7 @@ type DocumentModule =
   | 'APPOINTMENT'
   | 'INVENTORY'
   | 'CLINICAL'
+  | 'ACCOUNTING'
   | 'GENERAL';
 
 interface DocumentTypeDefinition {
@@ -99,6 +100,7 @@ const MODULE_LABELS: Record<DocumentModule, string> = {
   APPOINTMENT: 'นัดหมาย',
   INVENTORY: 'คลังสินค้า',
   CLINICAL: 'เวชระเบียน',
+  ACCOUNTING: 'ระบบบัญชี (GL)',
   GENERAL: 'ทั่วไป',
 };
 
@@ -118,11 +120,31 @@ export default function ModuleDocumentSequenceConfig({
   className = '',
 }: ModuleDocumentSequenceConfigProps) {
   const [types, setTypes] = useState<DocumentTypeDefinition[]>([]);
+  const [allMasterTypes, setAllMasterTypes] = useState<DocumentTypeDefinition[]>([]);
   const [configs, setConfigs] = useState<DocumentSequenceConfig[]>([]);
   const [sequences, setSequences] = useState<SequenceInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Create modal state
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    code: '',
+    label: '',
+    defaultTemplate: 'DOC-{yyyy}-{number:4}',
+    defaultResetInterval: 'YEARLY' as 'YEARLY' | 'MONTHLY' | 'DAILY' | 'NEVER',
+    scope: 'CLINIC' as 'CLINIC' | 'BRANCH',
+  });
+
+  // Import / Link from Single Source of Truth modal state
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [selectedImportCode, setSelectedImportCode] = useState('');
+  const [importForm, setImportForm] = useState({
+    template: '',
+    resetInterval: 'YEARLY' as 'YEARLY' | 'MONTHLY' | 'DAILY' | 'NEVER',
+    scope: 'CLINIC' as 'CLINIC' | 'BRANCH',
+  });
 
   // Edit modal state
   const [editTarget, setEditTarget] = useState<DocumentTypeDefinition | null>(null);
@@ -132,18 +154,33 @@ export default function ModuleDocumentSequenceConfig({
     scope: 'CLINIC' as 'CLINIC' | 'BRANCH',
   });
 
+  // Delete modal state
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const [fetchedTypes, fetchedConfigs, fetchedSequences] = await Promise.all([
-        apiClient.get<DocumentTypeDefinition[]>(`/document-sequence/types?module=${module}`),
+      const [fetchedMasterTypes, fetchedConfigs, fetchedSequences] = await Promise.all([
+        apiClient.get<DocumentTypeDefinition[]>('/document-sequence/types'),
         apiClient.get<DocumentSequenceConfig[]>('/document-sequence/configs'),
-        apiClient.get<SequenceInfo[]>(`/document-sequence/sequences?module=${module}`),
+        apiClient.get<SequenceInfo[]>('/document-sequence/sequences'),
       ]);
-      setTypes(fetchedTypes || []);
-      setConfigs(fetchedConfigs || []);
+      const allTypes = fetchedMasterTypes || [];
+      const allConfigs = fetchedConfigs || [];
+      setAllMasterTypes(allTypes);
+      setConfigs(allConfigs);
       setSequences(fetchedSequences || []);
+
+      // Filter types relevant to this module OR explicitly bound via config
+      const moduleTypes = allTypes.filter((t) => {
+        if (t.module === module) return true;
+        // Also include if user created a sequence config override for this document type in this clinic
+        const hasConfig = allConfigs.some((c) => c.documentType === t.code);
+        return hasConfig;
+      });
+
+      setTypes(moduleTypes);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'โหลดข้อมูลไม่สำเร็จ');
     } finally {
@@ -177,6 +214,105 @@ export default function ModuleDocumentSequenceConfig({
     setEditTarget(type);
   }
 
+  function openImportModal() {
+    setError('');
+    setSelectedImportCode('');
+    setImportForm({
+      template: '',
+      resetInterval: 'YEARLY',
+      scope: 'CLINIC',
+    });
+    setIsImportOpen(true);
+  }
+
+  function handleImportTypeSelect(code: string) {
+    setSelectedImportCode(code);
+    const targetType = allMasterTypes.find((t) => t.code === code);
+    if (targetType) {
+      const cfg = getConfigForType(code);
+      setImportForm({
+        template: cfg?.template ?? targetType.defaultTemplate,
+        resetInterval: cfg?.resetInterval ?? targetType.defaultResetInterval,
+        scope: cfg?.scope ?? targetType.scope,
+      });
+    }
+  }
+
+  async function handleImportSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedImportCode) {
+      setError('กรุณาเลือกประเภทเอกสารที่ต้องการดึงมาผูก');
+      return;
+    }
+    setError('');
+    setSuccess('');
+
+    const targetType = allMasterTypes.find((t) => t.code === selectedImportCode);
+    if (!targetType) return;
+
+    if (!importForm.template.includes('{number')) {
+      setError('รูปแบบต้องมี {number} หรือ {number:X} เช่น {number:4}');
+      return;
+    }
+
+    try {
+      // Save sequence config override to bind this document type to clinic module settings
+      await apiClient.post('/document-sequence/configs', {
+        documentType: selectedImportCode,
+        template: importForm.template,
+        resetInterval: importForm.resetInterval,
+        scope: importForm.scope,
+      });
+
+      // If it's a custom type, optionally update its module assignment
+      if (!targetType.isSystem) {
+        await apiClient.patch(`/document-sequence/types/${targetType.id}`, {
+          module,
+        });
+      }
+
+      setSuccess(`ผูกประเภทเอกสาร ${targetType.label} (${targetType.code}) เข้ากับระบบ ${MODULE_LABELS[module]} สำเร็จ`);
+      setIsImportOpen(false);
+      fetchData();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'ผูกประเภทเอกสารไม่สำเร็จ');
+    }
+  }
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (!createForm.defaultTemplate.includes('{number')) {
+      setError('รูปแบบต้องมี {number} หรือ {number:X} เช่น {number:4}');
+      return;
+    }
+
+    try {
+      await apiClient.post('/document-sequence/types', {
+        code: createForm.code.toUpperCase().trim(),
+        label: createForm.label.trim(),
+        defaultTemplate: createForm.defaultTemplate.trim(),
+        defaultResetInterval: createForm.defaultResetInterval,
+        scope: createForm.scope,
+        module,
+      });
+      setSuccess(`สร้างประเภทเอกสาร ${createForm.label} สำเร็จ และซิงค์ไปยังหน้าจัดการเอกสารหลักแล้ว`);
+      setIsCreateOpen(false);
+      setCreateForm({
+        code: '',
+        label: '',
+        defaultTemplate: 'DOC-{yyyy}-{number:4}',
+        defaultResetInterval: 'YEARLY',
+        scope: 'CLINIC',
+      });
+      fetchData();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'สร้างประเภทเอกสารไม่สำเร็จ');
+    }
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (!editTarget) return;
@@ -203,6 +339,19 @@ export default function ModuleDocumentSequenceConfig({
     }
   }
 
+  async function handleDeleteCustomType(id: string) {
+    setError('');
+    setSuccess('');
+    try {
+      await apiClient.delete(`/document-sequence/types/${id}`);
+      setSuccess('ลบประเภทเอกสารเรียบร้อยแล้ว');
+      setDeleteConfirmId(null);
+      fetchData();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'ลบไม่สำเร็จ');
+    }
+  }
+
   const moduleTitle = title ?? `รหัสเอกสาร — ${MODULE_LABELS[module]}`;
   const moduleDesc =
     description ?? `กำหนดรูปแบบรหัสเอกสารสำหรับระบบ${MODULE_LABELS[module]}`;
@@ -210,7 +359,7 @@ export default function ModuleDocumentSequenceConfig({
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
         <div className="flex items-center gap-2">
           <Settings2 className="h-5 w-5 text-muted-foreground" />
           <div>
@@ -218,9 +367,26 @@ export default function ModuleDocumentSequenceConfig({
             <p className="text-sm text-muted-foreground">{moduleDesc}</p>
           </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={fetchData} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={openImportModal}
+            className="border-blue-200 text-blue-700 hover:bg-blue-50 flex items-center gap-1.5 text-xs font-semibold shadow-sm"
+          >
+            <Download className="h-3.5 w-3.5" /> 📥 ดึงผูกเอกสารจากคลังกลาง
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setIsCreateOpen(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 text-xs shadow-sm"
+          >
+            <Plus className="h-3.5 w-3.5" /> เพิ่มประเภทเอกสาร
+          </Button>
+          <Button variant="ghost" size="icon" onClick={fetchData} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </div>
 
       {/* Alerts */}
@@ -245,9 +411,14 @@ export default function ModuleDocumentSequenceConfig({
           ))}
         </div>
       ) : types.length === 0 ? (
-        <div className="flex items-center gap-2 rounded-md border bg-muted/30 p-4 text-sm text-muted-foreground">
-          <Info className="h-4 w-4 shrink-0" />
-          ไม่พบประเภทเอกสารสำหรับระบบนี้
+        <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 p-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Info className="h-4 w-4 shrink-0" />
+            ไม่พบประเภทเอกสารสำหรับระบบนี้
+          </div>
+          <Button size="sm" variant="outline" onClick={() => setIsCreateOpen(true)} className="text-xs">
+            + สร้างเอกสารใหม่
+          </Button>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -271,25 +442,43 @@ export default function ModuleDocumentSequenceConfig({
                     <span className="font-mono text-xs font-semibold text-muted-foreground">
                       {type.code}
                     </span>
-                    {type.isSystem && (
+                    {type.isSystem ? (
                       <Badge variant="secondary" className="text-[10px]">
                         ระบบ
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 text-[10px]">
+                        กำหนดเอง
                       </Badge>
                     )}
                     {cfg && (
                       <Badge variant="outline" className="text-[10px] text-blue-600 dark:text-blue-400">
-                        กำหนดเอง
+                        มี Override
                       </Badge>
                     )}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
-                    onClick={() => openEdit(type)}
-                  >
-                    <Edit2 className="h-3.5 w-3.5" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                      onClick={() => openEdit(type)}
+                      title="แก้ไขการตั้งค่ารหัสเอกสาร"
+                    >
+                      <Edit2 className="h-3.5 w-3.5 text-blue-600" />
+                    </Button>
+                    {!type.isSystem && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-50"
+                        onClick={() => setDeleteConfirmId(type.id)}
+                        title="ลบประเภทเอกสาร"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Label */}
@@ -320,6 +509,239 @@ export default function ModuleDocumentSequenceConfig({
           })}
         </div>
       )}
+
+      {/* Import / Link from Single Source of Truth Modal */}
+      <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
+        <DialogContent className="max-w-lg bg-white border rounded-xl shadow-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold flex items-center gap-2 text-gray-900">
+              <Download className="h-5 w-5 text-blue-600" />
+              ดึงประเภทเอกสารจากคลังกลาง (Single Source of Truth) มาผูกกับ {MODULE_LABELS[module]}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-gray-500">
+              เลือกประเภทเอกสารที่มีอยู่ในระบบ (เช่น JV - สมุดรายวัน, INV - ใบแจ้งหนี้, CN, DN ฯลฯ) เพื่อดึงมาผูกและตั้งค่ารหัสเอกสารประจำโมดูลนี้
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleImportSubmit} className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-gray-700">เลือกประเภทเอกสารที่ต้องการผูก</Label>
+              <Select value={selectedImportCode} onValueChange={handleImportTypeSelect}>
+                <SelectTrigger className="border-gray-300">
+                  <SelectValue placeholder="-- เลือกประเภทเอกสารจากคลังกลาง --" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border shadow-md max-h-60 overflow-y-auto">
+                  {allMasterTypes.map((t) => {
+                    const isCurrentModule = t.module === module;
+                    const hasConfig = configs.some((c) => c.documentType === t.code);
+                    const isLinked = isCurrentModule || hasConfig;
+                    return (
+                      <SelectItem key={t.code} value={t.code}>
+                        <div className="flex items-center justify-between w-full gap-4">
+                          <span className="font-semibold text-gray-900 font-mono">{t.code}</span>
+                          <span className="text-xs text-gray-600">{t.label}</span>
+                          {isLinked ? (
+                            <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">ผูกอยู่แล้ว</span>
+                          ) : (
+                            <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">คลังกลาง ({MODULE_LABELS[t.module ?? 'GENERAL'] ?? t.module})</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedImportCode && (
+              <div className="space-y-4 p-4 bg-slate-50 border rounded-lg animate-fade-in">
+                <div className="space-y-1.5">
+                  <Label htmlFor="imp-template" className="text-xs font-semibold text-gray-700">
+                    รูปแบบรหัสรันนิ่ง (Sequence Template)
+                  </Label>
+                  <Input
+                    id="imp-template"
+                    value={importForm.template}
+                    onChange={(e) => setImportForm({ ...importForm, template: e.target.value })}
+                    placeholder="เช่น JV{yyyy}-{number:4}"
+                    required
+                    className="font-mono text-sm border-gray-300"
+                  />
+                  {importForm.template && (
+                    <p className="text-[11px] text-gray-500">
+                      พรีวิวตัวอย่าง:{' '}
+                      <span className="font-mono font-bold text-blue-600">
+                        {generatePreview(importForm.template)}
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="imp-reset" className="text-xs font-semibold text-gray-700">
+                    รอบการรีเซ็ตตัวเลข
+                  </Label>
+                  <Select
+                    value={importForm.resetInterval}
+                    onValueChange={(val: any) => setImportForm({ ...importForm, resetInterval: val })}
+                  >
+                    <SelectTrigger id="imp-reset" className="border-gray-300">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border shadow-md">
+                      <SelectItem value="YEARLY">รีเซ็ตรายปี (Yearly)</SelectItem>
+                      <SelectItem value="MONTHLY">รีเซ็ตรายเดือน (Monthly)</SelectItem>
+                      <SelectItem value="DAILY">รีเซ็ตรายวัน (Daily)</SelectItem>
+                      <SelectItem value="NEVER">ไม่รีเซ็ต (Continuous)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="imp-scope" className="text-xs font-semibold text-gray-700">
+                    ขอบเขตการรันนิ่ง (Scope)
+                  </Label>
+                  <Select
+                    value={importForm.scope}
+                    onValueChange={(val: any) => setImportForm({ ...importForm, scope: val })}
+                  >
+                    <SelectTrigger id="imp-scope" className="border-gray-300">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border shadow-md">
+                      <SelectItem value="CLINIC">ระดับคลินิก (Clinic-Wide)</SelectItem>
+                      <SelectItem value="BRANCH">ระดับสาขา (Per-Branch)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter className="pt-3 border-t flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setIsImportOpen(false)}>
+                ยกเลิก
+              </Button>
+              <Button type="submit" disabled={!selectedImportCode} className="bg-blue-600 hover:bg-blue-700 text-white">
+                ผูกเอกสารกับโมดูลนี้
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Custom Document Type Modal */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="max-w-md bg-white border rounded-xl shadow-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold flex items-center gap-2 text-gray-900">
+              <Plus className="h-5 w-5 text-blue-600" />
+              เพิ่มประเภทเอกสารสำหรับระบบ {MODULE_LABELS[module]}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-gray-500">
+              สร้างรหัสเอกสารใหม่สำหรับระบบนี้ ข้อมูลจะถูกเชื่อมโยงไปยังหน้าตั้งค่าเอกสารรวมกลางโดยอัตโนมัติ
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="mod-create-code" className="text-xs font-semibold text-gray-700">
+                รหัสเอกสาร (Code)
+              </Label>
+              <Input
+                id="mod-create-code"
+                value={createForm.code}
+                onChange={(e) => setCreateForm({ ...createForm, code: e.target.value })}
+                placeholder="เช่น BILL_RECEIPT"
+                required
+                className="font-mono uppercase text-sm border-gray-300"
+              />
+              <p className="text-[11px] text-gray-400">ใช้อักษรภาษาอังกฤษตัวพิมพ์ใหญ่ เช่น CUSTOM_INV</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="mod-create-label" className="text-xs font-semibold text-gray-700">
+                ชื่อเอกสาร (Display Label)
+              </Label>
+              <Input
+                id="mod-create-label"
+                value={createForm.label}
+                onChange={(e) => setCreateForm({ ...createForm, label: e.target.value })}
+                placeholder="เช่น ใบเสร็จรับเงินอย่างย่อ"
+                required
+                className="text-sm border-gray-300"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="mod-create-template" className="text-xs font-semibold text-gray-700">
+                รูปแบบรหัสเริ่มต้น (Default Template)
+              </Label>
+              <Input
+                id="mod-create-template"
+                value={createForm.defaultTemplate}
+                onChange={(e) => setCreateForm({ ...createForm, defaultTemplate: e.target.value })}
+                placeholder="เช่น RCT-{yyyy}-{number:4}"
+                required
+                className="font-mono text-sm border-gray-300"
+              />
+              {createForm.defaultTemplate && (
+                <p className="text-[11px] text-gray-500">
+                  ตัวอย่าง:{' '}
+                  <span className="font-mono font-bold text-blue-600">
+                    {generatePreview(createForm.defaultTemplate)}
+                  </span>
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="mod-create-reset" className="text-xs font-semibold text-gray-700">
+                รอบการรีเซ็ตตัวเลข
+              </Label>
+              <Select
+                value={createForm.defaultResetInterval}
+                onValueChange={(val: any) => setCreateForm({ ...createForm, defaultResetInterval: val })}
+              >
+                <SelectTrigger id="mod-create-reset" className="border-gray-300">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white border shadow-md">
+                  <SelectItem value="YEARLY">รีเซ็ตรายปี (Yearly)</SelectItem>
+                  <SelectItem value="MONTHLY">รีเซ็ตรายเดือน (Monthly)</SelectItem>
+                  <SelectItem value="DAILY">รีเซ็ตรายวัน (Daily)</SelectItem>
+                  <SelectItem value="NEVER">ไม่รีเซ็ต (Continuous)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="mod-create-scope" className="text-xs font-semibold text-gray-700">
+                ขอบเขตการรันนิ่ง (Scope)
+              </Label>
+              <Select
+                value={createForm.scope}
+                onValueChange={(val: any) => setCreateForm({ ...createForm, scope: val })}
+              >
+                <SelectTrigger id="mod-create-scope" className="border-gray-300">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white border shadow-md">
+                  <SelectItem value="CLINIC">ระดับคลินิก (Clinic-Wide)</SelectItem>
+                  <SelectItem value="BRANCH">ระดับสาขา (Per-Branch)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <DialogFooter className="pt-3 border-t flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
+                ยกเลิก
+              </Button>
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+                สร้างประเภทเอกสาร
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Modal */}
       <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
@@ -405,6 +827,31 @@ export default function ModuleDocumentSequenceConfig({
               <Button type="submit">บันทึก</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Delete Dialog */}
+      <Dialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <DialogContent className="max-w-md bg-white border rounded-xl shadow-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-red-600 flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" /> ยืนยันการลบประเภทเอกสาร
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-500 mt-2">
+              คุณแน่ใจหรือไม่ว่าต้องการลบประเภทเอกสารนี้? ข้อมูลจะถูกปิดการใช้งานทั้งในหน้านี้และหน้าจัดการหลัก
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="pt-4 border-t flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
+              ยกเลิก
+            </Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => deleteConfirmId && handleDeleteCustomType(deleteConfirmId)}
+            >
+              ยืนยันการลบ
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
