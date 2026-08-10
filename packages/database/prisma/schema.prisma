@@ -16,6 +16,15 @@ enum SubscriptionTier {
   PREMIUM
 }
 
+enum Permission {
+  VIEW_STOCK
+  INVENTORY_ADJUST
+  VIEW_GL
+  MANAGE_GL
+  VIEW_REPORTS
+  SETTINGS_MANAGE
+}
+
 enum ClinicStatus {
   ACTIVE
   SUSPENDED
@@ -164,14 +173,20 @@ enum PaymentStatus {
 }
 
 enum JournalType {
+  GENERAL
+  RECEIPT
+  PAYMENT
+  SALE
+  PURCHASE
   SALES
   CASH_RECEIPT
-  GENERAL
   INVENTORY
 }
 
 enum JournalStatus {
+  DRAFT
   POSTED
+  REVERSED
   VOIDED
 }
 
@@ -270,6 +285,8 @@ model Clinic {
   glAccounts               GLAccount[]
   itemCategories           ItemCategory[]
   itemCategoryConfigs      ItemCategoryConfig[]
+  stockAdjustments         StockAdjustment[]
+  analyticAccounts         AnalyticAccount[]
 
   @@map("clinics")
 }
@@ -292,6 +309,7 @@ model Branch {
   productBranchSettings ProductBranchSetting[]
   inventoryLocations    InventoryLocation[]
   reasonCodes           ReasonCode[]
+  stockAdjustments      StockAdjustment[]
 
   @@index([clinicId])
   @@map("branches")
@@ -339,6 +357,7 @@ model User {
   appointments           Appointment[]     @relation("VetAppointments")
   stockMovements         StockMovement[]   @relation("StockMovementActor")
   approvedStockMovements StockMovement[]   @relation("StockMovementApprover")
+  stockAdjustments       StockAdjustment[] @relation("StockAdjustmentActor")
   createdPOs             PurchaseOrder[]   @relation("POCreatedBy")
   approvedPOs            PurchaseOrder[]   @relation("POApprovedBy")
   goodsReceipts          GoodsReceipt[]
@@ -738,6 +757,7 @@ model Product {
   purchaseInvoiceLines     PurchaseInvoiceLine[]
   branchSettings           ProductBranchSetting[]
   invoiceLineItems         InvoiceLineItem[]
+  stockAdjustments         StockAdjustment[]
 
   @@unique([clinicId, code])
   @@unique([clinicId, sku])
@@ -778,25 +798,55 @@ model InventoryLocation {
 // ─── ReasonCode (Automated Routing & Classification) ──────────────────────────
 
 model ReasonCode {
-  id                String         @id @default(uuid())
-  clinicId          String
-  branchId          String?        // null = clinic-wide reason code
-  code              String         // e.g., "RTN_DEFECT", "RTN_CUSTOMER", "EXPIRED_WRITE_OFF"
-  description       String
-  type              ReasonCodeType @default(RETURN)
-  defaultLocationId String?        // Automated return / adjustment location routing
-  isActive          Boolean        @default(true)
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  id                     String         @id @default(uuid())
+  clinicId               String
+  branchId               String?        // null = clinic-wide reason code
+  code                   String         // e.g., "RTN_DEFECT", "RTN_CUSTOMER", "EXPIRED", "MISSING_UNKNOWN"
+  description            String
+  type                   ReasonCodeType @default(RETURN)
+  requiresVatCalculation Boolean        @default(false) // True for MISSING_UNKNOWN (Deemed Sale under Thai VAT Law Sec 77/1(8)(e))
+  defaultLocationId      String?        // Automated return / adjustment location routing
+  isActive               Boolean        @default(true)
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
 
-  clinic          Clinic             @relation(fields: [clinicId], references: [id])
-  branch          Branch?            @relation(fields: [branchId], references: [id])
-  defaultLocation InventoryLocation? @relation("DefaultLocationReasonCodes", fields: [defaultLocationId], references: [id], onDelete: SetNull)
-  stockMovements  StockMovement[]
+  clinic           Clinic             @relation(fields: [clinicId], references: [id])
+  branch           Branch?            @relation(fields: [branchId], references: [id])
+  defaultLocation  InventoryLocation? @relation("DefaultLocationReasonCodes", fields: [defaultLocationId], references: [id], onDelete: SetNull)
+  stockMovements   StockMovement[]
+  stockAdjustments StockAdjustment[]
 
   @@unique([clinicId, code])
   @@index([clinicId, branchId])
   @@map("reason_codes")
+}
+
+// ─── StockAdjustment (Audit Ledger for Inventory Adjustments) ─────────────────
+
+model StockAdjustment {
+  id             String   @id @default(uuid())
+  clinicId       String
+  branchId       String
+  productId      String
+  quantity       Decimal  @db.Decimal(10, 3) // Positive for surplus, negative for deficit
+  unitCostMinor  Int      @default(0)       // Moving average unit cost in Satang
+  totalCostMinor Int      @default(0)       // Total adjustment cost in Satang
+  reasonCodeId   String
+  adjustedBy     String   // User ID of warehouse staff performing adjustment
+  notes          String?
+  status         String   @default("COMMITTED") // "PENDING_APPROVAL", "COMMITTED", "REJECTED"
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  clinic     Clinic     @relation(fields: [clinicId], references: [id])
+  branch     Branch     @relation(fields: [branchId], references: [id])
+  product    Product    @relation(fields: [productId], references: [id])
+  reasonCode ReasonCode @relation(fields: [reasonCodeId], references: [id])
+  actor      User       @relation("StockAdjustmentActor", fields: [adjustedBy], references: [id])
+
+  @@index([clinicId, branchId])
+  @@index([clinicId, productId])
+  @@map("stock_adjustments")
 }
 
 // ─── BranchStockBalance ──────────────────────────────────────────────────────
@@ -1649,37 +1699,72 @@ model PaymentTender {
 // ─── General Ledger & Double-Entry Accounting ────────────────────────────────
 
 model JournalEntry {
-  id            String        @id @default(uuid())
-  clinicId      String
-  entryNo       String
-  type          JournalType   @default(GENERAL)
-  description   String
-  sourceRefType String?
-  sourceRefId   String?
-  postedAt      DateTime      @default(now())
-  status        JournalStatus @default(POSTED)
-  createdAt     DateTime      @default(now())
+  id                String        @id @default(uuid())
+  clinicId          String
+  branchId          String?
+  entryNo           String
+  type              JournalType   @default(GENERAL)
+  description       String
+  sourceRefType     String?
+  sourceRefId       String?
+  documentDate      DateTime      @default(now())
+  accountingDate    DateTime      @default(now())
+  postedAt          DateTime?     @default(now())
+  postedById        String?
+  status            JournalStatus @default(POSTED)
+  reversedByEntryId String?
+  createdAt         DateTime      @default(now())
 
-  clinic Clinic        @relation(fields: [clinicId], references: [id])
-  lines  JournalLine[]
+  clinic            Clinic         @relation(fields: [clinicId], references: [id])
+  reversedByEntry   JournalEntry?  @relation("JournalReversal", fields: [reversedByEntryId], references: [id], onDelete: SetNull)
+  reversingEntries  JournalEntry[] @relation("JournalReversal")
+  lines             JournalLine[]
 
   @@index([clinicId, postedAt])
+  @@index([clinicId, accountingDate])
   @@map("journal_entries")
 }
 
 model JournalLine {
-  id             String @id @default(uuid())
-  journalEntryId String
-  glAccountId    String
-  debitMinor     Int    @default(0)
-  creditMinor    Int    @default(0)
+  id                String  @id @default(uuid())
+  journalEntryId    String
+  glAccountId       String
+  debitMinor        Int     @default(0)
+  creditMinor       Int     @default(0)
+  partnerId         String?
+  taxCodeId         String?
+  taxBaseMinor      Int?
+  taxAmountMinor    Int?
+  analyticAccountId String?
+  memo              String?
 
-  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
-  glAccount    GLAccount    @relation(fields: [glAccountId], references: [id])
+  journalEntry    JournalEntry     @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  glAccount       GLAccount        @relation(fields: [glAccountId], references: [id])
+  analyticAccount AnalyticAccount? @relation(fields: [analyticAccountId], references: [id])
 
   @@index([journalEntryId])
   @@index([glAccountId])
+  @@index([analyticAccountId])
   @@map("journal_lines")
+}
+
+// ─── Analytic Accounting (Cost Centers) ──────────────────────────────────────
+
+model AnalyticAccount {
+  id        String   @id @default(uuid())
+  clinicId  String
+  code      String   // e.g. "DEPT-OPD", "DEPT-SURGERY", "DEPT-GROOMING"
+  name      String   // e.g. "Outpatient Department", "Surgery & OR"
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clinic       Clinic        @relation(fields: [clinicId], references: [id])
+  journalLines JournalLine[]
+
+  @@unique([clinicId, code])
+  @@index([clinicId])
+  @@map("analytic_accounts")
 }
 
 // ─── Customer Deposits & Wallet ──────────────────────────────────────────────
