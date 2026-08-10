@@ -11,15 +11,11 @@ import { SystemRuleController } from './controllers/system-rule.controller';
 import { GlAccountController } from './controllers/gl-account.controller';
 import { JournalController } from './controllers/journal.controller';
 
+import { JournalValidationEngine } from './engines/journal-validation.engine';
+import { TaxCalculatorEngine } from './engines/tax-calculator.engine';
+
 /**
- * AccountingModule — Phase 1: Perpetual Inventory & GL Integration
- *
- * Owns:
- * - SystemRule CRUD (dynamic GL mapping rules)
- * - RuleEvaluatorService (JSON condition matching engine)
- * - GlAccountService (Chart of Accounts & System Account Protection)
- * - JournalService (Balanced Double-Entry Journal Entries)
- * - InventoryGlListener (event handlers → GL journal posting)
+ * AccountingModule — Phase 1: Accounting Foundation & Chart of Accounts
  */
 @Module({
   imports: [BillingModule, DocumentSequenceModule],
@@ -30,8 +26,17 @@ import { JournalController } from './controllers/journal.controller';
     RuleEvaluatorService,
     GlAccountService,
     JournalService,
+    JournalValidationEngine,
+    TaxCalculatorEngine,
     InventoryGlListener,
   ],
-  exports: [RuleEvaluatorService, SystemRuleService, GlAccountService, JournalService],
+  exports: [
+    RuleEvaluatorService,
+    SystemRuleService,
+    GlAccountService,
+    JournalService,
+    JournalValidationEngine,
+    TaxCalculatorEngine,
+  ],
 })
 export class AccountingModule {}
