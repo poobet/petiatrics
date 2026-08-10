@@ -33,6 +33,7 @@ import {
   BookOpen,
   SlidersHorizontal,
   Layers,
+  Scale,
 } from 'lucide-react';
 import {
   Avatar,
@@ -71,7 +72,7 @@ import type { AuthProfile } from '@petiatrics/types';
 import { BranchSelector } from './branch-selector';
 import { useSessionStore } from '../../lib/session-store';
 
-type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'products' | 'stockLedger' | 'goodsReceipt' | 'goodsIssue' | 'adjustments' | 'inventorySettings' | 'billing' | 'billingSettings' | 'pos' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings' | 'settingsGeneral' | 'rolePermissions' | 'documentSequence' | 'accountingPeriods' | 'procurement' | 'purchaseOrders' | 'purchaseInvoices' | 'supplierPayments' | 'procurementSettings' | 'appointmentSettings' | 'commission' | 'commissionDashboard' | 'commissionRules' | 'commissionTransactions' | 'commissionPaymentRuns' | 'commissionWht' | 'accounting' | 'accountingJournal' | 'chartOfAccounts' | 'accountingRules';
+type NavKey = 'dashboard' | 'appointments' | 'patients' | 'clients' | 'medicalRecords' | 'inventory' | 'products' | 'stockLedger' | 'goodsReceipt' | 'goodsIssue' | 'adjustments' | 'inventorySettings' | 'billing' | 'billingSettings' | 'pos' | 'staff' | 'businessPartners' | 'audit' | 'mobileApp' | 'settings' | 'settingsGeneral' | 'rolePermissions' | 'documentSequence' | 'accountingPeriods' | 'procurement' | 'purchaseOrders' | 'purchaseInvoices' | 'supplierPayments' | 'procurementSettings' | 'appointmentSettings' | 'commission' | 'commissionDashboard' | 'commissionRules' | 'commissionTransactions' | 'commissionPaymentRuns' | 'commissionWht' | 'accounting' | 'accountingJournal' | 'trialBalance' | 'chartOfAccounts' | 'accountingRules';
 
 interface SubNavItem {
   key: NavKey;
@@ -173,6 +174,7 @@ const NAV_GROUPS: NavGroup[] = [
         icon: BookOpen,
         subItems: [
           { key: 'accountingJournal', href: '/clinic/accounting/journal', icon: BookOpen, requiredPermission: 'BILLING:VIEW' },
+          { key: 'trialBalance', href: '/clinic/accounting/trial-balance', icon: Scale, requiredPermission: 'BILLING:VIEW' },
           { key: 'chartOfAccounts', href: '/clinic/settings/chart-of-accounts', icon: Layers, requiredPermission: 'SETTINGS:MANAGE' },
           { key: 'accountingRules', href: '/clinic/settings/accounting-rules', icon: SlidersHorizontal, requiredPermission: 'SETTINGS:MANAGE' },
         ],
