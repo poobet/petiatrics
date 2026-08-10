@@ -287,6 +287,7 @@ model Clinic {
   itemCategoryConfigs      ItemCategoryConfig[]
   stockAdjustments         StockAdjustment[]
   analyticAccounts         AnalyticAccount[]
+  taxCodes                 TaxCode[]
 
   @@map("clinics")
 }
@@ -381,22 +382,35 @@ model User {
 // when its defaultVatCodeId references a TaxCode where isVatType == true.
 // The deprecated isVatRegistered boolean MUST NOT be re-introduced.
 
-model TaxCode {
-  id          String   @id @default(uuid())
-  code        String   @unique // e.g. "VAT7", "VAT0", "WHT3", "WHT1"
-  description String
-  rate        Decimal  @default(0) @db.Decimal(7, 4) // percentage, e.g. 7.0000
-  isVatType   Boolean  @default(false) // true = VAT code; false = WHT code
-  isZeroRated Boolean  @default(false) // true = 0% rate (zero-rated exports or exempt)
-  type        String   @default("VAT") // "VAT" or "WHT"
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+enum TaxComputation {
+  TAX_INCLUDED
+  TAX_EXCLUDED
+}
 
+model TaxCode {
+  id              String         @id @default(uuid())
+  clinicId        String?
+  code            String         // e.g. "VAT_7", "VAT_0", "NON_VAT", "WHT_3"
+  name            String         @default("")
+  description     String         @default("")
+  rate            Decimal        @default(0) @db.Decimal(7, 4) // percentage, e.g. 7.0000
+  computationType TaxComputation @default(TAX_INCLUDED)
+  glAccountId     String?
+  isVatType       Boolean        @default(false) // true = VAT code; false = WHT code
+  isZeroRated     Boolean        @default(false) // true = 0% rate (zero-rated exports or exempt)
+  type            String         @default("VAT") // "VAT" or "WHT"
+  isActive        Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  clinic        Clinic?           @relation(fields: [clinicId], references: [id])
+  glAccount     GLAccount?        @relation(fields: [glAccountId], references: [id])
   defaultVatBps BusinessPartner[] @relation("DefaultVatCode")
   defaultWhtBps BusinessPartner[] @relation("DefaultWhtCode")
   products      Product[]         @relation("ProductDefaultTax")
 
+  @@unique([clinicId, code])
+  @@index([clinicId])
   @@index([isVatType, isActive])
   @@map("tax_codes")
 }
@@ -611,6 +625,7 @@ model GLAccount {
   cogsProducts           Product[]      @relation("ProductCogsAccount")
   inventoryAssetProducts Product[]      @relation("ProductInventoryAssetAccount")
   journalLines           JournalLine[]
+  taxCodes               TaxCode[]
 
   @@unique([clinicId, code])
   @@index([clinicId])

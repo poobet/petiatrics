@@ -12,6 +12,7 @@ import {
   AlertCircle,
   RefreshCw,
   Scale,
+  Building2,
 } from 'lucide-react';
 import { apiClient, ApiError } from '@/lib/api-client';
 import { Money } from '@/components/ui/money';
@@ -24,8 +25,15 @@ export interface GLAccountOption {
   isSystem?: boolean;
 }
 
+export interface AnalyticAccountOption {
+  id: string;
+  code: string;
+  name: string;
+}
+
 const journalLineSchema = z.object({
   glAccountId: z.string().min(1, 'กรุณาเลือกผังบัญชี'),
+  analyticAccountId: z.string().optional(),
   debitBaht: z.number().min(0, 'จำนวนเงินต้องไม่ติดลบ'),
   creditBaht: z.number().min(0, 'จำนวนเงินต้องไม่ติดลบ'),
 });
@@ -53,6 +61,7 @@ export function ManualJournalForm({
   onCancel,
 }: ManualJournalFormProps) {
   const [glAccounts, setGlAccounts] = useState<GLAccountOption[]>(propGlAccounts || []);
+  const [analyticAccounts, setAnalyticAccounts] = useState<AnalyticAccountOption[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(!propGlAccounts);
   const [fetchingSequence, setFetchingSequence] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -72,8 +81,8 @@ export function ManualJournalForm({
       description: '',
       postedAt: new Date().toISOString().split('T')[0],
       lines: [
-        { glAccountId: '', debitBaht: 0, creditBaht: 0 },
-        { glAccountId: '', debitBaht: 0, creditBaht: 0 },
+        { glAccountId: '', analyticAccountId: '', debitBaht: 0, creditBaht: 0 },
+        { glAccountId: '', analyticAccountId: '', debitBaht: 0, creditBaht: 0 },
       ],
     },
   });
@@ -100,20 +109,21 @@ export function ManualJournalForm({
   const varianceMinor = Math.abs(totalDebitMinor - totalCreditMinor);
   const isBalanced = totalDebitMinor === totalCreditMinor && totalDebitMinor > 0;
 
-  // Load GL Accounts if not passed as prop
+  // Load GL Accounts and Analytic Accounts if not passed as prop
   useEffect(() => {
-    if (!propGlAccounts) {
-      setLoadingAccounts(true);
-      apiClient
-        .get<GLAccountOption[]>('/accounting/gl-accounts')
-        .then((data) => {
-          if (Array.isArray(data)) setGlAccounts(data);
-        })
-        .catch((err) => {
-          console.error('Failed to fetch GL Accounts', err);
-        })
-        .finally(() => setLoadingAccounts(false));
-    }
+    setLoadingAccounts(true);
+    Promise.all([
+      propGlAccounts ? Promise.resolve(propGlAccounts) : apiClient.get<GLAccountOption[]>('/accounting/gl-accounts'),
+      apiClient.get<AnalyticAccountOption[]>('/accounting/analytic-accounts'),
+    ])
+      .then(([gls, analytics]) => {
+        if (Array.isArray(gls)) setGlAccounts(gls);
+        if (Array.isArray(analytics)) setAnalyticAccounts(analytics);
+      })
+      .catch((err) => {
+        console.error('Failed to fetch accounts data', err);
+      })
+      .finally(() => setLoadingAccounts(false));
   }, [propGlAccounts]);
 
   // Fetch System Running Entry Number (e.g. JV2026-0001)
@@ -150,6 +160,7 @@ export function ManualJournalForm({
       .filter((l) => l.glAccountId && (Number(l.debitBaht) > 0 || Number(l.creditBaht) > 0))
       .map((l) => ({
         glAccountId: l.glAccountId,
+        analyticAccountId: l.analyticAccountId || undefined,
         debitMinor: Math.round((Number(l.debitBaht) || 0) * 100),
         creditMinor: Math.round((Number(l.creditBaht) || 0) * 100),
       }));
@@ -260,7 +271,7 @@ export function ManualJournalForm({
           </div>
           <button
             type="button"
-            onClick={() => append({ glAccountId: '', debitBaht: 0, creditBaht: 0 })}
+            onClick={() => append({ glAccountId: '', analyticAccountId: '', debitBaht: 0, creditBaht: 0 })}
             className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-semibold px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" /> เพิ่มบรรทัด (Add Line)
@@ -271,24 +282,25 @@ export function ManualJournalForm({
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
               <tr>
-                <th className="px-4 py-3 w-12 text-center">#</th>
-                <th className="px-4 py-3">ผังบัญชี (GL Account) *</th>
-                <th className="px-4 py-3 text-right w-36">เดบิต (Debit ฿)</th>
-                <th className="px-4 py-3 text-right w-36">เครดิต (Credit ฿)</th>
-                <th className="px-4 py-3 w-12 text-center">ลบ</th>
+                <th className="px-3 py-3 w-10 text-center">#</th>
+                <th className="px-3 py-3">ผังบัญชี (GL Account) *</th>
+                <th className="px-3 py-3 w-44">ศูนย์ต้นทุน / แผนก</th>
+                <th className="px-3 py-3 text-right w-32">เดบิต (Debit ฿)</th>
+                <th className="px-3 py-3 text-right w-32">เครดิต (Credit ฿)</th>
+                <th className="px-3 py-3 w-10 text-center">ลบ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {fields.map((field, idx) => (
                 <tr key={field.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-4 py-3 text-center text-slate-400 font-mono font-medium">
+                  <td className="px-3 py-3 text-center text-slate-400 font-mono font-medium">
                     {idx + 1}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3">
                     <select
                       {...register(`lines.${idx}.glAccountId`)}
                       disabled={loadingAccounts}
-                      className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                      className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                     >
                       <option value="">-- เลือกผังบัญชี (Select GL Account) --</option>
                       {glAccounts.map((acc) => (
@@ -303,7 +315,21 @@ export function ManualJournalForm({
                       </p>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-3 py-3">
+                    <select
+                      {...register(`lines.${idx}.analyticAccountId`)}
+                      disabled={loadingAccounts}
+                      className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-700"
+                    >
+                      <option value="">-- ส่วนกลาง (No Department) --</option>
+                      {analyticAccounts.map((cc) => (
+                        <option key={cc.id} value={cc.id}>
+                          [{cc.code}] {cc.name}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-3 py-3 text-right">
                     <input
                       type="number"
                       step="0.01"
@@ -312,15 +338,14 @@ export function ManualJournalForm({
                       onChange={(e) => {
                         const val = e.target.value;
                         setValue(`lines.${idx}.debitBaht`, val === '' ? 0 : parseFloat(val), { shouldValidate: true });
-                        // Clear credit side if debit is populated
                         if (parseFloat(val) > 0) {
                           setValue(`lines.${idx}.creditBaht`, 0, { shouldValidate: true });
                         }
                       }}
-                      className="w-full px-3 py-1.5 text-xs text-right font-mono font-bold text-emerald-600 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                      className="w-full px-2.5 py-1.5 text-xs text-right font-mono font-bold text-emerald-600 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                     />
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-3 py-3 text-right">
                     <input
                       type="number"
                       step="0.01"
@@ -329,15 +354,14 @@ export function ManualJournalForm({
                       onChange={(e) => {
                         const val = e.target.value;
                         setValue(`lines.${idx}.creditBaht`, val === '' ? 0 : parseFloat(val), { shouldValidate: true });
-                        // Clear debit side if credit is populated
                         if (parseFloat(val) > 0) {
                           setValue(`lines.${idx}.debitBaht`, 0, { shouldValidate: true });
                         }
                       }}
-                      className="w-full px-3 py-1.5 text-xs text-right font-mono font-bold text-blue-600 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                      className="w-full px-2.5 py-1.5 text-xs text-right font-mono font-bold text-blue-600 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                     />
                   </td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-3 py-3 text-center">
                     <button
                       type="button"
                       onClick={() => remove(idx)}
@@ -354,13 +378,13 @@ export function ManualJournalForm({
             {/* Live Totals & Double-Entry Status Footer */}
             <tfoot className="bg-slate-50 border-t border-slate-200">
               <tr>
-                <td colSpan={2} className="px-4 py-3 font-semibold text-slate-700 text-right">
+                <td colSpan={3} className="px-3 py-3 font-semibold text-slate-700 text-right">
                   ยอดรวมทั้งสิ้น (Grand Totals):
                 </td>
-                <td className="px-4 py-3 text-right font-mono font-bold text-emerald-700 text-sm">
+                <td className="px-3 py-3 text-right font-mono font-bold text-emerald-700 text-sm">
                   <Money minor={totalDebitMinor} />
                 </td>
-                <td className="px-4 py-3 text-right font-mono font-bold text-blue-700 text-sm">
+                <td className="px-3 py-3 text-right font-mono font-bold text-blue-700 text-sm">
                   <Money minor={totalCreditMinor} />
                 </td>
                 <td></td>
@@ -381,71 +405,48 @@ export function ManualJournalForm({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             {isBalanced ? (
-              <div className="p-2 bg-emerald-500 text-white rounded-xl shadow-sm">
-                <CheckCircle2 className="w-5 h-5" />
-              </div>
+              <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
             ) : (
-              <div className="p-2 bg-amber-500 text-white rounded-xl shadow-sm">
-                <AlertCircle className="w-5 h-5" />
-              </div>
+              <AlertCircle className="w-6 h-6 text-amber-600 shrink-0" />
             )}
             <div>
-              <p className="font-bold text-sm">
+              <p className="font-bold text-xs">
                 {isBalanced
-                  ? 'งบดุลเดบิต-เครดิต สมบูรณ์ (Balanced Double-Entry)'
+                  ? 'สมดุลเดบิตและเครดิตถูกต้อง (Double-Entry Balanced)'
                   : 'ยอดรวมเดบิตและเครดิตยังไม่เท่ากัน (Unbalanced Entry)'}
               </p>
-              <p className="text-xs opacity-80 mt-0.5">
+              <p className="text-[11px] opacity-80 mt-0.5">
                 {isBalanced
-                  ? `ยอดรวมสมดุลเรียบร้อย: เดบิต ${totalDebitMinor / 100} บาท = เครดิต ${totalCreditMinor / 100} บาท`
-                  : `ผลต่างสุทธิ (Variance): ${varianceMinor / 100} บาท (เดบิต: ${totalDebitMinor / 100} บาท, เครดิต: ${totalCreditMinor / 100} บาท)`}
+                  ? `ยอดเดบิตและเครดิตสมดุลกันลงตัวที่ ${Money({ minor: totalDebitMinor })}`
+                  : `ผลต่างส่วนต่างที่เหลือ: ${Money({ minor: varianceMinor })} (กรุณาปรับยอดเดบิตหรือเครดิตให้เท่ากัน)`}
               </p>
             </div>
           </div>
 
-          <div className="text-right">
-            <span
-              className={`inline-block px-3 py-1 text-xs font-bold rounded-lg border ${
-                isBalanced
-                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                  : 'bg-amber-100 text-amber-800 border-amber-300'
-              }`}
+          <div className="flex items-center gap-3 self-end sm:self-auto">
+            {onCancel && (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                ยกเลิก
+              </button>
+            )}
+            <button
+              type="submit"
+              disabled={!isBalanced || submitting}
+              className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed rounded-xl transition-all shadow-sm shadow-blue-200"
             >
-              {isBalanced ? '✓ พร้อมบันทึก' : '❌ ปุ่มบันทึกล็อก (Disabled)'}
-            </span>
+              {submitting ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <FileText className="w-4 h-4" />
+              )}
+              ผ่านบัญชี (Post Journal Entry)
+            </button>
           </div>
         </div>
-      </div>
-
-      {/* Form Action Controls */}
-      <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-200">
-        {onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={submitting}
-            className="px-4 py-2.5 text-sm font-semibold text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-all shadow-sm"
-          >
-            ยกเลิก
-          </button>
-        )}
-        <button
-          type="submit"
-          disabled={!isBalanced || submitting}
-          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2.5 rounded-xl transition-all shadow-md shadow-blue-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
-        >
-          {submitting ? (
-            <>
-              <RefreshCw className="w-4 h-4 animate-spin" />
-              กำลังบันทึกสมุดรายวัน...
-            </>
-          ) : (
-            <>
-              <FileText className="w-4 h-4" />
-              บันทึกรายการสมุดรายวัน (Post Entry)
-            </>
-          )}
-        </button>
       </div>
     </form>
   );

@@ -14,12 +14,24 @@ import { JournalController } from './controllers/journal.controller';
 import { JournalValidationEngine } from './engines/journal-validation.engine';
 import { TaxCalculatorEngine } from './engines/tax-calculator.engine';
 
+import { TaxCodeService } from './services/tax-code.service';
+import { TaxCodeController } from './controllers/tax-code.controller';
+
+import { AnalyticAccountService } from './services/analytic-account.service';
+import { AnalyticAccountController } from './controllers/analytic-account.controller';
+
 /**
  * AccountingModule — Phase 1: Accounting Foundation & Chart of Accounts
  */
 @Module({
   imports: [BillingModule, DocumentSequenceModule],
-  controllers: [SystemRuleController, GlAccountController, JournalController],
+  controllers: [
+    SystemRuleController,
+    GlAccountController,
+    JournalController,
+    TaxCodeController,
+    AnalyticAccountController,
+  ],
   providers: [
     { provide: PrismaClient, useFactory: () => new PrismaClient() },
     SystemRuleService,
@@ -28,6 +40,8 @@ import { TaxCalculatorEngine } from './engines/tax-calculator.engine';
     JournalService,
     JournalValidationEngine,
     TaxCalculatorEngine,
+    TaxCodeService,
+    AnalyticAccountService,
     InventoryGlListener,
   ],
   exports: [
@@ -37,6 +51,8 @@ import { TaxCalculatorEngine } from './engines/tax-calculator.engine';
     JournalService,
     JournalValidationEngine,
     TaxCalculatorEngine,
+    TaxCodeService,
+    AnalyticAccountService,
   ],
 })
 export class AccountingModule {}

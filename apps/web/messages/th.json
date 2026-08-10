@@ -132,7 +132,9 @@
     "accounting": "ระบบบัญชี (GL)",
     "accountingJournal": "สมุดรายวันทั่วไป (Journal Entries)",
     "trialBalance": "งบทดลอง (Trial Balance)",
-    "chartOfAccounts": "ผังบัญชี (Chart of Accounts)"
+    "chartOfAccounts": "ผังบัญชี (Chart of Accounts)",
+    "taxCodes": "ประเภทภาษี (Tax Codes)",
+    "costCenters": "ศูนย์ต้นทุน (Cost Centers)"
   },
   "dashboard": {
     "title": "แดชบอร์ด",

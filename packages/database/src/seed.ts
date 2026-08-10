@@ -162,26 +162,35 @@ async function main() {
   ];
 
   for (const tc of taxCodes) {
-    await prisma.taxCode.upsert({
-      where: { code: tc.code },
-      update: {
-        description: tc.description,
-        rate: tc.rate,
-        isVatType: tc.isVatType,
-        isZeroRated: tc.isZeroRated,
-        type: tc.type,
-        isActive: true,
-      },
-      create: {
-        code: tc.code,
-        description: tc.description,
-        rate: tc.rate,
-        isVatType: tc.isVatType,
-        isZeroRated: tc.isZeroRated,
-        type: tc.type,
-        isActive: true,
-      },
+    const existing = await prisma.taxCode.findFirst({
+      where: { clinicId: null, code: tc.code },
     });
+    if (existing) {
+      await prisma.taxCode.update({
+        where: { id: existing.id },
+        data: {
+          description: tc.description,
+          rate: tc.rate,
+          isVatType: tc.isVatType,
+          isZeroRated: tc.isZeroRated,
+          type: tc.type,
+          isActive: true,
+        },
+      });
+    } else {
+      await prisma.taxCode.create({
+        data: {
+          clinicId: null,
+          code: tc.code,
+          description: tc.description,
+          rate: tc.rate,
+          isVatType: tc.isVatType,
+          isZeroRated: tc.isZeroRated,
+          type: tc.type,
+          isActive: true,
+        },
+      });
+    }
     console.log(`✓ TaxCode: ${tc.code} (${tc.description})`);
   }
 

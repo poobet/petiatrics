@@ -132,7 +132,9 @@
     "accounting": "General Ledger (GL)",
     "accountingJournal": "Journal Entries",
     "trialBalance": "Trial Balance",
-    "chartOfAccounts": "Chart of Accounts"
+    "chartOfAccounts": "Chart of Accounts",
+    "taxCodes": "Tax Configurations",
+    "costCenters": "Cost Centers"
   },
   "dashboard": {
     "title": "Dashboard",
