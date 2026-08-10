@@ -17,6 +17,7 @@ interface ReasonCode {
   code: string;
   description: string;
   type: string;
+  requiresVatCalculation?: boolean;
   defaultLocationId: string | null;
   defaultLocation?: InventoryLocation | null;
   isActive: boolean;
@@ -35,6 +36,7 @@ export default function ReasonCodesClient() {
   const [code, setCode] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState('RETURN');
+  const [requiresVatCalculation, setRequiresVatCalculation] = useState(false);
   const [defaultLocationId, setDefaultLocationId] = useState('');
   const [error, setError] = useState('');
 
@@ -64,6 +66,7 @@ export default function ReasonCodesClient() {
     setCode('');
     setDescription('');
     setType('RETURN');
+    setRequiresVatCalculation(false);
     setDefaultLocationId('');
     setError('');
     setShowModal(true);
@@ -74,6 +77,7 @@ export default function ReasonCodesClient() {
     setCode(rc.code);
     setDescription(rc.description);
     setType(rc.type);
+    setRequiresVatCalculation(!!rc.requiresVatCalculation);
     setDefaultLocationId(rc.defaultLocationId ?? '');
     setError('');
     setShowModal(true);
@@ -87,6 +91,7 @@ export default function ReasonCodesClient() {
         await apiClient.patch(`/inventory/reason-codes/${editingId}`, {
           description,
           type,
+          requiresVatCalculation,
           defaultLocationId: defaultLocationId || null,
         });
       } else {
@@ -94,6 +99,7 @@ export default function ReasonCodesClient() {
           code,
           description,
           type,
+          requiresVatCalculation,
           defaultLocationId: defaultLocationId || null,
         });
       }
@@ -123,7 +129,7 @@ export default function ReasonCodesClient() {
             Reason Codes & Return Routing (รหัสเหตุผลและการจัดเส้นทางคืนสินค้า)
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            กำหนดรหัสเหตุผลการคืน/ปรับปรุงสินค้า พร้อมจับคู่คลังปลายทางอัตโนมัติ (Automated Return Routing)
+            กำหนดรหัสเหตุผลการคืน/ปรับปรุงสินค้า การคำนวณภาษีขายกรณีถือเป็นขาย (Deemed Sale) และคลังปลายทางอัตโนมัติ
           </p>
         </div>
         <button
@@ -145,6 +151,7 @@ export default function ReasonCodesClient() {
                 <th className="px-4 py-3">Code</th>
                 <th className="px-4 py-3">Description</th>
                 <th className="px-4 py-3">Type</th>
+                <th className="px-4 py-3">Thai Tax Rule (ภาษีขาย 7%)</th>
                 <th className="px-4 py-3">Automated Default Location Routing</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
@@ -152,7 +159,7 @@ export default function ReasonCodesClient() {
             <tbody className="divide-y">
               {reasonCodes.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-muted-foreground text-xs">
+                  <td colSpan={6} className="py-8 text-center text-muted-foreground text-xs">
                     No reason codes found.
                   </td>
                 </tr>
@@ -165,6 +172,17 @@ export default function ReasonCodesClient() {
                       <span className="px-2 py-0.5 rounded bg-gray-100 font-semibold text-gray-700">
                         {rc.type}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      {rc.requiresVatCalculation ? (
+                        <span className="px-2 py-0.5 rounded font-semibold bg-amber-100 text-amber-800 border border-amber-300">
+                          Deemed Sale (Output VAT 7%)
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-gray-500 bg-gray-50">
+                          Standard Non-VAT
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       {rc.defaultLocation ? (
@@ -227,7 +245,7 @@ export default function ReasonCodesClient() {
                 required
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="e.g. RTN_DEFECT, EXPIRED"
+                placeholder="e.g. RTN_DEFECT, EXPIRED, MISSING_UNKNOWN"
                 className="w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 font-mono disabled:bg-gray-100"
               />
             </div>
@@ -239,7 +257,7 @@ export default function ReasonCodesClient() {
                 required
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="e.g. Customer Return (Damaged/Defective)"
+                placeholder="e.g. Missing Stock (Deemed Sale under VAT Law)"
                 className="w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500"
               />
             </div>
@@ -255,6 +273,25 @@ export default function ReasonCodesClient() {
                   <option key={t} value={t}>{t}</option>
                 ))}
               </select>
+            </div>
+
+            <div className="p-3 bg-purple-50/60 border border-purple-100 rounded-md">
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={requiresVatCalculation}
+                  onChange={(e) => setRequiresVatCalculation(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                />
+                <div>
+                  <span className="text-xs font-semibold text-purple-900 block">
+                    Calculate Output VAT 7% (คิดภาษีขายตามกฎหมายสรรพากร)
+                  </span>
+                  <span className="text-[11px] text-purple-700 leading-tight block mt-0.5">
+                    สำหรับสินค้าขาดหายนับสต็อก (`MISSING_UNKNOWN`) ตามมาตรา 77/1(8)(e) ถือเป็นขาย ต้องคำนวณและตั้งหนี้ภาษีขาย 7%
+                  </span>
+                </div>
+              </label>
             </div>
 
             <div>

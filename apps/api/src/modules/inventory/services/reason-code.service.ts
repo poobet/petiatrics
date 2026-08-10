@@ -28,10 +28,11 @@ export class ReasonCodeService {
       const sellableLoc = locations.find((l) => l.isSellable) || locations[0];
 
       const defaults = [
-        { code: 'RTN_CUSTOMER', description: 'Customer Return (Sellable Good Condition)', type: ReasonCodeType.RETURN, defaultLocationId: sellableLoc?.id },
-        { code: 'RTN_DEFECT', description: 'Customer Return (Damaged / Defective)', type: ReasonCodeType.RETURN, defaultLocationId: defectLoc?.id },
-        { code: 'EXPIRED_WRITE_OFF', description: 'Expired Item Write-Off', type: ReasonCodeType.EXPIRED, defaultLocationId: defectLoc?.id },
-        { code: 'SHRINKAGE', description: 'Inventory Discrepancy / Shrinkage', type: ReasonCodeType.SHRINKAGE, defaultLocationId: sellableLoc?.id },
+        { code: 'RTN_CUSTOMER', description: 'Customer Return (Sellable Good Condition)', type: ReasonCodeType.RETURN, requiresVatCalculation: false, defaultLocationId: sellableLoc?.id },
+        { code: 'RTN_DEFECT', description: 'Customer Return (Damaged / Defective)', type: ReasonCodeType.RETURN, requiresVatCalculation: false, defaultLocationId: defectLoc?.id },
+        { code: 'EXPIRED_WRITE_OFF', description: 'Expired Item Write-Off (LCNRV Rule)', type: ReasonCodeType.EXPIRED, requiresVatCalculation: false, defaultLocationId: defectLoc?.id },
+        { code: 'MISSING_UNKNOWN', description: 'Missing Stock / Unaccounted Shortage (Deemed Sale Output VAT)', type: ReasonCodeType.SHRINKAGE, requiresVatCalculation: true, defaultLocationId: sellableLoc?.id },
+        { code: 'SHRINKAGE', description: 'Inventory Discrepancy / Shrinkage', type: ReasonCodeType.SHRINKAGE, requiresVatCalculation: false, defaultLocationId: sellableLoc?.id },
       ];
 
       for (const d of defaults) {
@@ -43,6 +44,7 @@ export class ReasonCodeService {
               code: d.code,
               description: d.description,
               type: d.type,
+              requiresVatCalculation: d.requiresVatCalculation,
               defaultLocationId: d.defaultLocationId,
             },
           });
@@ -77,6 +79,7 @@ export class ReasonCodeService {
         code: dto.code,
         description: dto.description,
         type: dto.type ?? ReasonCodeType.RETURN,
+        requiresVatCalculation: dto.requiresVatCalculation ?? false,
         defaultLocationId: dto.defaultLocationId || null,
       },
       include: { defaultLocation: true },

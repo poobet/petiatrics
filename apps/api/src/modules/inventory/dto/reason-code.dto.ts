@@ -14,6 +14,10 @@ export class CreateReasonCodeDto {
   @IsOptional()
   type?: ReasonCodeType;
 
+  @IsBoolean()
+  @IsOptional()
+  requiresVatCalculation?: boolean;
+
   @IsString()
   @IsOptional()
   defaultLocationId?: string;
@@ -31,6 +35,10 @@ export class UpdateReasonCodeDto {
   @IsEnum(ReasonCodeType)
   @IsOptional()
   type?: ReasonCodeType;
+
+  @IsBoolean()
+  @IsOptional()
+  requiresVatCalculation?: boolean;
 
   @IsString()
   @IsOptional()
