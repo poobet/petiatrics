@@ -111,8 +111,10 @@ export class JournalController {
         lines: {
           include: {
             glAccount: true,
+            analyticAccount: true,
           },
         },
+        reversedByEntry: true,
       },
       orderBy: { postedAt: 'desc' },
     });
@@ -139,5 +141,16 @@ export class JournalController {
       ...payload,
       clinicId,
     });
+  }
+
+  /**
+   * Reverses a POSTED journal entry with counter-balancing lines.
+   */
+  @Post('journal-entries/:id/reverse')
+  async reverseJournalEntry(
+    @Param('id') id: string,
+    @Body('reason') reason: string,
+  ) {
+    return this.journalService.reverseJournalEntry(id, reason || 'Manual reversal');
   }
 }

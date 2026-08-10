@@ -12,6 +12,9 @@ import {
   X,
   Lock,
   CheckCircle2,
+  RotateCcw,
+  AlertCircle,
+  Building2,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { Money } from '@/components/ui/money';
@@ -27,6 +30,14 @@ interface JournalLine {
     name: string;
     type: string;
   };
+  analyticAccount?: {
+    code: string;
+    name: string;
+  };
+  taxBaseMinor?: number;
+  taxAmountMinor?: number;
+  taxCodeId?: string;
+  memo?: string;
 }
 
 interface JournalEntry {
@@ -38,7 +49,9 @@ interface JournalEntry {
   sourceRefType?: string;
   sourceRefId?: string;
   postedAt: string;
+  accountingDate: string;
   status: string;
+  reversedByEntryId?: string;
   lines: JournalLine[];
 }
 
@@ -50,6 +63,12 @@ export default function JournalEntriesPage() {
 
   // New Journal Entry Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Reversal Entry Modal state
+  const [reversingEntry, setReversingEntry] = useState<JournalEntry | null>(null);
+  const [reversalReason, setReversalReason] = useState('');
+  const [reversalSubmitting, setReversalSubmitting] = useState(false);
+  const [reversalError, setReversalError] = useState('');
 
   const fetchJournalEntries = async () => {
     setLoading(true);
@@ -68,6 +87,27 @@ export default function JournalEntriesPage() {
   useEffect(() => {
     fetchJournalEntries();
   }, []);
+
+  const handleConfirmReversal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reversingEntry || !reversalReason.trim()) return;
+
+    setReversalSubmitting(true);
+    setReversalError('');
+
+    try {
+      await apiClient.post(`/accounting/journal-entries/${reversingEntry.id}/reverse`, {
+        reason: reversalReason.trim(),
+      });
+      setReversingEntry(null);
+      setReversalReason('');
+      fetchJournalEntries();
+    } catch (err: any) {
+      setReversalError(err.message || 'เกิดข้อผิดพลาดในการกลับรายการ');
+    } finally {
+      setReversalSubmitting(false);
+    }
+  };
 
   // Filter journal entries by search term
   const filteredEntries = entries.filter((entry) => {
@@ -109,7 +149,7 @@ export default function JournalEntriesPage() {
           </button>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2.5 rounded-xl transition-all shadow-sm shadow-blue-200"
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2.5 rounded-xl transition-all shadow-sm shadow-blue-200 text-sm"
           >
             <Plus className="w-4 h-4" />
             บันทึกสมุดรายวัน (Create Journal Entry)
@@ -150,7 +190,7 @@ export default function JournalEntriesPage() {
                 <th className="px-6 py-3.5">อ้างอิงเอกสาร (Source Ref)</th>
                 <th className="px-6 py-3.5 text-center">สถานะ (Status)</th>
                 <th className="px-6 py-3.5 text-right">จำนวนเงินรวม</th>
-                <th className="px-6 py-3.5 text-center w-28">การจัดการ</th>
+                <th className="px-6 py-3.5 text-center w-36">การจัดการ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -171,6 +211,7 @@ export default function JournalEntriesPage() {
                 filteredEntries.map((entry) => {
                   const isExpanded = expandedEntryId === entry.id;
                   const isPosted = entry.status === 'POSTED' || entry.status === 'Posted';
+                  const isReversed = entry.status === 'REVERSED' || entry.status === 'Reversed';
                   const totalEntryAmount = entry.lines.reduce(
                     (sum, l) => sum + (l.debitMinor || 0),
                     0
@@ -195,12 +236,10 @@ export default function JournalEntriesPage() {
                         <td className="px-6 py-4 text-slate-600 text-xs">
                           <div className="flex items-center gap-1.5">
                             <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                            {new Date(entry.postedAt).toLocaleDateString('th-TH', {
+                            {new Date(entry.postedAt || entry.accountingDate).toLocaleDateString('th-TH', {
                               year: 'numeric',
                               month: 'short',
                               day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
                             })}
                           </div>
                         </td>
@@ -215,27 +254,40 @@ export default function JournalEntriesPage() {
                           )}
                         </td>
                         <td className="px-6 py-4 text-center">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold rounded-lg border ${
-                              isPosted
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : 'bg-slate-100 text-slate-700 border-slate-200'
-                            }`}
-                          >
-                            <CheckCircle2 className="w-3 h-3" /> {entry.status}
-                          </span>
+                          {isPosted && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3" /> POSTED
+                            </span>
+                          )}
+                          {isReversed && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold rounded-lg bg-amber-50 text-amber-700 border border-amber-200">
+                              <RotateCcw className="w-3 h-3" /> REVERSED
+                            </span>
+                          )}
+                          {!isPosted && !isReversed && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 border border-slate-200">
+                              {entry.status}
+                            </span>
+                          )}
                         </td>
                         <td className="px-6 py-4 text-right font-mono font-bold text-slate-900">
                           <Money minor={totalEntryAmount} />
                         </td>
                         <td className="px-6 py-4 text-center" onClick={(e) => e.stopPropagation()}>
-                          {/* Business Rule Enforcement: Once Posted, MUST NOT show Edit/Delete buttons */}
                           {isPosted ? (
-                            <span
-                              className="inline-flex items-center gap-1 text-xs text-slate-500 font-medium px-2 py-1 bg-slate-100 rounded-lg cursor-default"
-                              title="รายการที่ผ่านบัญชี (Posted) แล้ว ล็อกเพื่อป้องกันการแก้ไขหรือลบตามมาตรฐานการบัญชี"
+                            <button
+                              onClick={() => {
+                                setReversingEntry(entry);
+                                setReversalReason('');
+                              }}
+                              className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-lg font-medium transition-colors"
+                              title="กลับรายการ (Reverse Entry)"
                             >
-                              <Lock className="w-3 h-3 text-slate-400" /> อ่านอย่างเดียว
+                              <RotateCcw className="w-3 h-3 text-amber-600" /> กลับรายการ
+                            </button>
+                          ) : isReversed ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-slate-400 font-medium">
+                              <Lock className="w-3 h-3" /> ล็อก
                             </span>
                           ) : (
                             <button
@@ -263,10 +315,11 @@ export default function JournalEntriesPage() {
                               <table className="w-full text-xs text-left">
                                 <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 font-semibold">
                                   <tr>
-                                    <th className="px-5 py-2.5 w-32">รหัสบัญชี</th>
+                                    <th className="px-5 py-2.5 w-28">รหัสบัญชี</th>
                                     <th className="px-5 py-2.5">ชื่อผังบัญชี</th>
-                                    <th className="px-5 py-2.5 text-right w-40">เดบิต (Debit ฿)</th>
-                                    <th className="px-5 py-2.5 text-right w-40">เครดิต (Credit ฿)</th>
+                                    <th className="px-5 py-2.5 w-36">ศูนย์ต้นทุน / แผนก</th>
+                                    <th className="px-5 py-2.5 text-right w-36">เดบิต (Debit ฿)</th>
+                                    <th className="px-5 py-2.5 text-right w-36">เครดิต (Credit ฿)</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 font-mono">
@@ -277,6 +330,16 @@ export default function JournalEntriesPage() {
                                       </td>
                                       <td className="px-5 py-2.5 font-sans font-medium text-slate-900">
                                         {line.glAccount?.name || '-'}
+                                      </td>
+                                      <td className="px-5 py-2.5 font-sans text-slate-600">
+                                        {line.analyticAccount ? (
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[11px] font-medium border border-blue-100">
+                                            <Building2 className="w-3 h-3" />
+                                            {line.analyticAccount.name}
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-300">-</span>
+                                        )}
                                       </td>
                                       <td className="px-5 py-2.5 text-right font-bold text-emerald-600">
                                         {line.debitMinor > 0 ? (
@@ -297,7 +360,7 @@ export default function JournalEntriesPage() {
                                 </tbody>
                                 <tfoot className="bg-slate-50 border-t border-slate-200 font-sans font-semibold text-slate-700">
                                   <tr>
-                                    <td colSpan={2} className="px-5 py-2.5 text-right">
+                                    <td colSpan={3} className="px-5 py-2.5 text-right">
                                       รวมยอดเดบิตและเครดิต:
                                     </td>
                                     <td className="px-5 py-2.5 text-right font-mono text-emerald-700 font-bold">
@@ -348,6 +411,72 @@ export default function JournalEntriesPage() {
                 onCancel={() => setIsModalOpen(false)}
               />
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* REVERSE JOURNAL ENTRY CONFIRMATION MODAL */}
+      {reversingEntry && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-200 animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-amber-50">
+              <div className="flex items-center gap-2 text-amber-800">
+                <RotateCcw className="w-5 h-5 text-amber-600" />
+                <h3 className="font-bold text-slate-900">ยืนยันกลับรายการ (Reverse Entry)</h3>
+              </div>
+              <button
+                onClick={() => setReversingEntry(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-200/50"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmReversal} className="p-6 space-y-4">
+              {reversalError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  {reversalError}
+                </div>
+              )}
+
+              <p className="text-xs text-slate-600 leading-relaxed">
+                ระบบจะสร้างรายการสมุดรายวันฉบับใหม่เพื่อสลับฝั่งเดบิต/เครดิตสำหรับใบสำคัญเลขที่{' '}
+                <strong className="font-mono text-blue-700">{reversingEntry.entryNo}</strong> เพื่อยกเลิกผลทางบัญชีโดยสมบูรณ์
+              </p>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  เหตุผลในการกลับรายการ <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="ระบุเหตุผล เช่น ข้อมูลใบแจ้งหนี้ผิดพลาด, บันทึกซ้ำซ้อน..."
+                  value={reversalReason}
+                  onChange={(e) => setReversalReason(e.target.value)}
+                  className="w-full text-xs p-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setReversingEntry(null)}
+                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  disabled={reversalSubmitting || !reversalReason.trim()}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 rounded-xl shadow-sm transition-all"
+                >
+                  {reversalSubmitting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                  ยืนยันกลับรายการ
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
